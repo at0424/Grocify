@@ -4,12 +4,13 @@
     "slug": "Grocify",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/Grocify_Logo.png",
     "scheme": "grocify",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.Grocify"
     },
     "android": {
       "adaptiveIcon": {
