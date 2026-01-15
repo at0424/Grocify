@@ -29,21 +29,38 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const signIn = async (email, password) => {
-    const signedInUser = await signInService(email, password);
-    setUser(signedInUser);
-    return signedInUser;
+    const result = await signInService({ username: email, password });
+    
+    if (result.isSignedIn) {
+      await checkUser(); 
+    }
+    
+    return result; 
   };
 
   const signUp = async (email, password) => {
-    return signUpService(email, password);
+    return signUpService({
+      username: email,
+      password,
+      options: {
+        userAttributes: { email } 
+      }
+    });
   };
 
   const confirmSignUp = async (email, code) => {
-    await confirmSignUpService(email, code);
+    return confirmSignUpService({
+      username: email,
+      confirmationCode: code
+    });
   };
 
   const signOut = async () => {
-    await signOutService();
+    try {
+      await signOutService();
+    } catch (err) {
+      console.log("Sign out error", err);
+    }
     setUser(null);
   };
 

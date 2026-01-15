@@ -1,7 +1,8 @@
-import { useAuth } from "@/auth/authContext";
+import { signUp } from "aws-amplify/auth";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -14,24 +15,48 @@ export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  const { signUp } = useAuth();
-
+  const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    if (password !== confirmPassword) {
-      alert('Passwords do not match');
+    // Basic Validation
+    if (!email || !password) {
+      Alert.alert("Error", "Please fill in all fields.");
       return;
     }
 
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      await signUp(email, password);
-      router.push({
-        pathname: '/confirm_code',
-        params: { email },
+      // Call Amplify SignUp
+      const { isSignUpComplete, nextStep } = await signUp({
+        username: email,
+        password,
+        options: {
+          userAttributes: {
+            email: email, 
+          },
+        },
       });
+
+      // If SUCCESS, continue with confirm sign up
+      if (nextStep?.signUpStep === 'CONFIRM_SIGN_UP') {
+        router.push({
+          pathname: './confirmation', 
+          params: { email },
+        });
+      } else if (isSignUpComplete) {
+        router.replace('/(tabs)');
+      }
+
     } catch (err: any) {
-      alert(err.message);
+      Alert.alert("Sign Up Failed", err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,8 +93,14 @@ export default function SignUpScreen() {
         style={styles.input}
       />
 
-      <TouchableOpacity onPress={handleSignUp} style={styles.button}>
-        <Text style={styles.buttonText}>Create Account</Text>
+      <TouchableOpacity 
+        onPress={handleSignUp} 
+        style={[styles.button, loading && { opacity: 0.7 }]}
+        disabled={loading}
+      >
+        <Text style={styles.buttonText}>
+          {loading ? "Creating Account..." : "Create Account"}
+        </Text>
       </TouchableOpacity>
 
       <View style={styles.signinContainer}>

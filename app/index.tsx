@@ -1,5 +1,4 @@
-import { useAuth } from '../auth/authContext';
-
+import { signIn } from 'aws-amplify/auth';
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -18,14 +17,15 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const { signIn } = useAuth();
-
  const handleSignIn = async () => {
     if (loading) return; 
     setLoading(true);
 
     try {
-      const { isSignedIn, nextStep } = await signIn(email, password);
+      const { isSignedIn, nextStep } = await signIn({ 
+        username: email, 
+        password 
+      });
       
       if (isSignedIn) {
         router.replace("/(tabs)"); 
@@ -33,7 +33,7 @@ export default function SignInScreen() {
         if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
           Alert.alert("Login Issue", "Could not complete sign-in.");        }
       }
-    } catch (err) {
+    } catch (err: any) {
       Alert.alert("Login Failed", err.message);
     } finally {
       setLoading(false);
@@ -153,3 +153,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+

@@ -1,19 +1,49 @@
+import { resetPassword } from 'aws-amplify/auth';
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSendCode = () => {
-    console.log("Send reset code to:", email);
+  const handleSendCode = async () => {
+    if (!email) {
+      Alert.alert("Error", "Please enter your email address.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Call AWS to send the code
+      const output = await resetPassword({ username: email });
+      
+      const { nextStep } = output;
+
+      if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
+        router.push({
+            pathname: "./reset_pw", 
+            params: { email }
+        });
+      } else if (nextStep.resetPasswordStep === 'DONE') {
+          Alert.alert("Success", "Password reset complete.");
+          router.back();
+      }
+
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
