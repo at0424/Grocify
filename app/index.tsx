@@ -1,46 +1,96 @@
+import { useAuth } from '../auth/authContext';
+
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignInScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
-    console.log("Email:", email);
-    console.log("Password:", password);
+  const { signIn } = useAuth();
+
+ const handleSignIn = async () => {
+    if (loading) return; 
+    setLoading(true);
+
+    try {
+      const { isSignedIn, nextStep } = await signIn(email, password);
+      
+      if (isSignedIn) {
+        router.replace("/(tabs)"); 
+      } else {
+        if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
+          Alert.alert("Login Issue", "Could not complete sign-in.");        }
+      }
+    } catch (err) {
+      Alert.alert("Login Failed", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    router.push("/forgot_pw");
+  };
+
+  const handleSignUp = () => {
+    router.push("/sign_up");
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sign In</Text>
+    <SafeAreaView style={{ flex: 1 }}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Sign In</Text>
 
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        style={styles.input}
-      />
+          <TextInput
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            style={styles.input}
+          />
 
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={styles.input}
-      />
+          <TextInput
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            style={styles.input}
+          />
 
-      <TouchableOpacity onPress={handleSignIn} style={styles.button}>
-        <Text style={styles.buttonText}>Sign In</Text>
-      </TouchableOpacity>
-    </View>
+          {/* Forgot password */}
+          <TouchableOpacity
+            onPress={handleForgotPassword}
+            style={styles.forgotPassword}
+          >
+            <Text style={styles.linkText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleSignIn} style={styles.button}>
+            <Text style={styles.buttonText}>Sign In</Text>
+          </TouchableOpacity>
+
+          {/* Sign up */}
+          <View style={styles.signupContainer}>
+            <Text style={styles.signupText}>Don’t have an account? </Text>
+            <TouchableOpacity onPress={handleSignUp}>
+              <Text style={styles.linkText}>Sign up</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+    </SafeAreaView>
   );
 }
 
@@ -68,6 +118,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
+  forgotPassword: {
+    width: "100%",
+    maxWidth: 320,
+    alignItems: "flex-end",
+    marginBottom: 16,
+  },
+
   button: {
     width: "100%",
     maxWidth: 320,
@@ -75,11 +132,24 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 8,
   },
 
   buttonText: {
     color: "white",
     fontWeight: "bold",
+  },
+
+  signupContainer: {
+    flexDirection: "row",
+    marginTop: 16,
+  },
+
+  signupText: {
+    color: "#444",
+  },
+
+  linkText: {
+    color: "#4F46E5",
+    fontWeight: "600",
   },
 });
