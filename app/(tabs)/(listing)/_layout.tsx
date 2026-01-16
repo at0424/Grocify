@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-export default function TabsLayout() {
+export default function ListingLayout() {
   return (
     <Stack
       screenOptions={{

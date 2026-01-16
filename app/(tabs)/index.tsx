@@ -15,7 +15,6 @@ export default function HomeScreen() {
   async function checkUser() {
     try {
       const user = await getCurrentUser();
-      // Usually the username is the email, or you can fetch attributes
       setUserEmail(user.username || "User"); 
     } catch (err) {
       setUserEmail("Guest");
@@ -33,15 +32,44 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.card}>
-        <View style={styles.avatarPlaceholder} />
-        <Text style={styles.emailText}>{userEmail}</Text>
-        <Text style={styles.roleText}>App User</Text>
-      </View>
+      <Text style={styles.header}>Welcome Back!</Text>
+      <Text style={styles.subHeader}>Select a dashboard to continue</Text>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
-        <Text style={styles.logoutText}>Log Out</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        
+        {/* 1. Listing Dashboard */}
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => router.push('./(listing)')}
+        >
+          <Text style={styles.buttonText}>Listing Dashboard</Text>
+        </TouchableOpacity>
+
+        {/* 2. Item Freshness Dashboard */}
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => router.push('./(freshness)')}
+        >
+          <Text style={styles.buttonText}>Item Freshness</Text>
+        </TouchableOpacity>
+
+        {/* 3. Meal Plan Dashboard */}
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => router.push('./(meal_plan)')}
+        >
+          <Text style={styles.buttonText}>Meal Plans</Text>
+        </TouchableOpacity>
+
+        {/* 4. AI Chatbot Dashboard */}
+        <TouchableOpacity 
+          style={[styles.button, styles.aiButton]} 
+          onPress={() => router.push('./(ai)')}
+        >
+          <Text style={styles.buttonText}>AI Assistant</Text>
+        </TouchableOpacity>
+
+      </View>
     </View>
   );
 }
@@ -52,46 +80,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f5f5f5',
+    padding: 20,
   },
-  card: {
-    backgroundColor: 'white',
-    width: '85%',
-    padding: 30,
-    borderRadius: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-    marginBottom: 40,
-  },
-  avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e0e0e0',
-    marginBottom: 15,
-  },
-  emailText: {
-    fontSize: 18,
+  header: {
+    fontSize: 28,
     fontWeight: 'bold',
+    marginBottom: 10,
     color: '#333',
   },
-  roleText: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 5,
-  },
-  logoutButton: {
-    width: '85%',
-    backgroundColor: '#ff4444',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: 'white',
+  subHeader: {
     fontSize: 16,
+    color: '#666',
+    marginBottom: 40,
+  },
+  buttonContainer: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 15, 
+  },
+  button: {
+    width: '80%',
+    paddingVertical: 15,
+    backgroundColor: '#007AFF', 
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 15, 
+  },
+  aiButton: {
+    backgroundColor: '#5856D6', 
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
   },
 });
