@@ -37,7 +37,7 @@ export default function HomeScreen() {
 
       <View style={styles.buttonContainer}>
         
-        {/* 1. Listing Dashboard */}
+        {/* Listing Dashboard */}
         <TouchableOpacity 
           style={styles.button} 
           onPress={() => router.push('./(listing)')}
@@ -45,7 +45,7 @@ export default function HomeScreen() {
           <Text style={styles.buttonText}>Listing Dashboard</Text>
         </TouchableOpacity>
 
-        {/* 2. Item Freshness Dashboard */}
+        {/* Item Freshness Dashboard */}
         <TouchableOpacity 
           style={styles.button} 
           onPress={() => router.push('./(freshness)')}
@@ -53,7 +53,7 @@ export default function HomeScreen() {
           <Text style={styles.buttonText}>Item Freshness</Text>
         </TouchableOpacity>
 
-        {/* 3. Meal Plan Dashboard */}
+        {/* Meal Plan Dashboard */}
         <TouchableOpacity 
           style={styles.button} 
           onPress={() => router.push('./(meal_plan)')}
@@ -61,12 +61,17 @@ export default function HomeScreen() {
           <Text style={styles.buttonText}>Meal Plans</Text>
         </TouchableOpacity>
 
-        {/* 4. AI Chatbot Dashboard */}
+        {/* AI Chatbot Dashboard */}
         <TouchableOpacity 
           style={[styles.button, styles.aiButton]} 
           onPress={() => router.push('./(ai)')}
         >
           <Text style={styles.buttonText}>AI Assistant</Text>
+        </TouchableOpacity>
+
+        {/* Log Out Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
+          <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
       </View>
@@ -112,6 +117,18 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 18,
+    fontWeight: '600',
+  },
+  logoutButton: {
+    width: '85%',
+    backgroundColor: '#ff4444',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  logoutText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
   },
 });
