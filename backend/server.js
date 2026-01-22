@@ -1,7 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
+const fetch = require('node-fetch');
 const app = express();
 const PORT = 3000;
 
@@ -10,6 +12,13 @@ app.use(express.json());
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+// DEBUG: Check if API key is loaded
+if (!GEMINI_API_KEY) {
+  console.error("ERROR: GEMINI_API_KEY is missing in .env file!");
+} else {
+  console.log(`API Key loaded: ${GEMINI_API_KEY.substring(0, 5)}...`);
+}
 
 app.post('/chat', async (req, res) => {
   try {
