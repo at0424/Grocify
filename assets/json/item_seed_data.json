@@ -1,0 +1,857 @@
+[
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Red Onion",
+    "description": "Essential aromatic. Usually small rose onions or large India onions."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Garlic",
+    "description": "A staple base for almost all Malaysian cooking."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Ginger",
+    "description": "Old ginger is preferred for cooking meats; young ginger for garnish."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Cili Padi (Bird's Eye Chili)",
+    "description": "Extremely spicy small chilies, essential for sambal belacan."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Red Chili",
+    "description": "Larger, milder chilies used mostly for garnishing and color."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Mustard Greens (Sawi)",
+    "description": "Common leafy green for stir-fries and noodle soups."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Spinach",
+    "description": "Available in green or red varieties, often used in clear soups."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Cabbage",
+    "description": "Round cabbage, long-lasting and used in 'Masak Lemak' or stir-fries."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Long Beans",
+    "description": "Crunchy beans often cooked with sambal or in omelettes."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Cucumber",
+    "description": "Used fresh as a side for Nasi Lemak or mostly water content."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Tomato",
+    "description": "Used in 'Masak Merah' dishes or fresh salads."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Potato",
+    "description": "Starchy tuber, typically Russet, Holland, or Brastagi types."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Carrot",
+    "description": "Root vegetable, essential for soups and stir-frys."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Lady's Finger (Okra)",
+    "description": "Commonly steamed or used in Fish Curry."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Brinjal (Eggplant)",
+    "description": "Often cooked with sambal or in curry."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Lime",
+    "description": "Small calamansi for drinks/sambal, or key lime for cooking."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Banana",
+    "description": "Local varieties like Pisang Berangan, Cavendish, or Pisang Emas."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Papaya",
+    "description": "Local tropical fruit, often sold ripe or semi-ripe."
+  },
+  {
+    "category": "Fruits & Vegetables",
+    "name": "Watermelon",
+    "description": "Red or Yellow flesh, sold whole or cut."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "White Bread",
+    "description": "Classic sandwich loaf (e.g., Gardenia Original, Massimo)."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Wholemeal Bread",
+    "description": "Healthier grain loaf with high fiber."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Chocolate Bun",
+    "description": "Individual snack bun with chocolate cream filling."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Corn Bun",
+    "description": "Creamy corn-filled snack bun."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Burger Buns",
+    "description": "Pack of round buns for homemade burgers."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Hotdog Buns",
+    "description": "Long buns for sausages."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Croissant",
+    "description": "Buttery layered pastry, sold in bakery sections."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Doughnut",
+    "description": "Sugar-coated or glazed fried dough."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Tortilla Wraps",
+    "description": "Flatbread for shawarma or wraps (e.g., Mission brand)."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Pita Bread",
+    "description": "Middle-eastern pocket bread."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Sponge Cake",
+    "description": "Light, airy cake often in Pandan or Vanilla flavor."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Swiss Roll",
+    "description": "Rolled cake with cream/jam filling."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Butter Cake",
+    "description": "Dense, rich cake sold in blocks."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Waffles",
+    "description": "Fresh bakery waffles or frozen toaster waffles."
+  },
+  {
+    "category": "Bread & Pastries",
+    "name": "Roti Bengali",
+    "description": "Thick-crust traditional local bread, iconic in Penang/KL."
+  },
+  {
+    "category": "Dairy",
+    "name": "Fresh Milk",
+    "description": "Pasteurized cow's milk (Dutch Lady, Farm Fresh, Goodday)."
+  },
+  {
+    "category": "Dairy",
+    "name": "Full Cream Milk",
+    "description": "UHT or Fresh milk with higher fat content for richness."
+  },
+  {
+    "category": "Dairy",
+    "name": "Low Fat Milk",
+    "description": "Milk with reduced fat content."
+  },
+  {
+    "category": "Dairy",
+    "name": "Chocolate Milk",
+    "description": "Sweetened cocoa-flavored milk."
+  },
+  {
+    "category": "Dairy",
+    "name": "Butter (Salted)",
+    "description": "Standard butter block for cooking/baking (Anchor/SCS)."
+  },
+  {
+    "category": "Dairy",
+    "name": "Butter (Unsalted)",
+    "description": "Pure butter used primarily for baking cakes."
+  },
+  {
+    "category": "Dairy",
+    "name": "Margarine",
+    "description": "Vegetable oil spread, commonly Planta or Daisy."
+  },
+  {
+    "category": "Dairy",
+    "name": "Cheddar Cheese Slices",
+    "description": "Processed cheese for sandwiches (Cheesedale/Kraft)."
+  },
+  {
+    "category": "Dairy",
+    "name": "Mozzarella Shreds",
+    "description": "Pizza cheese that melts and stretches."
+  },
+  {
+    "category": "Dairy",
+    "name": "Cream Cheese",
+    "description": "Soft cheese for spreads or cheesecakes (Philadelphia/Tatura)."
+  },
+  {
+    "category": "Dairy",
+    "name": "Yogurt (Natural)",
+    "description": "Plain yogurt, often used for cooking or diet."
+  },
+  {
+    "category": "Dairy",
+    "name": "Yogurt (Fruit)",
+    "description": "Sweetened yogurt cups with fruit bits."
+  },
+  {
+    "category": "Dairy",
+    "name": "Cultured Milk (Vitagen/Yakult)",
+    "description": "Probiotic gut-health drink."
+  },
+  {
+    "category": "Dairy",
+    "name": "Whipping Cream",
+    "description": "Liquid cream for cooking sauces or desserts."
+  },
+  {
+    "category": "Dairy",
+    "name": "Condensed Milk",
+    "description": "Thick sweet milk, essential for Teh Tarik."
+  },
+  {
+    "category": "Dairy",
+    "name": "Evaporated Milk",
+    "description": "Unsweetened milk (Susu Cair) for cooking or drinks."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Whole Chicken",
+    "description": "Uncut bird, cheaper per kg."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Chicken Breast",
+    "description": "Lean white meat, boneless and skinless."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Chicken Thigh",
+    "description": "Dark meat, often preferred for curry/fry."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Chicken Wings",
+    "description": "Popular for BBQ or frying."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Minced Beef",
+    "description": "Ground beef, sold fresh or frozen blocks (Ramly)."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Beef Cubes/Slices",
+    "description": "Cut beef for rendang or stir-fry."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Mutton / Lamb",
+    "description": "Imported NZ/Australia lamb chops or cubes."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Ikan Kembung (Mackerel)",
+    "description": "The 'people's fish', affordable and commonly fried."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Sea Bass (Siakap)",
+    "description": "White fish often steamed (Tiga Rasa)."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Red Snapper",
+    "description": "Premium fish often used in Fish Head Curry."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Ikan Bilis (Anchovies)",
+    "description": "Dried anchovies. 'Mata Biru' is premium grade."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Prawns",
+    "description": "Fresh grey prawns, categorized by size (S/M/L)."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Squid",
+    "description": "Fresh squid (Sotong) for sambal or frying."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Cockles (Kerang)",
+    "description": "Shellfish, iconic in Char Kuey Teow."
+  },
+  {
+    "category": "Meat & Fish",
+    "name": "Crabs",
+    "description": "Flower crabs or Mud crabs."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Cooking Oil",
+    "description": "Palm oil blend (1kg packet or 5kg bottle)."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Salt",
+    "description": "Fine table salt."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Sugar",
+    "description": "Coarse white sugar or Gula Melaka."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Soy Sauce",
+    "description": "Sweet (Kicap Manis) or Salty (Kicap Masin)."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Chili Sauce",
+    "description": "Standard dipping sauce (Life/Maggi)."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Oyster Sauce",
+    "description": "Thick savory sauce for stir-frys."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Tomato Sauce",
+    "description": "Ketchup, used in cooking Masak Merah."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Curry Powder (Meat)",
+    "description": "Spice blend for chicken/beef (Babas/Adabi)."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Curry Powder (Fish)",
+    "description": "Specific spice blend for seafood curries."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Turmeric Powder",
+    "description": "Essential for marinating fish/chicken before frying."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Black Pepper",
+    "description": "Whole corn or coarse grind."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Cinnamon Stick",
+    "description": "Whole spice for soups and curries."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Star Anise",
+    "description": "Flower-shaped spice (Bunga Lawang) for Malay cooking."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Santan (Coconut Milk)",
+    "description": "Boxed (Kara) or fresh, for creamy curries."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Belacan",
+    "description": "Shrimp paste blocks, pungent and savory."
+  },
+  {
+    "category": "Ingridients & Spice",
+    "name": "Tamarind (Asam Jawa)",
+    "description": "Paste used to add sourness to dishes."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Chicken Nuggets",
+    "description": "Breaded chicken bites (Tempura/Marina)."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "French Fries",
+    "description": "Shoestring or Crinkle cut frozen potatoes."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Frankfurters",
+    "description": "Chicken or beef sausages (Ayamas)."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Burger Patties",
+    "description": "Famous Ramly beef or chicken patties."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Frozen Mixed Veg",
+    "description": "Mix of peas, corn, and carrots."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Roti Canai",
+    "description": "Frozen paratha that needs pan-frying (Kawan)."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Pau (Steamed Bun)",
+    "description": "Frozen buns with Kaya/Red Bean/Chicken filling."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Frozen Pizza",
+    "description": "Ready-to-bake pizzas (Dr. Oetker)."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Ice Cream Tub",
+    "description": "1.5L family tub (Wall's/Nestle)."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Fish Balls",
+    "description": "White fish paste balls for soup."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Fish Cake",
+    "description": "Fried fish paste blocks, sliced for noodles."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Crab Sticks",
+    "description": "Imitation crab meat (Filament stick)."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Dumplings / Gyoza",
+    "description": "Prawn or Chicken dumplings."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Popiah (Spring Rolls)",
+    "description": "Vegetable-filled crispy rolls."
+  },
+  {
+    "category": "Frozen & Convenience",
+    "name": "Frozen Paratha",
+    "description": "Flaky flatbread."
+  },
+  {
+    "category": "Grain Products",
+    "name": "White Rice",
+    "description": "Standard local grain (SST 5% Broken)."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Basmati Rice",
+    "description": "Long grain, low GI rice for Briyani."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Fragrant Rice",
+    "description": "Thai Jasmine rice."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Glutinous Rice (Pulut)",
+    "description": "Sticky rice for traditional Kuih."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Bihun (Vermicelli)",
+    "description": "Thin rice noodles, dried."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Kuey Teow",
+    "description": "Flat rice noodles."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Yellow Mee",
+    "description": "Alkaline wheat noodles."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Spaghetti",
+    "description": "Italian pasta rods."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Macaroni",
+    "description": "Elbow pasta for soups/cheese."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Instant Noodles (Curry)",
+    "description": "Maggi 2-minute curry noodles."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Instant Noodles (Fried)",
+    "description": "Indomie or Maggi Goreng style."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Wheat Flour",
+    "description": "All-purpose flour (Cap Sauh/Blue Key)."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Rice Flour",
+    "description": "Used for making batter or kuih."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Oats",
+    "description": "Rolled or Instant oats (Quaker)."
+  },
+  {
+    "category": "Grain Products",
+    "name": "Corn Flakes",
+    "description": "Breakfast cereal."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Cream Crackers",
+    "description": "Plain biscuits, perfect with Milo (Hup Seng)."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Chocolate Biscuits",
+    "description": "Cookies with chocolate chips (Chipsmore)."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Potato Chips",
+    "description": "Crisps in canister or bag (Mister Potato/Lays)."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Keropok (Prawn Crackers)",
+    "description": "Local savory snack."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Peanuts",
+    "description": "Roasted/Salted nuts (Ngan Yin)."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Sunflower Seeds",
+    "description": "Dried seeds (Kuaci) for snacking."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Chocolate Bar",
+    "description": "KitKat, Cadbury, or Kinder."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Wafer Cubes",
+    "description": "Crispy wafers (Loacker/Apollo)."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Jelly / Pudding",
+    "description": "Fruit flavored jelly cups."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Popcorn",
+    "description": "Caramel or salted popped corn."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Dried Fruit",
+    "description": "Raisins, dates (Kurma), or dried mango."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Kaya",
+    "description": "Coconut egg jam spread."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Peanut Butter",
+    "description": "Smooth or chunky spread (Lady's Choice)."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Fruit Jam",
+    "description": "Strawberry or Blueberry jam."
+  },
+  {
+    "category": "Snacks & Sweets",
+    "name": "Sweets / Candies",
+    "description": "Mentos, Halls, or gummies."
+  },
+  {
+    "category": "Beverages",
+    "name": "Milo Powder",
+    "description": "Chocolate malt powder (Tin or Pack)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Kopi O (Coffee Powder)",
+    "description": "Traditional local black coffee."
+  },
+  {
+    "category": "Beverages",
+    "name": "Instant Coffee",
+    "description": "3-in-1 or pure soluble coffee (Nescafe)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Tea Dust / Bags",
+    "description": "Black tea (Boh / Lipton)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Teh Tarik Instant",
+    "description": "Pre-mixed milk tea sachets."
+  },
+  {
+    "category": "Beverages",
+    "name": "Carbonated Drinks",
+    "description": "Coke, 100Plus, Sprite (1.5L bottle)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Cordial",
+    "description": "Concentrated syrup (Ribena / Sirap Ros)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Mineral Water",
+    "description": "Natural spring water (Spritzer)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Drinking Water",
+    "description": "Reverse osmosis water (White cap)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Isotonic Drink",
+    "description": "Sports rehydration drink."
+  },
+  {
+    "category": "Beverages",
+    "name": "Fruit Juice",
+    "description": "Orange or Apple juice (Peel Fresh/Marigold)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Soya Bean Milk",
+    "description": "Soy milk in box or bottle (Drinho/Homesoy)."
+  },
+  {
+    "category": "Beverages",
+    "name": "Chrysanthemum Tea",
+    "description": "Asian herbal tea box."
+  },
+  {
+    "category": "Beverages",
+    "name": "Chinese Tea",
+    "description": "Jasmine or Oolong tea bags."
+  },
+  {
+    "category": "Beverages",
+    "name": "Green Tea",
+    "description": "Japanese style tea bags."
+  },
+  {
+    "category": "Household",
+    "name": "Dishwashing Liquid",
+    "description": "Lemon or Lime grease remover (Sunlight/Axion)."
+  },
+  {
+    "category": "Household",
+    "name": "Laundry Detergent (Liquid)",
+    "description": "Washing machine liquid (Dynamo/Top)."
+  },
+  {
+    "category": "Household",
+    "name": "Laundry Powder",
+    "description": "Powdered detergent (Fab/Breeze)."
+  },
+  {
+    "category": "Household",
+    "name": "Fabric Softener",
+    "description": "Fragrance conditioner (Softlan)."
+  },
+  {
+    "category": "Household",
+    "name": "Floor Cleaner",
+    "description": "Liquid for mopping (Ajax)."
+  },
+  {
+    "category": "Household",
+    "name": "Toilet Bowl Cleaner",
+    "description": "Strong acid cleaner (Harpic)."
+  },
+  {
+    "category": "Household",
+    "name": "Glass Cleaner",
+    "description": "Blue spray for windows."
+  },
+  {
+    "category": "Household",
+    "name": "Sponges / Scourers",
+    "description": "Green/Yellow sponge for dishes (Scotch-Brite)."
+  },
+  {
+    "category": "Household",
+    "name": "Garbage Bags",
+    "description": "Black plastic bags (S/M/L)."
+  },
+  {
+    "category": "Household",
+    "name": "Tissues (Box)",
+    "description": "Facial tissue paper."
+  },
+  {
+    "category": "Household",
+    "name": "Toilet Paper",
+    "description": "Rolls for bathroom."
+  },
+  {
+    "category": "Household",
+    "name": "Kitchen Towel",
+    "description": "Thick absorbent paper for kitchen."
+  },
+  {
+    "category": "Household",
+    "name": "Aluminum Foil",
+    "description": "Silver wrap for grilling/baking."
+  },
+  {
+    "category": "Household",
+    "name": "Cling Wrap",
+    "description": "Plastic food wrap."
+  },
+  {
+    "category": "Household",
+    "name": "Insect Spray",
+    "description": "Mosquito/Cockroach killer (Ridsect/Shieldtox)."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Shampoo",
+    "description": "Hair cleanser (Sunsilk/Pantene)."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Conditioner",
+    "description": "Hair softener."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Body Wash",
+    "description": "Liquid shower soap (Lifebuoy/Dettol)."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Bar Soap",
+    "description": "Solid soap block."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Toothpaste",
+    "description": "Minty teeth cleaner (Colgate/Darlie)."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Toothbrush",
+    "description": "Manual brush."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Mouthwash",
+    "description": "Liquid rinse (Listerine)."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Deodorant",
+    "description": "Roll-on or spray for underarms."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Face Wash",
+    "description": "Facial cleanser."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Hand Sanitizer",
+    "description": "Alcohol gel."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Cotton Buds",
+    "description": "Swabs for ears/makeup."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Sanitary Pads",
+    "description": "Feminine hygiene products."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Shaving Foam",
+    "description": "Cream for shaving."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Disposable Razors",
+    "description": "Plastic shavers (Gillette)."
+  },
+  {
+    "category": "Care & Health",
+    "name": "Paracetamol",
+    "description": "Pain relief (Panadol)."
+  }
+]
