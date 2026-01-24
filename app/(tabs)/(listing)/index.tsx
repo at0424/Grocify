@@ -34,7 +34,10 @@ export default function ListingDashboard() {
           <StickyNote 
             title={item.title} 
             collaborators={item.collaborators}
-            onPress={() => console.log('Open List:', item.title)}
+            onPress={() => router.push({
+              pathname: "./detail_list",  
+              params: { title: item.title } 
+            })}
             onAddCollaborator={() => console.log('Add person to:', item.title)}
           />
         )}
