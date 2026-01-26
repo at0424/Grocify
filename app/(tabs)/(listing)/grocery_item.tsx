@@ -1,17 +1,25 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { fetchGroceryCatalog } from '../../../services/api';
-// Placeholder Images (Since we don't have real URLs in DB yet)
+
+// Placeholder Images
 const PLACEHOLDER_IMG = 'https://via.placeholder.com/100';
 
-// This matches the structure of the JSON you imported
 const CATEGORIES = [
-  { id: '1', name: 'Vegetable', icon: 'leaf', color: '#E8F5E9' },
-  { id: '2', name: 'Meat', icon: 'nutrition', color: '#FFEBEE' },
-  { id: '3', name: 'Fruit', icon: 'partly-sunny', color: '#FFFDE7' }, // fruity icon replacement
-  { id: '4', name: 'Dairy', icon: 'water', color: '#E3F2FD' },
+  { id: '0', name: 'All', dbValue: 'All', icon: 'view-grid', color: '#F5F5F5' },
+  { id: '1', name: 'Fresh', dbValue: 'Fruits & Vegetables', icon: 'leaf', color: '#E8F5E9' },
+  { id: '2', name: 'Meat', dbValue: 'Meat & Fish', icon: 'food-steak', color: '#FFEBEE' },
+  { id: '3', name: 'Dairy', dbValue: 'Dairy', icon: 'cow', color: '#E3F2FD' },
+  { id: '4', name: 'Bakery', dbValue: 'Bread & Pastries', icon: 'bread-slice', color: '#FFF9C4' },
+  { id: '5', name: 'Grains', dbValue: 'Grain Products', icon: 'barley', color: '#FFF8E1' },
+  { id: '6', name: 'Frozen', dbValue: 'Frozen & Convenience', icon: 'snowflake', color: '#E0F7FA' },
+  { id: '7', name: 'Snacks', dbValue: 'Snacks & Sweets', icon: 'cookie', color: '#FCE4EC' },
+  { id: '8', name: 'Drinks', dbValue: 'Beverages', icon: 'glass-mug-variant', color: '#E1F5FE' },
+  { id: '9', name: 'Spices', dbValue: 'Ingredients & Spices', icon: 'shaker', color: '#FFF3E0' },
+  { id: '10', name: 'Health', dbValue: 'Care & Health', icon: 'medical-bag', color: '#F3E5F5' },
+  { id: '11', name: 'Home', dbValue: 'Household', icon: 'spray-bottle', color: '#ECEFF1' },
 ];
 
 
@@ -23,13 +31,13 @@ export default function AddItemScreen() {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
   const filteredItems = items.filter(item => {
-    const itemData = item.name ? item.name.toUpperCase() : ''.toUpperCase();
-    const textData = searchQuery.toUpperCase();
-    
-    return itemData.indexOf(textData) > -1;
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
   });
 
   useEffect(() => {
@@ -89,21 +97,41 @@ export default function AddItemScreen() {
           ))}
         </ScrollView>
 
-        {/* --- 3. Categories (Round Icons) --- */}
+        {/* --- 3. Categories --- */}
         <View style={styles.categoryHeaderRow}>
-           <Text style={styles.sectionTitle}>All Categories</Text>
+           <Text style={styles.sectionTitle}>Categories</Text>
         </View>
         
-        <View style={styles.categoryGrid}>
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity key={cat.id} style={styles.categoryItem}>
-              <View style={[styles.iconCircle, { backgroundColor: cat.color }]}>
-                <Ionicons name={cat.icon} size={24} color="#555" />
-              </View>
-              <Text style={styles.categoryText}>{cat.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+          {CATEGORIES.map((cat) => {
+            const isActive = selectedCategory === cat.dbValue;
+
+            return (
+              <TouchableOpacity 
+                key={cat.id} 
+                style={styles.categoryItem}
+                onPress={() => setSelectedCategory(cat.dbValue)}
+              >
+                <View style={[
+                  styles.iconCircle, 
+                  { backgroundColor: isActive ? '#718F64' : cat.color }
+                ]}>
+                  <MaterialCommunityIcons 
+                     name={cat.icon} 
+                     size={24} 
+                     color={isActive ? "white" : "#555"} 
+                  />
+                </View>
+                <Text style={[
+                  styles.categoryText,
+                  isActive && { fontWeight: 'bold', color: '#718F64' }
+                ]}>
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {/* --- 4. Product Grid --- */}
         <View style={styles.itemsGrid}>
@@ -225,8 +253,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 25,
   },
+  categoryScroll: {
+    marginBottom: 20,
+    flexDirection: 'row',
+    paddingHorizontal: 5, // Tiny padding so shadows don't get cut off
+  },
   categoryItem: {
     alignItems: 'center',
+    marginRight: 20, // Add spacing between items
   },
   iconCircle: {
     width: 60,
