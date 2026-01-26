@@ -29,7 +29,16 @@ export const fetchUserLists = async (userId) => {
     const response = await operation.response;
     return await response.body.json();
   } catch (error) {
-    console.error("Error fetching user lists:", error);
+
+    // Error handling for user with no lists
+    const isNotFound = 
+      error.response?.statusCode === 404 || 
+      error.message?.includes('Not Found');
+
+    if (isNotFound) {
+      return []; 
+    }
+    console.error("Critical error fetching user lists:", error);
     return []; 
   }
 }; 
