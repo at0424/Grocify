@@ -1,4 +1,4 @@
-import { get } from 'aws-amplify/api';
+import { get, post } from 'aws-amplify/api';
 
 const API_NAME = 'GroceryAPI'; 
 
@@ -42,3 +42,30 @@ export const fetchUserLists = async (userId) => {
     return []; 
   }
 }; 
+
+// Create a new list for a user
+export const createNewList = async (userId, listName, color) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/createList',
+      options: {
+        body: {
+          userId: userId,
+          listName: listName,
+          color: color
+        }
+      }
+    });
+    
+    const response = await operation.response;
+    const json = await response.body.json();
+    
+
+    return { success: true, data: json };
+
+  } catch (error) {
+    console.error("Error creating list:", error);
+    return { success: false, error: error.message };
+  }
+};
