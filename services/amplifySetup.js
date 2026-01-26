@@ -4,7 +4,7 @@ const amplifyConfig = {
   API: {
     REST: {
       "GroceryAPI": {
-        endpoint: "https://hacmh7otb8.execute-api.ap-southeast-5.amazonaws.com/default/getGroceryCatalog",
+        endpoint: "https://hacmh7otb8.execute-api.ap-southeast-5.amazonaws.com/default",
         region: "ap-southeast-5"
       }
     }
