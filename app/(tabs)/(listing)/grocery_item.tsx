@@ -137,10 +137,22 @@ export default function AddItemScreen() {
         <View style={styles.itemsGrid}>
            {/* Check if we are loading first */}
            {loading ? (
-             <ActivityIndicator size="large" color="#718F64" style={{ marginTop: 50 }} />
+             <ActivityIndicator size="large" color="#718F64" style={{ marginTop: 50, }} />
            ) : (
              filteredItems.map((item, index) => (
-               <View key={index} style={styles.productCard}>
+                <TouchableOpacity
+                    key={index}
+                    style={styles.productCard}
+                    onPress={() => router.push({
+                        pathname: "./item_detail",
+                        params: {
+                            name: item.name,
+                            category: item.category,
+                            description: item.description,
+                            // image: item.image (uncomment when have real images)
+                        }
+                    })}
+                >
                  
                  {/* Image Area  */}
                  <View style={styles.iconContainer}>
@@ -169,7 +181,7 @@ export default function AddItemScreen() {
                    <Ionicons name="add" size={20} color="white" />
                  </TouchableOpacity>
 
-               </View>
+               </TouchableOpacity>
              ))
            )}
         </View>
