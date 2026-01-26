@@ -1,8 +1,8 @@
 import 'react-native-get-random-values';
-import "../awsConfig";
+import "../services/amplifySetup";
 
 import { Stack } from "expo-router";
-import { AuthProvider } from "../auth/authContext";
+import { AuthProvider } from "../amplify/auth/authContext";
 
 export default function RootLayout() {
   return (
