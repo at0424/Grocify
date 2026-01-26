@@ -1,30 +1,56 @@
-import { Auth } from 'aws-amplify';
+import {
+  confirmSignUp,
+  fetchAuthSession,
+  getCurrentUser,
+  signIn,
+  signOut,
+  signUp
+} from 'aws-amplify/auth';
 
-export const signUp = async (email, password) => {
-  return Auth.signUp({
+export const register = async (email, password) => {
+  return await signUp({
     username: email,
     password,
-    attributes: { email },
+    options: {
+      userAttributes: { email } 
+    }
   });
 };
 
-export const confirmSignUp = async (email, code) => {
-  return Auth.confirmSignUp(email, code);
+export const confirmUser = async (email, code) => {
+  return await confirmSignUp({
+    username: email,
+    confirmationCode: code
+  });
 };
 
-export const signIn = async (email, password) => {
-  return Auth.signIn(email, password);
+export const login = async (email, password) => {
+  return await signIn({
+    username: email,
+    password
+  });
 };
 
-export const signOut = async () => {
-  return Auth.signOut();
+export const logout = async () => {
+  return await signOut();
 };
 
-export const getCurrentUser = async () => {
-  return Auth.currentAuthenticatedUser();
+export const getUserId = async () => {
+  try {
+    const { userId } = await getCurrentUser();
+    return userId;
+  } catch (error) {
+    console.log("Not logged in");
+    return null;
+  }
 };
 
 export const getAccessToken = async () => {
-  const session = await Auth.currentSession();
-  return session.getAccessToken().getJwtToken();
+  try {
+    const { tokens } = await fetchAuthSession();
+    return tokens.accessToken.toString();
+  } catch (err) {
+    console.log(err);
+    return null;
+  }
 };

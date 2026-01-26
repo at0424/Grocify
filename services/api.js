@@ -17,3 +17,19 @@ export const fetchGroceryCatalog = async () => {
     throw error; 
   }
 };
+
+// Fetch Lists for a specific user
+export const fetchUserLists = async (userId) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME,
+      path: `/getUserLists?userId=${userId}`
+    });
+    
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error fetching user lists:", error);
+    return []; 
+  }
+}; 

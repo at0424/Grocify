@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import {
-  confirmSignUp as confirmSignUpService,
-  getCurrentUser,
-  signIn as signInService,
-  signOut as signOutService,
-  signUp as signUpService
+  confirmUser,
+  getUserId,
+  login,
+  logout,
+  register
 } from './authService';
 
 const AuthContext = createContext(null);
@@ -15,9 +15,9 @@ export const AuthProvider = ({ children }) => {
 
   const checkUser = async () => {
     try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-    } catch {
+      const userId = await getUserId(); 
+      setUser(userId);
+    } catch (error) {
       setUser(null);
     } finally {
       setLoading(false);
@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const signIn = async (email, password) => {
-    const result = await signInService({ username: email, password });
+    const result = await login(email, password);
     
     if (result.isSignedIn) {
       await checkUser(); 
@@ -39,40 +39,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signUp = async (email, password) => {
-    return signUpService({
-      username: email,
-      password,
-      options: {
-        userAttributes: { email } 
-      }
-    });
+    return register(email, password);
   };
 
   const confirmSignUp = async (email, code) => {
-    return confirmSignUpService({
-      username: email,
-      confirmationCode: code
-    });
+    return confirmUser(email, code);
   };
 
   const signOut = async () => {
     try {
-      await signOutService();
+      await logout();
     } catch (err) {
       console.log("Sign out error", err);
     }
-    setUser(null);
+    setUser(null); 
   };
 
   const value = {
-    user,
-    loading,
+    user,              
     signIn,
     signUp,
     confirmSignUp,
     signOut,
     refreshUser: checkUser,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user, 
   };
 
   return (
