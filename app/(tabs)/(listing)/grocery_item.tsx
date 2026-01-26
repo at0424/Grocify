@@ -68,10 +68,10 @@ export default function AddItemScreen() {
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color="#718F64" style={{ marginRight: 10 }} />
           <TextInput 
-            placeholder="Search: Apple" 
+            placeholder="Search ingredients..." 
             style={styles.searchInput}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(text) => setSearchQuery(text)}
           />
         </View>
       </View>
