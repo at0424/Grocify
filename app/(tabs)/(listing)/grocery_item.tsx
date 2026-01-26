@@ -1,12 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { fetchGroceryCatalog } from '../../../services/api';
 // Placeholder Images (Since we don't have real URLs in DB yet)
 const PLACEHOLDER_IMG = 'https://via.placeholder.com/100';
 
-// --- MOCK DATA (Until we connect AWS) ---
 // This matches the structure of the JSON you imported
 const CATEGORIES = [
   { id: '1', name: 'Vegetable', icon: 'leaf', color: '#E8F5E9' },
@@ -15,20 +14,40 @@ const CATEGORIES = [
   { id: '4', name: 'Dairy', icon: 'water', color: '#E3F2FD' },
 ];
 
-const MOCK_ITEMS = [
-  { id: 'p1', name: 'Apple', category: 'Fruits & Vegetables', img: PLACEHOLDER_IMG },
-  { id: 'p2', name: 'Honey', category: 'Pantry', img: PLACEHOLDER_IMG },
-  { id: 'p3', name: 'Milk', category: 'Dairy', img: PLACEHOLDER_IMG },
-  { id: 'p4', name: 'Chicken', category: 'Meat', img: PLACEHOLDER_IMG },
-];
 
 export default function AddItemScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const listName = params.title || 'My List'; 
 
+  const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
+
+  const filteredItems = items.filter(item => {
+    const itemData = item.name ? item.name.toUpperCase() : ''.toUpperCase();
+    const textData = searchQuery.toUpperCase();
+    
+    return itemData.indexOf(textData) > -1;
+  });
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchGroceryCatalog(); ;
+
+        setItems(data);
+      } catch (e) {
+        console.error("Failed to load catalog: ", e)
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -40,7 +59,9 @@ export default function AddItemScreen() {
             <Ionicons name="chevron-back" size={28} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{listName}</Text>
-          <View style={{ width: 28 }} /> {/* Spacer to center title */}
+          <View style={{ width: 28 }}>
+            <Text style={{ opacity: 0 }}>Placeholder</Text>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -84,27 +105,46 @@ export default function AddItemScreen() {
           ))}
         </View>
 
-        {/* --- 4. Product Grid (The items to add) --- */}
+        {/* --- 4. Product Grid --- */}
         <View style={styles.itemsGrid}>
-           {MOCK_ITEMS.map((item) => (
-             <View key={item.id} style={styles.productCard}>
-               {/* Count Badge (Optional, shows if already in list) */}
-               <View style={styles.countBadge}>
-                 <Text style={styles.countText}>1</Text>
-               </View>
+           {/* Check if we are loading first */}
+           {loading ? (
+             <ActivityIndicator size="large" color="#718F64" style={{ marginTop: 50 }} />
+           ) : (
+             filteredItems.map((item, index) => (
+               <View key={index} style={styles.productCard}>
+                 
+                 {/* Image Area  */}
+                 <View style={styles.iconContainer}>
+                    {/* If you add icons later, you can conditionally render them here */}
+                    <Image 
+                      source={{ uri: 'https://via.placeholder.com/100' }} 
+                      style={styles.productImage} 
+                    />
+                 </View>
 
-               <Image source={{ uri: item.img }} style={styles.productImage} />
-               <Text style={styles.productName}>{item.name}</Text>
-               
-               {/* Add Button */}
-               <TouchableOpacity style={styles.addButton}>
-                 <Ionicons name="add" size={20} color="white" />
-               </TouchableOpacity>
-             </View>
-           ))}
+                 {/* Item Name (e.g. "Cabbage") */}
+                 <Text style={styles.productName} numberOfLines={1}>
+                   {item.name}
+                 </Text>
+                 
+                 {/* Description (e.g. "Round cabbage...") */}
+                 <Text style={styles.productDesc} numberOfLines={2}>
+                   {item.description}
+                 </Text>
+                 
+                 {/* Add Button */}
+                 <TouchableOpacity 
+                    style={styles.addButton}
+                    onPress={() => console.log(`Added ${item.name}`)}
+                 >
+                   <Ionicons name="add" size={20} color="white" />
+                 </TouchableOpacity>
+
+               </View>
+             ))
+           )}
         </View>
-        
-        <View style={{ height: 100 }} /> {/* Bottom padding for FAB */}
 
       </ScrollView>
 
@@ -206,34 +246,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   productCard: {
-    width: '48%', // 2 columns
+    width: '48%', // Forces 2 columns
     backgroundColor: 'white',
     borderRadius: 15,
-    padding: 15,
+    padding: 12,
     alignItems: 'center',
     marginBottom: 15,
+    // Shadow for depth
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 3,
-    elevation: 2,
-    position: 'relative',
+    elevation: 3,
   },
-  countBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: '#718F64',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F1F8E9', // Light green circle background
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  countText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 12,
+    marginBottom: 8,
   },
   productImage: {
     width: 80,
@@ -246,14 +279,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 5,
   },
+  productDesc: {
+    fontSize: 11,
+    color: '#888',
+    textAlign: 'center',
+    marginBottom: 15, // Space for the button
+    lineHeight: 14,
+  },
   addButton: {
     position: 'absolute',
-    bottom: 10,
-    right: 10,
+    bottom: 8,
+    right: 8,
     backgroundColor: '#718F64',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
   },

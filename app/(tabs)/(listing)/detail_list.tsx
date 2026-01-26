@@ -111,7 +111,7 @@ export default function ListingDetailScreen() {
             </ScrollView>
       
             {/* --- 3. Floating Action Button (+) --- */}
-            <TouchableOpacity style={styles.fab} onPress={() => console.log('Add Item')}>
+            <TouchableOpacity style={styles.fab} onPress={() => router.push('./grocery_item')}>
               <Ionicons name="add" size={30} color="#000" />
             </TouchableOpacity>
 
