@@ -11,20 +11,38 @@ export default function ListingDetailScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load whenever screen is focused
   useFocusEffect(
     useCallback(() => {
-      loadItems();
+      // Immediate Load (Show Spinner)
+      loadItems(); 
+
+      // Start Polling (The "Heartbeat")
+      // Every 5000ms (5 seconds), fetch data silently
+      const intervalId = setInterval(() => {
+        console.log("Heartbeat: Checking for friend's updates...");
+        loadItems(true); 
+      }, 5000);
+
+      // Stop polling when unfocus
+      return () => {
+        clearInterval(intervalId);
+        console.log("Polling stopped");
+      };
     }, [listId])
   );
 
-  const loadItems = async () => {
-    if (!listId) return;
-    setLoading(true);
-    const data = await fetchGroceryListDetails(listId);
-    console.log("Fetched Items:", data);
-    setItems(data);
-    setLoading(false);
+  const loadItems = async (isSilent = false) => {
+    // Only show the big spinner if it's NOT a silent update AND list is empty
+    if (!isSilent && items.length === 0) setLoading(true);
+
+    try {
+      const data = await fetchGroceryListDetails(listId);
+      setItems(data);
+    } catch (e) {
+      console.log("Error polling:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderItem = ({ item }) => (
