@@ -69,3 +69,48 @@ export const createNewList = async (userId, listName, color) => {
     return { success: false, error: error.message };
   }
 };
+
+// Fetch Grocery List Details
+export const fetchGroceryListDetails = async (listId) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME,
+      path: `/getGroceryListDetails?listId=${listId}`
+    });
+    
+    const response = await operation.response;
+    const json = await response.body.json();
+    
+    // The Lambda returns the whole object. We mostly care about the 'items' array.
+    // If 'items' is missing, we default to []
+    return json.items || []; 
+
+  } catch (error) {
+    console.error("Error fetching list details:", error);
+    return [];
+  }
+};
+
+// Add item to Grocery List
+export const addGroceryItems = async (listId, name, quantity, category) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/addGroceryItems',
+      options: {
+        body: {
+          listId,
+          name,
+          quantity,
+          category
+        }
+      }
+    });
+    
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error adding item:", error);
+    return { success: false };
+  }
+};

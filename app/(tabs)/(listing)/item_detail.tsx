@@ -10,7 +10,7 @@ export default function ItemDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // 1. Get Data from Params (with fallbacks)
+  // Get Data from Params (with fallbacks)
   const item = {
     name: params.name || 'Apple',
     category: params.category || 'Fruit',
@@ -34,7 +34,7 @@ export default function ItemDetailScreen() {
       
       {/* --- 1. Curved Image Header --- */}
       <View style={styles.headerContainer}>
-        {/* Back Button (Absolute Position) */}
+        {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>

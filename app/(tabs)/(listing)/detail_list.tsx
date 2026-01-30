@@ -1,55 +1,60 @@
+import { fetchGroceryListDetails } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router'; // <--- Import these
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-// ... [Keep your initialData and toggleItem logic the same] ...
-const initialData = [
-  {
-    category: 'Snacks',
-    items: [
-      { id: '1', name: 'Chips', qty: 2, subItems: [{ txt: 'Lays', done: true }, { txt: 'Domino', done: false }], done: false },
-      { id: '2', name: 'Gummy Bears', qty: 1, subItems: [], done: true }, // This one is crossed out
-    ]
-  },
-  {
-    category: 'Drinks',
-    items: [
-      { id: '3', name: 'Soda', qty: 4, subItems: [{ txt: 'Cola', done: false }, { txt: '100 Plus', done: false }], done: false },
-    ]
-  },
-  {
-    category: 'Food',
-    items: [
-      { id: '4', name: 'Pizza', qty: 2, subItems: [], done: false },
-      { id: '5', name: 'Fries', qty: 4, subItems: [], done: false },
-    ]
-  }
-];
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ListingDetailScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams(); // <--- Get params here
-  const title = params.title || 'Party'; // Fallback if param is missing
-  
-  const [listData, setListData] = useState(initialData);
-  
-  const toggleItem = (itemId) => {
-      // Logic to toggle 'done' status would go here
-      console.log("Toggled item:", itemId);
-    };
+  const { listId, title } = useLocalSearchParams();
+
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch Data
+  useEffect(() => {
+    loadItems();
+  }, [listId]);
+
+  const loadItems = async () => {
+    if (!listId) return;
+    setLoading(true);
+    const data = await fetchGroceryListDetails(listId);
+    console.log("Fetched Items:", data);
+    setItems(data);
+    setLoading(false);
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={styles.itemRow}>
+      <View style={styles.mainRow}>
+        {/* Left Side: Bullet + Name */}
+        <View style={styles.leftSide}>
+          <View style={styles.bulletPoint} />
+          <Text style={styles.itemText}>{item.name}</Text>
+        </View>
+
+        {/* Right Side: Quantity */}
+        <View style={styles.rightSide}>
+          {/* Changed 'quantityText' to 'qtyText' to match your styles */}
+          <Text style={styles.qtyText}>{item.quantity || 1}</Text>
+        </View>
+      </View>
+      
+      <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.05)', marginTop: 5 }} />
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      
+
       {/* Header */}
       <View style={styles.header}>
-        {/* Use router.back() instead of navigation.goBack() */}
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={32} color="black" />
         </TouchableOpacity>
-        
-        <Text style={styles.headerTitle}>{title}</Text>
+
+        <Text style={styles.headerTitle}>{title || "Unnamed List"}</Text>
 
         <View style={styles.avatarStack}>
           <View style={[styles.avatar, { backgroundColor: '#ddd', right: 0, zIndex: 1 }]} />
@@ -57,75 +62,48 @@ export default function ListingDetailScreen() {
         </View>
       </View>
 
-      {/* ... [Rest of your UI code remains exactly the same] ... */}
-       <ScrollView contentContainerStyle={styles.scrollContent}>
-              {listData.map((section, index) => (
-                <View key={index} style={styles.sectionContainer}>
-                  
-                  {/* Category Header (Darker Yellow Strip) */}
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>{section.category}</Text>
-                  </View>
-      
-                  {/* List Items */}
-                  {section.items.map((item) => (
-                    <View key={item.id} style={styles.itemRow}>
-                      
-                      {/* Main Item Line */}
-                      <View style={styles.mainRow}>
-                        <View style={styles.leftSide}>
-                           <View style={styles.bulletPoint} />
-                           <Text style={[styles.itemText, item.done && styles.strikethrough]}>
-                             {item.name}
-                           </Text>
-                        </View>
-                        
-                        {/* Quantity & Checkbox */}
-                        <View style={styles.rightSide}>
-                          <Text style={[styles.qtyText, item.done && styles.strikethrough]}>x {item.qty}</Text>
-                          <TouchableOpacity onPress={() => toggleItem(item.id)}>
-                            <Ionicons 
-                              name={item.done ? "radio-button-on" : "radio-button-off"} // Changed to radio for softer look
-                              size={20} 
-                              color={item.done ? "#aaa" : "#fff"} // White circle to look like empty checkbox
-                              style={{ marginLeft: 10 }}
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-      
-                      {/* Sub-notes (like 'Lays', 'Domino') */}
-                      {item.subItems && item.subItems.map((sub, i) => (
-                        <Text key={i} style={[styles.subText, sub.done && styles.strikethrough]}>
-                          x  {sub.txt}
-                        </Text>
-                      ))}
-      
-                      {/* The "Crossed Out Line" visual effect for completed items */}
-                      {item.done && <View style={styles.crossLine} />}
-      
-                    </View>
-                  ))}
-                </View>
-              ))}
-            </ScrollView>
-      
-            {/* --- 3. Floating Action Button (+) --- */}
-            <TouchableOpacity style={styles.fab} onPress={() => router.push('./grocery_item')}>
-              <Ionicons name="add" size={30} color="#000" />
-            </TouchableOpacity>
+      {/* Content */}
+     {loading ? (
+        <ActivityIndicator size="large" color="#718F64" style={{ marginTop: 50 }} />
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item, index) => index.toString()} // Use unique ID if available later
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          
+          // The Empty State You Requested
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyTitle}>List Empty!</Text>
+              <Text style={styles.emptySubtitle}>Please add some items to get started.</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* --- Floating Action Button (+) --- */}
+      <TouchableOpacity style={styles.fab} onPress={() => router.push('./grocery_item')}>
+        <Ionicons name="add" size={30} color="#000" />
+      </TouchableOpacity>
 
     </View>
   );
 }
 
-// ... styles remain the same
 const styles = StyleSheet.create({
+  // =================================================
+  // MAIN CONTAINER
+  // =================================================
   container: {
     flex: 1,
     backgroundColor: '#FFF9C4', // The Pale Sticky Note Yellow
     paddingTop: 50, // Status bar spacing
   },
+
+  // =================================================
+  // HEADER
+  // =================================================
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -134,9 +112,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '600',
-    fontFamily: 'System', // On iOS this looks clean, effectively simulated handwritten if you add a custom font later
+    fontFamily: 'System', 
+    color: '#333',
+    flex: 1, 
+    marginLeft: 10,
+    textAlign: 'center',
   },
   avatarStack: {
     flexDirection: 'row',
@@ -149,80 +131,127 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 2,
-    borderColor: '#FFF9C4', // Matches background to create "cutout" effect
+    borderColor: '#FFF9C4', // Matches background for "cutout" effect
     position: 'absolute',
   },
-  scrollContent: {
-    paddingBottom: 100,
+
+  // =================================================
+  // LIST CONTENT
+  // =================================================
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100, // Extra padding at bottom for the FAB
   },
   sectionContainer: {
     marginBottom: 10,
   },
   sectionHeader: {
-    backgroundColor: '#E6EE9C', // The Darker Yellow/Greenish header strip
+    backgroundColor: '#E6EE9C', // Darker Yellow/Green header strip
     paddingVertical: 8,
     paddingHorizontal: 20,
     marginBottom: 10,
+    borderRadius: 8,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: '500',
-    textAlign: 'center', // Centered title like screenshot
+    textAlign: 'center',
+    color: '#555',
   },
+
+  // =================================================
+  // ITEM ROWS
+  // =================================================
   itemRow: {
-    paddingHorizontal: 30, // Indent content slightly
-    marginBottom: 15,
-    position: 'relative',
-  },
-  mainRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 2,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    marginBottom: 10,
+    backgroundColor: 'rgba(255,255,255,0.4)', // Slight highlight for readability
+    borderRadius: 10,
+    // Optional: Border bottom to look like lined paper
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   leftSide: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   bulletPoint: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'black',
-    marginRight: 10,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#555',
+    marginRight: 12,
   },
   itemText: {
     fontSize: 20,
     fontWeight: '400',
+    color: '#333',
   },
   rightSide: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  qtyText: {
+  quantityText: { // Renamed from 'qtyText' to match your JSX
     fontSize: 18,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#555',
     marginRight: 5,
   },
   subText: {
-    fontSize: 16,
-    color: '#555',
-    marginLeft: 25, // Indent sub-notes under the text
+    fontSize: 14,
+    color: '#777',
+    marginLeft: 30, // Indented under the text
+    marginTop: -5,
+    marginBottom: 10,
+    fontStyle: 'italic',
   },
+
+  // =================================================
+  // STRIKETHROUGH / CHECKED STATE
+  // =================================================
   strikethrough: {
     textDecorationLine: 'line-through',
     textDecorationStyle: 'solid',
     opacity: 0.5,
   },
-  // Custom line overlay to match the "Gummy Bears" scratch-out style exactly
   crossLine: {
     position: 'absolute',
     height: 1,
     backgroundColor: 'black',
     width: '100%',
-    top: 15, // Aligns with the middle of the text roughly
-    left: 20,
+    top: '50%', 
+    opacity: 0.6,
   },
+
+  // =================================================
+  // EMPTY STATE
+  // =================================================
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 100,
+    opacity: 0.6,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#555',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: '#777',
+    fontStyle: 'italic',
+  },
+
+  // =================================================
+  // FLOATING ACTION BUTTON (FAB)
+  // =================================================
   fab: {
     position: 'absolute',
     bottom: 40,
@@ -230,13 +259,13 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#DCE775', // Darker yellow/green matching headers
+    backgroundColor: '#DCE775', // Pop color (Green/Yellow)
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
+    shadowRadius: 4,
+    elevation: 8,
   },
 });
