@@ -92,11 +92,11 @@ export const fetchGroceryListDetails = async (listId) => {
 };
 
 // Add item to Grocery List
-export const addGroceryItems = async (listId, name, quantity, category) => {
+export const addListItems = async (listId, name, quantity, category) => {
   try {
     const operation = post({ 
       apiName: API_NAME,
-      path: '/addGroceryItems',
+      path: '/addListItems',
       options: {
         body: {
           listId,

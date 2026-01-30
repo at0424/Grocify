@@ -83,7 +83,16 @@ export default function ListingDetailScreen() {
       )}
 
       {/* --- Floating Action Button (+) --- */}
-      <TouchableOpacity style={styles.fab} onPress={() => router.push('./grocery_item')}>
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => router.push({
+          pathname: "./grocery_item", 
+          params: { 
+            listId: listId, 
+            title: title    
+          }
+        })}
+      >
         <Ionicons name="add" size={30} color="#000" />
       </TouchableOpacity>
 
