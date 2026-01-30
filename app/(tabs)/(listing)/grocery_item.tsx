@@ -1,7 +1,7 @@
 import { addListItems, fetchGroceryCatalog, fetchGroceryListDetails } from '@/services/api';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const CATEGORIES = [
@@ -46,7 +46,8 @@ export default function AddItemScreen() {
     });
 
     // Fetch catalog and current list quantities on load
-    useEffect(() => {
+    useFocusEffect(
+        useCallback(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
@@ -54,7 +55,7 @@ export default function AddItemScreen() {
                 // Fetching 
                 const [catalogData, currentListData] = await Promise.all([
                     fetchGroceryCatalog(),
-                    listId ? fetchGroceryListDetails(listId) : Promise.resolve([]) 
+                    listId ? fetchGroceryListDetails(listId) : Promise.resolve([])
                 ]);
 
                 // Set Catalog
@@ -81,7 +82,7 @@ export default function AddItemScreen() {
         };
 
         loadData();
-    }, [listId]);
+    }, [listId]));
 
     // Handle add item to list
     const handleAddItem = async (item) => {
@@ -198,8 +199,14 @@ export default function AddItemScreen() {
                                 <TouchableOpacity
                                     key={index}
                                     style={styles.productCard}
-                                    // Keep your detail navigation if you want it
-                                    onPress={() => router.push({ pathname: "./item_detail", params: { ...item } })}
+                                    onPress={() => router.push({
+                                        pathname: "./item_detail",
+                                        params: {
+                                            ...item,
+                                            listId: listId, 
+                                            currentQuantity: count // Pass the badge number (0, 1, 5, etc.)
+                                        }
+                                    })}
                                 >
 
                                     {/* --- BADGE UI --- */}

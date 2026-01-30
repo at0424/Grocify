@@ -1,40 +1,83 @@
+import { addListItems } from '@/services/api'; // Import your API
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator, Alert,
+  Image, ScrollView, StyleSheet,
+  Text, TouchableOpacity, View
+} from 'react-native';
 
-const { width } = Dimensions.get('window');
 const THEME_GREEN = '#718F64'; 
+const PLACEHOLDER_IMG = 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png'; // 1. Placeholder Image
 
 export default function ItemDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // Get Data from Params (with fallbacks)
+  // 2. Safe Data Extraction
+  // We parse 'currentQuantity' as an integer (default to 0 if missing)
+  const initialQty = parseInt(params.currentQuantity || '0');
+  const listId = params.listId;
+
   const item = {
-    name: params.name || 'Apple',
-    category: params.category || 'Fruit',
-    description: params.description || 'Apples are crisp, juicy fruits that come in a variety of colors such as red, green, and yellow. They have a refreshing sweetness...',
-    image: params.image || 'https://via.placeholder.com/300', // Placeholder
-    price: params.price || 0,
+    name: params.name || 'Unknown Item',
+    category: params.category || 'General',
+    description: params.description || 'No description available.',
+    // If params.image is missing or empty, use the placeholder
+    image: params.image || PLACEHOLDER_IMG, 
   };
 
-  const [quantity, setQuantity] = useState(1);
+  // Initialize state with the quantity the user ALREADY has (or 1 if they have none)
+  const [quantity, setQuantity] = useState(initialQty > 0 ? initialQty : 1);
+  const [saving, setSaving] = useState(false);
 
+  // --- UI Handlers ---
   const handleQuantity = (type) => {
     if (type === 'minus') {
-      if (quantity > 1) setQuantity(quantity - 1);
+      if (quantity > 0) setQuantity(quantity - 1);
     } else {
       setQuantity(quantity + 1);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!listId) {
+      Alert.alert("Error", "Missing List ID");
+      return;
+    }
+
+    setSaving(true);
+
+    // 3. THE "DELTA" LOGIC (Crucial!)
+    // Your backend ADDS whatever we send. 
+    // If I have 2, and I want 5, I need to send +3.
+    // If I have 2, and I want 1, I need to send -1.
+    const delta = quantity - initialQty;
+
+    if (delta === 0) {
+      // No changes made
+      router.back();
+      return;
+    }
+
+    // Pass the 'delta' as the quantity string
+    const result = await addListItems(listId, item.name, String(delta), item.category);
+    
+    setSaving(false);
+
+    if (result.success) {
+      router.back();
+    } else {
+      Alert.alert("Error", "Could not update item.");
     }
   };
 
   return (
     <View style={styles.container}>
       
-      {/* --- 1. Curved Image Header --- */}
+      {/* --- Header --- */}
       <View style={styles.headerContainer}>
-        {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
@@ -42,7 +85,7 @@ export default function ItemDetailScreen() {
         <Image source={{ uri: item.image }} style={styles.productImage} />
       </View>
 
-      {/* --- 2. Content Body --- */}
+      {/* --- Content --- */}
       <ScrollView contentContainerStyle={styles.content}>
         
         <Text style={styles.title}>{item.name}</Text>
@@ -53,34 +96,39 @@ export default function ItemDetailScreen() {
           {item.description} 
         </Text>
 
-        {/* --- 3. Quantity Selector --- */}
+        {/* --- Quantity Selector --- */}
         <View style={styles.quantityRow}>
           <Text style={styles.qtyLabel}>Quantity</Text>
           
           <View style={styles.counterContainer}>
-             {/* Minus Button */}
              <TouchableOpacity onPress={() => handleQuantity('minus')}>
-               <Ionicons name="remove-circle" size={32} color={THEME_GREEN} />
+               <Ionicons name="remove-circle" size={40} color={quantity === 0 ? "#ccc" : THEME_GREEN} />
              </TouchableOpacity>
              
              <Text style={styles.qtyValue}>{quantity}</Text>
              
-             {/* Plus Button */}
              <TouchableOpacity onPress={() => handleQuantity('plus')}>
-               <Ionicons name="add-circle" size={32} color={THEME_GREEN} />
+               <Ionicons name="add-circle" size={40} color={THEME_GREEN} />
              </TouchableOpacity>
           </View>
         </View>
 
       </ScrollView>
 
-      {/* --- 4. Bottom Button --- */}
+      {/* --- Footer Button --- */}
       <View style={styles.footer}>
         <TouchableOpacity 
           style={styles.addButton}
-          onPress={() => console.log(`Added ${quantity} ${item.name} to list`)}
+          onPress={handleSave}
+          disabled={saving}
         >
-          <Text style={styles.addButtonText}>Add to List</Text>
+          {saving ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.addButtonText}>
+              {initialQty > 0 ? "Update List" : "Add to List"}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -89,114 +137,40 @@ export default function ItemDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
-  // Curved Header Logic
+  container: { flex: 1, backgroundColor: 'white' },
   headerContainer: {
-    height: 350,
-    backgroundColor: '#F2F2F2', // Light grey bg for contrast
+    height: 300,
+    backgroundColor: '#F8F9FA',
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomLeftRadius: 60,  // Creates the curve
-    borderBottomRightRadius: 60, // Creates the curve
-    overflow: 'hidden', // Ensures image doesn't bleed out
+    borderBottomLeftRadius: 50,
+    borderBottomRightRadius: 50,
+    overflow: 'hidden',
     marginBottom: 20,
-    // Shadow for depth
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5,
   },
   backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME_GREEN,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
+    position: 'absolute', top: 50, left: 20,
+    width: 40, height: 40, borderRadius: 20, backgroundColor: THEME_GREEN,
+    justifyContent: 'center', alignItems: 'center', zIndex: 10,
   },
-  productImage: {
-    width: 200,
-    height: 200,
-    resizeMode: 'contain',
-  },
-  content: {
-    paddingHorizontal: 25,
-    paddingBottom: 100, // Space for footer
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  category: {
-    fontSize: 16,
-    color: '#888',
-    marginBottom: 25,
-    fontWeight: '600',
-  },
-  sectionLabel: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-  },
-  description: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 22,
-    marginBottom: 30,
-  },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  qtyLabel: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginRight: 20,
-    flex: 1,
-  },
-  counterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  qtyValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginHorizontal: 15,
-    minWidth: 20,
-    textAlign: 'center',
-  },
+  productImage: { width: 180, height: 180, resizeMode: 'contain' },
+  content: { paddingHorizontal: 25, paddingBottom: 100 },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 5 },
+  category: { fontSize: 16, color: '#888', marginBottom: 25, fontWeight: '600' },
+  sectionLabel: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
+  description: { fontSize: 14, color: '#666', lineHeight: 22, marginBottom: 30 },
+  quantityRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, justifyContent: 'space-between' },
+  qtyLabel: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  counterContainer: { flexDirection: 'row', alignItems: 'center' },
+  qtyValue: { fontSize: 24, fontWeight: 'bold', marginHorizontal: 20, minWidth: 30, textAlign: 'center' },
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    padding: 20, backgroundColor: 'white',
+    borderTopWidth: 1, borderTopColor: '#f0f0f0',
   },
   addButton: {
-    backgroundColor: THEME_GREEN,
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: 'center',
+    backgroundColor: THEME_GREEN, paddingVertical: 15, borderRadius: 15, alignItems: 'center',
   },
-  addButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
+  addButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
 });
