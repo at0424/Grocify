@@ -1,5 +1,6 @@
-import { addListItems } from '@/services/api'; // Import your API
+import { addListItems } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -9,14 +10,13 @@ import {
 } from 'react-native';
 
 const THEME_GREEN = '#718F64'; 
-const PLACEHOLDER_IMG = 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png'; // 1. Placeholder Image
+const PLACEHOLDER_IMG = 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png'; 
 
 export default function ItemDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  // 2. Safe Data Extraction
-  // We parse 'currentQuantity' as an integer (default to 0 if missing)
+  // Data Extraction
   const initialQty = parseInt(params.currentQuantity || '0');
   const listId = params.listId;
 
@@ -31,6 +31,23 @@ export default function ItemDetailScreen() {
   // Initialize state with the quantity the user ALREADY has (or 1 if they have none)
   const [quantity, setQuantity] = useState(initialQty > 0 ? initialQty : 1);
   const [saving, setSaving] = useState(false);
+
+  // Helper to add item to recent history
+  const addToHistory = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@recent_items');
+      const currentHistory = stored ? JSON.parse(stored) : [];
+
+      const newHistory = [
+        item, // The current item object
+        ...currentHistory.filter(i => i.name !== item.name)
+      ].slice(0, 10);
+
+      await AsyncStorage.setItem('@recent_items', JSON.stringify(newHistory));
+    } catch (e) {
+      console.log("Error saving history:", e);
+    }
+  };
 
   // --- UI Handlers ---
   const handleQuantity = (type) => {
@@ -49,7 +66,7 @@ export default function ItemDetailScreen() {
 
     setSaving(true);
 
-    // 3. THE "DELTA" LOGIC (Crucial!)
+    // THE "DELTA" LOGIC 
     // Your backend ADDS whatever we send. 
     // If I have 2, and I want 5, I need to send +3.
     // If I have 2, and I want 1, I need to send -1.
@@ -67,6 +84,8 @@ export default function ItemDetailScreen() {
     setSaving(false);
 
     if (result.success) {
+      await addToHistory();
+      
       router.back();
     } else {
       Alert.alert("Error", "Could not update item.");
@@ -137,7 +156,21 @@ export default function ItemDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'white' },
+  // ==========================================
+  // 1. LAYOUT & CONTAINERS
+  // ==========================================
+  container: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  content: {
+    paddingHorizontal: 25,
+    paddingBottom: 100, // Space for floating footer
+  },
+
+  // ==========================================
+  // 2. HEADER (Image & Back Button)
+  // ==========================================
   headerContainer: {
     height: 300,
     backgroundColor: '#F8F9FA',
@@ -147,30 +180,107 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 50,
     overflow: 'hidden',
     marginBottom: 20,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5,
+    // Shadow/Elevation
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   backButton: {
-    position: 'absolute', top: 50, left: 20,
-    width: 40, height: 40, borderRadius: 20, backgroundColor: THEME_GREEN,
-    justifyContent: 'center', alignItems: 'center', zIndex: 10,
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME_GREEN,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
-  productImage: { width: 180, height: 180, resizeMode: 'contain' },
-  content: { paddingHorizontal: 25, paddingBottom: 100 },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 5 },
-  category: { fontSize: 16, color: '#888', marginBottom: 25, fontWeight: '600' },
-  sectionLabel: { fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#333' },
-  description: { fontSize: 14, color: '#666', lineHeight: 22, marginBottom: 30 },
-  quantityRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, justifyContent: 'space-between' },
-  qtyLabel: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  counterContainer: { flexDirection: 'row', alignItems: 'center' },
-  qtyValue: { fontSize: 24, fontWeight: 'bold', marginHorizontal: 20, minWidth: 30, textAlign: 'center' },
+  productImage: {
+    width: 180,
+    height: 180,
+    resizeMode: 'contain',
+  },
+
+  // ==========================================
+  // 3. PRODUCT TEXT INFO
+  // ==========================================
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  category: {
+    fontSize: 16,
+    color: '#888',
+    fontWeight: '600',
+    marginBottom: 25,
+  },
+  sectionLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  description: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 22,
+    marginBottom: 30,
+  },
+
+  // ==========================================
+  // 4. QUANTITY CONTROLS
+  // ==========================================
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  qtyLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  counterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  qtyValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginHorizontal: 20,
+    minWidth: 30,
+  },
+
+  // ==========================================
+  // 5. FOOTER & ACTION BUTTON
+  // ==========================================
   footer: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    padding: 20, backgroundColor: 'white',
-    borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 20,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
   addButton: {
-    backgroundColor: THEME_GREEN, paddingVertical: 15, borderRadius: 15, alignItems: 'center',
+    backgroundColor: THEME_GREEN,
+    paddingVertical: 15,
+    borderRadius: 15,
+    alignItems: 'center',
   },
-  addButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  addButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
 });

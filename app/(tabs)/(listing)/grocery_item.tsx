@@ -1,5 +1,6 @@
 import { addListItems, fetchGroceryCatalog, fetchGroceryListDetails } from '@/services/api';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -36,6 +37,7 @@ export default function AddItemScreen() {
     // Logic States
     const [cartCounts, setCartCounts] = useState({}); // Tracks { 'Milk': 2, 'Eggs': 1 }
     const [addingId, setAddingId] = useState(null); // For loading spinner on button
+    const [recentItems, setRecentItems] = useState([]); // For recently added items
 
     // Filtered items for search and category
     const filteredItems = items.filter(item => {
@@ -44,6 +46,23 @@ export default function AddItemScreen() {
 
         return matchesSearch && matchesCategory;
     });
+
+    // Reload recent items
+    useFocusEffect(
+        useCallback(() => {
+            const loadRecents = async () => {
+                try {
+                    const jsonValue = await AsyncStorage.getItem('@recent_items');
+                    if (jsonValue != null) {
+                        setRecentItems(JSON.parse(jsonValue));
+                    }
+                } catch (e) {
+                    console.log("Error loading recents: ", e);
+                }
+            };
+            loadRecents();
+        }, []) 
+    );
 
     // Fetch catalog and current list quantities on load
     useFocusEffect(
@@ -84,6 +103,30 @@ export default function AddItemScreen() {
         loadData();
     }, [listId]));
 
+    // Helper to save recent items
+    const addToHistory = async (item) => {
+        // Remove if exists (to move to front)
+        // Add new history || Slice to max 10 items
+        try {
+            const newHistory = [
+                item,
+                ...recentItems.filter(i => i.name !== item.name)
+            ].slice(0,10);
+
+            setRecentItems(newHistory);
+            await AsyncStorage.setItem('@recent_items', JSON.stringify(newHistory));
+        } catch (e) {
+            console.log("Error saving results: ", e);
+        }
+    }
+
+    // Helper to remove from recent items
+    const removeFromHistory = async (itemName) => {
+        const newHistory = recentItems.filter(i => i.name !== itemName);
+        setRecentItems(newHistory);
+        await AsyncStorage.setItem('@recent_items', JSON.stringify(newHistory));
+    } 
+
     // Handle add item to list
     const handleAddItem = async (item) => {
         if (!listId) {
@@ -104,6 +147,8 @@ export default function AddItemScreen() {
                 ...prev,
                 [item.name]: (prev[item.name] || 0) + 1
             }));
+
+            addToHistory(item);
         } else {
             Alert.alert("Error", "Could not add item.");
         }
@@ -139,15 +184,35 @@ export default function AddItemScreen() {
             <ScrollView style={styles.contentContainer}>
 
                 {/* --- 2. Recently Added Tags --- */}
-                <Text style={styles.sectionTitle}>Recently Added</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagScroll}>
-                    {['Milk', 'Avocado', 'Nuts', 'Salmon'].map((tag, index) => (
-                        <View key={index} style={styles.tag}>
-                            <Text style={styles.tagText}>{tag}</Text>
-                            <Ionicons name="close" size={14} color="#555" style={{ marginLeft: 5 }} />
-                        </View>
-                    ))}
-                </ScrollView>
+                {recentItems.length > 0 && (
+                    <>
+                        <Text style={styles.sectionTitle}>Recently Added</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagScroll}>
+                            {recentItems.map((recentItem, index) => (
+                                <TouchableOpacity 
+                                    key={index} 
+                                    style={styles.tag}
+                                    // Clicking the tag adds it to the list
+                                    onPress={() => handleAddItem(recentItem)}
+                                >
+                                    <Text style={styles.tagText}>{recentItem.name}</Text>
+                                    
+                                    {/* Clicking X removes it from history */}
+                                    <TouchableOpacity 
+                                        style={{ padding: 4 }} 
+                                        onPress={(e) => {
+                                            // Stop the tap from triggering the 'add'
+                                            e.stopPropagation(); 
+                                            removeFromHistory(recentItem.name);
+                                        }}
+                                    >
+                                        <Ionicons name="close-circle" size={16} color="#666" style={{ marginLeft: 2 }} />
+                                    </TouchableOpacity>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </>
+                )}
 
                 {/* --- 3. Categories --- */}
                 <View style={styles.categoryHeaderRow}>
@@ -306,22 +371,24 @@ const styles = StyleSheet.create({
         marginBottom: 10,
         color: '#000',
     },
-    tagScroll: {
-        marginBottom: 20,
-        flexDirection: 'row',
+    tagScroll: { 
+        marginBottom: 20, 
+        flexDirection: 'row' 
     },
     tag: {
-        backgroundColor: '#DCE775', // Light green tag color
+        backgroundColor: '#DCE775', 
         paddingVertical: 6,
-        paddingHorizontal: 12,
+        paddingLeft: 12,
+        paddingRight: 8, // slightly less padding on right for the close button
         borderRadius: 15,
         flexDirection: 'row',
         alignItems: 'center',
         marginRight: 10,
     },
-    tagText: {
-        fontWeight: '600',
-        color: '#333',
+    tagText: { 
+        fontWeight: '600', 
+        color: '#333', 
+        marginRight: 4 
     },
     categoryGrid: {
         flexDirection: 'row',
