@@ -1,7 +1,7 @@
 import { fetchGroceryListDetails } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ListingDetailScreen() {
@@ -11,10 +11,12 @@ export default function ListingDetailScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Data
-  useEffect(() => {
-    loadItems();
-  }, [listId]);
+  // Load whenever screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      loadItems();
+    }, [listId])
+  );
 
   const loadItems = async () => {
     if (!listId) return;
@@ -36,7 +38,6 @@ export default function ListingDetailScreen() {
 
         {/* Right Side: Quantity */}
         <View style={styles.rightSide}>
-          {/* Changed 'quantityText' to 'qtyText' to match your styles */}
           <Text style={styles.qtyText}>{item.quantity || 1}</Text>
         </View>
       </View>
