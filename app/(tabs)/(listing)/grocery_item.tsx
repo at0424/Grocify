@@ -1,4 +1,4 @@
-import { addListItems, fetchGroceryCatalog } from '@/services/api';
+import { addListItems, fetchGroceryCatalog, fetchGroceryListDetails } from '@/services/api';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -45,23 +45,43 @@ export default function AddItemScreen() {
         return matchesSearch && matchesCategory;
     });
 
-    // Fetch catalog on load
+    // Fetch catalog and current list quantities on load
     useEffect(() => {
         const loadData = async () => {
             try {
                 setLoading(true);
-                const data = await fetchGroceryCatalog();;
 
-                setItems(data);
+                // Fetching 
+                const [catalogData, currentListData] = await Promise.all([
+                    fetchGroceryCatalog(),
+                    listId ? fetchGroceryListDetails(listId) : Promise.resolve([]) 
+                ]);
+
+                // Set Catalog
+                setItems(catalogData);
+
+                // Process current list to get counts
+                const counts = {};
+                if (currentListData && Array.isArray(currentListData)) {
+                    currentListData.forEach(item => {
+                        // Parse quantity as integer (it might be a string "2")
+                        const qty = parseInt(item.quantity) || 0;
+                        if (qty > 0) {
+                            counts[item.name] = qty;
+                        }
+                    });
+                }
+                setCartCounts(counts);
+
             } catch (e) {
-                console.error("Failed to load catalog: ", e)
+                console.error("Failed to load data: ", e)
             } finally {
                 setLoading(false);
             }
         };
 
         loadData();
-    }, []);
+    }, [listId]);
 
     // Handle add item to list
     const handleAddItem = async (item) => {
@@ -204,7 +224,6 @@ export default function AddItemScreen() {
                                     {/* --- [UPDATED] ADD BUTTON --- */}
                                     <TouchableOpacity
                                         style={styles.addButton}
-                                        // Use the new handler instead of console.log
                                         onPress={() => handleAddItem(item)}
                                         // Disable button while this specific item is loading
                                         disabled={addingId === item.name}
@@ -225,10 +244,10 @@ export default function AddItemScreen() {
 
             </ScrollView>
 
-            {/* --- 5. Floating "Review List" Button (Bottom Right) --- */}
+            {/* --- 5. Floating "Review List" Button (Bottom Right) ---
             <TouchableOpacity style={styles.floatingListBtn} onPress={() => router.back()}>
                 <Ionicons name="list" size={28} color="#4A4A4A" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
         </View>
     );
