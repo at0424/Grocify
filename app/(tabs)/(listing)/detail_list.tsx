@@ -1,4 +1,4 @@
-import { fetchGroceryListDetails } from '@/services/api';
+import { fetchGroceryListDetails, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -45,24 +45,52 @@ export default function ListingDetailScreen() {
     }
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.itemRow}>
-      <View style={styles.mainRow}>
-        {/* Left Side: Bullet + Name */}
-        <View style={styles.leftSide}>
-          <View style={styles.bulletPoint} />
-          <Text style={styles.itemText}>{item.name}</Text>
-        </View>
+  // Handler for toggling
+  const handleToggle = async (targetItem) => {
+    // Optimistic Update (Update UI immediately before Server responds)
+    const newItems = items.map(i => {
+      if (i.itemId === targetItem.itemId) {
+        return { ...i, checked: !i.checked }; // Flip it locally
+      }
+      return i;
+    });
+    setItems(newItems);
 
-        {/* Right Side: Quantity */}
-        <View style={styles.rightSide}>
-          <Text style={styles.qtyText}>{item.quantity || 1}</Text>
+    // Call Backend to save
+    await toggleGroceryItem(listId, targetItem.itemId);
+  };
+
+  // For each item in the list
+  const renderItem = ({ item }) => {
+    const isChecked = item.checked || false;
+
+    return (
+      <TouchableOpacity onPress={() => handleToggle(item)} activeOpacity={0.7}>
+        <View style={[styles.itemRow, isChecked && { opacity: 0.6 }]}>
+          
+          {/* Main Row Content */}
+          <View style={styles.mainRow}>
+            <View style={styles.leftSide}>
+              {/* Bullet turns Green when checked */}
+              <View style={[styles.bulletPoint, isChecked && { backgroundColor: '#718F64' }]} />
+              
+              <Text style={[styles.itemText, isChecked && styles.strikethrough]}>
+                {item.name}
+              </Text>
+            </View>
+
+            <View style={styles.rightSide}>
+              <Text style={styles.quantityText}>{item.quantity}</Text>
+            </View>
+          </View>
+
+          {/* THE CROSS LINE (The "Gummy Bear" scratch-out effect) */}
+          {isChecked && <View style={styles.crossLine} />}
+          
         </View>
-      </View>
-      
-      <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.05)', marginTop: 5 }} />
-    </View>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -249,11 +277,13 @@ const styles = StyleSheet.create({
   },
   crossLine: {
     position: 'absolute',
-    height: 1,
-    backgroundColor: 'black',
-    width: '100%',
-    top: '50%', 
-    opacity: 0.6,
+    height: 1, // Thickness of the line
+    backgroundColor: 'black', // Color of the ink
+    width: '90%', // Length of the line
+    top: '50%', // Centers it vertically
+    left: 20, // Adjust start position
+    opacity: 0.6, // Makes it look like pen ink
+    transform: [{ rotate: '-1deg' }] // Slight tilt for realistic handwriting feel
   },
 
   // =================================================

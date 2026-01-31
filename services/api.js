@@ -114,3 +114,20 @@ export const addListItems = async (listId, name, quantity, category) => {
     return { success: false };
   }
 };
+
+// Toggle item to check or uncheck
+export const toggleGroceryItem = async (listId, itemId) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/toggleItem',
+      options: {
+        body: { listId, itemId }
+      }
+    });
+    return await operation.response;
+  } catch (error) {
+    console.error("Error toggling item:", error);
+    return null;
+  }
+};
