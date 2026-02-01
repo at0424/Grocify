@@ -1,4 +1,4 @@
-import { get, post } from 'aws-amplify/api';
+import { del, get, post } from 'aws-amplify/api';
 
 const API_NAME = 'GroceryAPI'; 
 
@@ -67,6 +67,40 @@ export const createNewList = async (userId, listName, color) => {
   } catch (error) {
     console.error("Error creating list:", error);
     return { success: false, error: error.message };
+  }
+};
+
+// Rename List
+export const updateUserList = async (listId, newName) => {
+  try {
+    const operation = put({ 
+      apiName: API_NAME,
+      path: '/updateList',
+      options: {
+        body: { listId, listName: newName }
+      }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error updating list:", error);
+    return { success: false };
+  }
+};
+
+// Delete List
+export const deleteUserList = async (listId, userId) => {
+  try {
+    // 'del' or 'remove' depends on version
+    const operation = del({ 
+      apiName: API_NAME,
+      path: `/deleteList?listId=${listId}&userId=${userId}`
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error deleting list:", error);
+    return { success: false };
   }
 };
 

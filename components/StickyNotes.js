@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function StickyNote({ title, onPress, onAddCollaborator, collaborators = [] }) {
+export default function StickyNote({ title, collaborators, onPress, actionIcon, onActionPress, style }) {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
       
@@ -39,9 +39,13 @@ export default function StickyNote({ title, onPress, onAddCollaborator, collabor
         </View>
 
         {/* Right: Add Collaborator Icon */}
-        <TouchableOpacity onPress={onAddCollaborator} style={styles.addButton}>
-          <Ionicons name="person-add" size={16} color="#555" />
-        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={onActionPress}>
+        <Ionicons 
+           name={actionIcon || "person-add-outline"} 
+           size={20} 
+           color="#555" 
+        />
+      </TouchableOpacity>
 
       </View>
     </TouchableOpacity>
