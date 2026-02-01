@@ -125,6 +125,24 @@ export const fetchGroceryListDetails = async (listId) => {
   }
 };
 
+// Add Collaborator to List
+export const shareList = async (listId, email) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/addCollaborator',
+      options: {
+        body: { listId, email }
+      }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error sharing list:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Add item to Grocery List
 export const addListItems = async (listId, name, quantity, category) => {
   try {

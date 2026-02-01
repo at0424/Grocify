@@ -1,6 +1,6 @@
 import { getUserId } from '@/amplify/auth/authService';
 import StickyNote from '@/components/StickyNotes';
-import { createNewList, deleteUserList, fetchUserLists, updateUserList } from '@/services/api';
+import { createNewList, deleteUserList, fetchUserLists, shareList, updateUserList } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -14,13 +14,16 @@ export default function ListingDashboard() {
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
 
+
   // Modal State 
   const [modalVisible, setModalVisible] = useState(false);
-  const [newListName, setNewListName] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
-  const [creating, setCreating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [listNameInput, setListNameInput] = useState('');
+  // Modal Share List State
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareEmail, setShareEmail] = useState('');
+  const [listToShare, setListToShare] = useState(null);
 
   // Edit List State
   const [isEditing, setIsEditing] = useState(false); // Toggle for Edit Mode
@@ -122,6 +125,32 @@ export default function ListingDashboard() {
     );
   };
 
+  // Handle Share List
+  const handleShare = async () => {
+    if (!shareEmail.trim()) {
+      Alert.alert("Error", "Please enter an email.");
+      return;
+    }
+
+    // Simple email validation
+    if (!shareEmail.includes('@')) {
+      Alert.alert("Error", "Invalid email address.");
+      return;
+    }
+
+    setLoading(true); // Reuse main loading or create new state
+    const result = await shareList(listToShare, shareEmail.trim());
+    setLoading(false);
+
+    if (result.success) {
+      Alert.alert("Success", "User added!");
+      setShareModalVisible(false);
+    } else {
+      // Show specific error if user not found
+      Alert.alert("Failed", result.message || "Could not find user with that email.");
+    }
+  };
+
   return (
     <View style={styles.screenContainer}>
 
@@ -130,10 +159,10 @@ export default function ListingDashboard() {
         <Ionicons name="close" size={28} color="white" onPress={() => router.back()} />
         <Text style={styles.headerTitle}>My Lists</Text>
         <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
-          <Ionicons 
-            name={isEditing ? "checkmark-circle" : "create-outline"} 
-            size={28} 
-            color="white" 
+          <Ionicons
+            name={isEditing ? "checkmark-circle" : "create-outline"}
+            size={28}
+            color="white"
           />
         </TouchableOpacity>
       </View>
@@ -180,7 +209,9 @@ export default function ListingDashboard() {
                 if (isEditing) {
                   handleDelete(item.listId, item.listName);
                 } else {
-                  console.log('Add person logic');
+                  setListToShare(item.listId);
+                  setShareEmail(''); // Clear previous input
+                  setShareModalVisible(true);
                 }
               }}
 
@@ -195,7 +226,7 @@ export default function ListingDashboard() {
       {!isEditing && (
         <TouchableOpacity
           style={styles.newListButton}
-          onPress={() => openModal(null)} 
+          onPress={() => openModal(null)}
         >
           <Text style={styles.newListText}>NEW LIST</Text>
         </TouchableOpacity>
@@ -211,7 +242,7 @@ export default function ListingDashboard() {
       >
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            
+
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editingListId ? "Rename List" : "New List"}
@@ -227,7 +258,7 @@ export default function ListingDashboard() {
               placeholder="e.g. Party Shopping"
               value={listNameInput}
               onChangeText={setListNameInput}
-              autoFocus={true} 
+              autoFocus={true}
             />
 
             {/* Only show Color Picker for New Lists */}
@@ -249,9 +280,44 @@ export default function ListingDashboard() {
             <TouchableOpacity style={styles.createBtn} onPress={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? <ActivityIndicator color="white" /> : (
                 <Text style={styles.createBtnText}>
-                   {editingListId ? "Save Changes" : "Create List"}
+                  {editingListId ? "Save Changes" : "Create List"}
                 </Text>
               )}
+            </TouchableOpacity>
+
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* SHARE MODAL */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={shareModalVisible}
+        onRequestClose={() => setShareModalVisible(false)}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { minHeight: 250 }]}> 
+            
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Collaborator</Text>
+              <TouchableOpacity onPress={() => setShareModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#888" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.label}>User's Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="friend@gmail.com"
+              value={shareEmail}
+              onChangeText={(text) => setShareEmail(text.toLowerCase())} // Force lowercase
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <TouchableOpacity style={styles.createBtn} onPress={handleShare}>
+               <Text style={styles.createBtnText}>Invite</Text>
             </TouchableOpacity>
 
           </View>
@@ -271,7 +337,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#718F64', // Moss Green
     paddingTop: 50, // Status bar spacing
   },
-  
+
   // ==========================================
   // 2. HEADER
   // ==========================================
@@ -301,7 +367,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', // Keeps notes spaced evenly
     marginBottom: 15, // Space between rows
   },
-  
+
   // Empty State (When no lists exist)
   emptyContainer: {
     alignItems: 'center',
@@ -352,16 +418,16 @@ const styles = StyleSheet.create({
   // 5. MODAL (Create / Rename)
   // ==========================================
   modalOverlay: {
-    flex: 1, 
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)', // Darker dim for better focus
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: 'white', 
-    borderTopLeftRadius: 25, 
+    backgroundColor: 'white',
+    borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    padding: 30, 
-    minHeight: 450, 
+    padding: 30,
+    minHeight: 450,
     paddingBottom: 50,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
@@ -369,31 +435,31 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 20,
   },
-  modalHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 25 
+    marginBottom: 25
   },
-  modalTitle: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    color: '#333' 
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333'
   },
-  
+
   // Form Inputs
-  label: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    marginBottom: 12, 
-    color: '#555', 
-    marginTop: 10 
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#555',
+    marginTop: 10
   },
   input: {
-    backgroundColor: '#F5F5F5', 
-    padding: 16, 
-    borderRadius: 15, 
-    fontSize: 18, 
+    backgroundColor: '#F5F5F5',
+    padding: 16,
+    borderRadius: 15,
+    fontSize: 18,
     marginBottom: 25,
     borderWidth: 1,
     borderColor: '#EEE',
@@ -401,16 +467,16 @@ const styles = StyleSheet.create({
   },
 
   // Color Picker
-  colorRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginBottom: 35 
+  colorRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 35
   },
-  colorCircle: { 
-    width: 50, 
-    height: 50, 
-    borderRadius: 25, 
-    borderWidth: 1, 
+  colorCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 1,
     borderColor: '#E0E0E0',
     // Shadow for circles
     shadowColor: "#000",
@@ -419,23 +485,23 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  selectedColor: { 
-    borderWidth: 4, 
+  selectedColor: {
+    borderWidth: 4,
     borderColor: '#718F64',
     transform: [{ scale: 1.1 }], // Slight pop effect
   },
 
   // Modal Action Button
   createBtn: {
-    backgroundColor: '#718F64', 
-    padding: 18, 
-    borderRadius: 15, 
+    backgroundColor: '#718F64',
+    padding: 18,
+    borderRadius: 15,
     alignItems: 'center',
     marginTop: 10,
   },
-  createBtnText: { 
-    color: 'white', 
-    fontSize: 18, 
-    fontWeight: 'bold' 
+  createBtnText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold'
   },
 });
