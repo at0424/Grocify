@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function ListingDashboard() {
   const router = useRouter();
@@ -13,8 +13,8 @@ export default function ListingDashboard() {
 
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
-
-
+  const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh state
+  
   // Modal State 
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
@@ -29,9 +29,10 @@ export default function ListingDashboard() {
   const [isEditing, setIsEditing] = useState(false); // Toggle for Edit Mode
   const [editingListId, setEditingListId] = useState(null); // ID of list being renamed
 
-  // Fetch User Lists
-  const loadLists = async () => {
-    setLoading(true);
+  // Fetch User Lists || Refresh Screen
+  const loadLists = async (isPullToRefresh = false) => {
+    if (!isPullToRefresh) setLoading(true);
+
     const currentUserId = await getUserId();
 
     if (currentUserId) {
@@ -43,13 +44,21 @@ export default function ListingDashboard() {
     }
 
     setLoading(false);
+    setRefreshing(false);
   };
 
+  // Load on Screen Focus
   useFocusEffect(
     useCallback(() => {
       loadLists();
     }, [])
   );
+
+  // Handle Pull-to-refresh
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadLists(true); // true = isPullToRefresh
+  };
 
   // Open Modal (Create vs Edit) 
   const openModal = (listToEdit = null) => {
@@ -177,6 +186,16 @@ export default function ListingDashboard() {
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
+
+          // Pull to refresh logic
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              tintColor="white" // iOS Spinner Color
+              colors={['#718F64']} // Android Spinner Color
+            />
+          }
 
           // Fallback when don't have list
           ListEmptyComponent={
