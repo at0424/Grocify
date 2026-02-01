@@ -18,16 +18,16 @@ export default function ListingDetailScreen() {
 
       // Start Polling (The "Heartbeat")
       // Every 5000ms (5 seconds), fetch data silently
-      const intervalId = setInterval(() => {
-        console.log("Heartbeat: Checking for friend's updates...");
-        loadItems(true); 
-      }, 5000);
+      // const intervalId = setInterval(() => {
+      //   console.log("Heartbeat: Checking for friend's updates...");
+      //   loadItems(true); 
+      // }, 5000);
 
       // Stop polling when unfocus
-      return () => {
-        clearInterval(intervalId);
-        console.log("Polling stopped");
-      };
+      // return () => {
+      //   clearInterval(intervalId);
+      //   console.log("Polling stopped");
+      // };
     }, [listId])
   );
 
