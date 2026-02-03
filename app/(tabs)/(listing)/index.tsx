@@ -125,11 +125,23 @@ export default function ListingDashboard() {
             // Call Delete API
             setLoading(true);
             const result = await deleteUserList(listId, currentUserId);
+            
             if (result.success) {
               loadLists();
             } else {
-              Alert.alert("Error", "Could not delete list.");
-              setLoading(false);
+              setLoading(false); // Stop loading first
+              
+              const errorMsg = String(result.message || "");
+
+              // --- CHECK FOR PERMISSION ERROR ---
+              if (errorMsg.includes("Permission Denied") || errorMsg.includes("Only the Owner")) {
+                // Just notify the user politely
+                Alert.alert("Permission Denied", "Only the list owner can delete this list.");
+              } else {
+                // Real error (Network, Server crash, etc.)
+                console.log(errorMsg);
+                Alert.alert("Error", errorMsg || "Could not delete list.");
+              }
             }
           }
         }

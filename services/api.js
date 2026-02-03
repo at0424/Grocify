@@ -99,8 +99,11 @@ export const deleteUserList = async (listId, userId) => {
     const response = await operation.response;
     return await response.body.json();
   } catch (error) {
-    console.error("Error deleting list:", error);
-    return { success: false };
+    // console.error("Error deleting list:", error);
+    return { 
+      success: false,
+      message: error.message || String(error)
+    };
   }
 };
 
