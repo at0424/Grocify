@@ -1,30 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function CollaboratorModal({ 
   visible, 
   onClose, 
-  data, // Expects { collaborators: [], ownerEmail: '', myRole: '' }
+  data, 
   currentUserId,
-  onInvite 
+  onInvite,
+  onRemove 
 }) {
   const [addMode, setAddMode] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset state when modal opens/closes
   useEffect(() => {
     if (visible) {
       setAddMode(false);
@@ -35,14 +24,10 @@ export default function CollaboratorModal({
 
   const handleInvitePress = async () => {
     if (!emailInput.trim() || !emailInput.includes('@')) return;
-    
     setIsSubmitting(true);
-    // Call parent function, expect it to return success true/false
     const success = await onInvite(emailInput.trim());
     setIsSubmitting(false);
-
     if (success) {
-      // If parent says success, we reset the view
       setAddMode(false);
       setEmailInput('');
     }
@@ -51,71 +36,72 @@ export default function CollaboratorModal({
   const isOwner = data.myRole === 'owner';
 
   return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
+    <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
         <View style={[styles.modalContent, { minHeight: 300 }]}>
           
-          {/* HEADER */}
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>List Members</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#888" />
-            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color="#888" /></TouchableOpacity>
           </View>
 
-          {/* VIEW 1: MEMBER LIST */}
           {!addMode && (
             <>
               <Text style={styles.sectionLabel}>Team</Text>
               <FlatList
                 data={data.collaborators || []}
                 keyExtractor={(item) => item.userId}
-                
-                // OWNER HEADER
                 ListHeaderComponent={
                   <View style={styles.userRow}>
                     <View style={styles.userInfo}>
-                      <View style={[styles.userAvatar, { backgroundColor: '#FFD54F' }]}>
-                        <Ionicons name="star" size={14} color="white" />
-                      </View>
-                      <Text style={styles.userName}>
-                        {isOwner ? "You (Owner)" : (data.ownerEmail || "Owner")}
-                      </Text>
+                      <View style={[styles.userAvatar, { backgroundColor: '#FFD54F' }]}><Ionicons name="star" size={14} color="white" /></View>
+                      <Text style={styles.userName}>{isOwner ? "You (Owner)" : (data.ownerEmail || "Owner")}</Text>
                     </View>
                   </View>
                 }
+                renderItem={({ item }) => {
+                  const isMe = item.userId === currentUserId;
 
-                // MEMBER ITEMS
-                renderItem={({ item }) => (
-                  <View style={styles.userRow}>
-                    <View style={styles.userInfo}>
-                      <View style={styles.userAvatar}>
-                        <Ionicons name="person" size={14} color="white" />
+                  return (
+                    <View style={styles.userRow}>
+                      <View style={styles.userInfo}>
+                        <View style={styles.userAvatar}><Ionicons name="person" size={14} color="white" /></View>
+                        <Text style={styles.userName} numberOfLines={1}>{isMe ? "You" : item.email}</Text>
                       </View>
-                      <Text style={styles.userName} numberOfLines={1}>
-                        {item.userId === currentUserId ? "You" : item.email}
-                      </Text>
+                      
+                      {/* OWNER KICKING OTHERS */}
+                      {isOwner && !isMe && (
+                        <TouchableOpacity onPress={() => onRemove(item.userId)}>
+                          <Ionicons name="trash-outline" size={20} color="#E53935" />
+                        </TouchableOpacity>
+                      )}
+
+                      {/* COLLABORATOR LEAVING (Removing Self) */}
+                      {!isOwner && isMe && (
+                        <TouchableOpacity onPress={() => onRemove(item.userId)} style={styles.leaveBtn}>
+                          <Text style={styles.leaveText}>Leave</Text>
+                          <Ionicons name="log-out-outline" size={20} color="#E53935" />
+                        </TouchableOpacity>
+                      )}
+
                     </View>
-                  </View>
-                )}
+                  );
+                }}
                 style={{ maxHeight: 200, marginBottom: 20 }}
               />
 
-              <TouchableOpacity style={styles.primaryBtn} onPress={() => setAddMode(true)}>
-                <Ionicons name="person-add" size={18} color="white" style={{ marginRight: 8 }} />
-                <Text style={styles.primaryBtnText}>Invite Member</Text>
-              </TouchableOpacity>
+              {/* ONLY OWNER CAN SEE INVITE BUTTON */}
+              {isOwner && (
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => setAddMode(true)}>
+                  <Ionicons name="person-add" size={18} color="white" style={{ marginRight: 8 }} />
+                  <Text style={styles.primaryBtnText}>Invite Member</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
 
-          {/* VIEW 2: ADD MEMBER INPUT */}
           {addMode && (
-            <View>
+             <View>
               <Text style={styles.sectionLabel}>Invite by Email</Text>
               <TextInput
                 style={styles.input}
@@ -125,27 +111,16 @@ export default function CollaboratorModal({
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddMode(false)}>
                   <Text style={styles.cancelBtnText}>Back</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.primaryBtn, { flex: 1, marginTop: 0, marginLeft: 10 }]}
-                  onPress={handleInvitePress}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text style={styles.primaryBtnText}>Send</Text>
-                  )}
+                <TouchableOpacity style={[styles.primaryBtn, { flex: 1, marginTop: 0, marginLeft: 10 }]} onPress={handleInvitePress} disabled={isSubmitting}>
+                  {isSubmitting ? <ActivityIndicator color="white" /> : <Text style={styles.primaryBtnText}>Send</Text>}
                 </TouchableOpacity>
               </View>
             </View>
           )}
-
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -153,6 +128,7 @@ export default function CollaboratorModal({
 }
 
 const styles = StyleSheet.create({
+  // ... (Keep previous styles) ...
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: 'white', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 30, minHeight: 450, paddingBottom: 50, shadowColor: "#000", shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
@@ -164,7 +140,11 @@ const styles = StyleSheet.create({
   userName: { fontSize: 16, color: '#333', maxWidth: '85%' },
   input: { backgroundColor: '#F5F5F5', padding: 16, borderRadius: 15, fontSize: 18, marginBottom: 25, borderWidth: 1, borderColor: '#EEE', color: '#333' },
   primaryBtn: { backgroundColor: '#718F64', padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 10, flexDirection: 'row', justifyContent: 'center' },
-  primaryBtnText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  primaryBtnText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
   cancelBtn: { padding: 18, borderRadius: 15, backgroundColor: '#F5F5F5', width: 100, alignItems: 'center', borderWidth: 1, borderColor: '#EEE' },
   cancelBtnText: { color: '#666', fontWeight: 'bold' },
+  
+  // --- NEW STYLE FOR LEAVE BUTTON ---
+  leaveBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFEBEE', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  leaveText: { color: '#E53935', fontWeight: 'bold', marginRight: 5, fontSize: 12 }
 });

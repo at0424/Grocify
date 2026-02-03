@@ -1,9 +1,10 @@
 import { getUserId } from '@/amplify/auth/authService';
-import { fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
+import CollaboratorModal from '@/components/CollaboratorModal';
+import { fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ListingDetailScreen() {
   const router = useRouter();
@@ -20,34 +21,45 @@ export default function ListingDetailScreen() {
 
   // Modal States (NEW)
   const [modalVisible, setModalVisible] = useState(false);
-  const [addMode, setAddMode] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [processing, setProcessing] = useState(false);
+  const [modalData, setModalData] = useState({ collaborators: [], ownerEmail: '', myRole: '' });
 
   // Check Ownership
   const isOwner = (userRole === 'owner');
   
   // Refresh Screen
   const loadItems = async (isPullToRefresh = false) => {
+    // Only show big spinner on initial load
     if (!isPullToRefresh && items.length === 0) setLoading(true);
 
     try {
-      // Get your ID
       const uid = await getUserId();
       setCurrentUserId(uid);
 
-      // Fetch Data
-      const data = await fetchGroceryListDetails(listId);
+      const [groceryData, collabData] = await Promise.all([
+        fetchGroceryListDetails(listId),
+        fetchCollaborators(listId, uid)
+      ]);
       
-      // Separate Items from Collaborators
-      if (data.items) {
-        setItems(data.items);
-        setCollaborators(data.collaborators || []); 
+      // Handle Grocery Items
+      if (groceryData.items) {
+        setItems(groceryData.items);
       } else {
-        setItems(data); // Legacy fallback
+        setItems(groceryData); // Legacy fallback
       }
+
+      // Handle Collaborators
+      if (collabData.success) {
+        setCollaborators(collabData.collaborators || []); // Updates the count bubble
+        
+        setModalData({
+            collaborators: collabData.collaborators,
+            ownerEmail: collabData.ownerEmail,
+            myRole: collabData.requesterRole
+        });
+      }
+
     } catch (e) {
-      console.log("Error loading items:", e);
+      console.log("Error loading data:", e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -96,39 +108,68 @@ export default function ListingDetailScreen() {
     await toggleGroceryItem(listId, targetItem.itemId);
   };
 
-  // Handle invite collaborator
-  const handleInvite = async () => {
-    if (!inviteEmail.trim()) return;
-    setProcessing(true);
-
-    const result = await shareList(listId, inviteEmail.toLowerCase().trim());
+  const handleOpenModal = async () => {
+    const uid = await getUserId();
+    // Use the new API to get emails
+    const data = await fetchCollaborators(listId, uid);
     
-    setProcessing(false);
+    if (data.success) {
+      setModalData({
+        collaborators: data.collaborators,
+        ownerEmail: data.ownerEmail,
+        myRole: data.requesterRole
+      });
+      setModalVisible(true);
+    } else {
+      Alert.alert("Error", "Could not load members.");
+    }
+  };
+
+  // Handle invite collaborator
+  const handleInvite = async (emailToInvite) => {
+    const result = await shareList(listId, emailToInvite);
+    
     if (result.success) {
       Alert.alert("Success", "User added!");
-      setInviteEmail('');
-      setAddMode(false);
-      loadItems(true); // Refresh to see new member
+      
+      // Refresh both the main screen (for count) and the modal data
+      loadItems(true); 
+      handleOpenModal(); // Refetch modal data to show new email immediately
+      return true; 
     } else {
       Alert.alert("Failed", result.message || "Could not find user.");
+      return false;
     }
   };
 
 
   // Handle remove collaborator
   const handleRemove = (idToRemove) => {
-    Alert.alert("Remove User?", "This will delete the list from their device.", [
+    const isLeaving = idToRemove === currentUserId;
+
+    const title = isLeaving ? "Leave List?" : "Remove User?";
+    const message = isLeaving 
+      ? "Are you sure you want to leave this list?" 
+      : "This will remove the user from the list.";
+
+    Alert.alert(title, message, [
       { text: "Cancel", style: "cancel" },
       { 
-        text: "Remove", 
+        text: isLeaving ? "Leave" : "Remove", 
         style: 'destructive',
         onPress: async () => {
             const result = await removeCollaborator(listId, idToRemove, currentUserId);
             if (result.success) {
-                // Remove locally immediately for speed
-                setCollaborators(prev => prev.filter(id => id !== idToRemove));
+                if (isLeaving) {
+                    // If I left, I should be navigated back to dashboard
+                    router.back();
+                } else {
+                    // If I removed someone else, refresh data
+                    loadItems(true);
+                    handleOpenModal();
+                }
             } else {
-                Alert.alert("Error", result.message || "Could not remove user.");
+                Alert.alert("Error", result.message || "Operation failed.");
             }
         }
       }
@@ -180,7 +221,7 @@ export default function ListingDetailScreen() {
 
         <TouchableOpacity 
             style={styles.avatarStack} 
-            onPress={() => setModalVisible(true)}
+            onPress={handleOpenModal}
         >
           {/* Show count of team members */}
           <View style={[styles.avatar, { backgroundColor: '#718F64', right: 0, zIndex: 2, alignItems:'center', justifyContent:'center' }]}>
@@ -238,89 +279,14 @@ export default function ListingDetailScreen() {
       </TouchableOpacity>
 
       {/* Collaborator Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
+      <CollaboratorModal 
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-                
-                {/* Modal Header */}
-                <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>List Members</Text>
-                    <TouchableOpacity onPress={() => { setModalVisible(false); setAddMode(false); }}>
-                        <Ionicons name="close" size={24} color="#888" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* VIEW 1: MEMBER LIST */}
-                {!addMode && (
-                    <>
-                        <Text style={styles.sectionLabel}>Team</Text>
-                        <FlatList 
-                            data={collaborators}
-                            keyExtractor={(item) => item}
-                            ListHeaderComponent={
-                                <View style={styles.userRow}>
-                                    <View style={styles.userInfo}>
-                                        <View style={[styles.userAvatar, {backgroundColor:'#FFD54F'}]}><Ionicons name="star" size={14} color="white"/></View>
-                                        <Text style={styles.userName}>Owner</Text>
-                                    </View>
-                                </View>
-                            }
-                            renderItem={({ item }) => (
-                                <View style={styles.userRow}>
-                                    <View style={styles.userInfo}>
-                                        <View style={styles.userAvatar}><Ionicons name="person" size={14} color="white"/></View>
-                                        <Text style={styles.userName} numberOfLines={1}>{item}</Text>
-                                    </View>
-                                    
-                                    {/* DELETE ICON (Only if Owner) */}
-                                    {isOwner && (
-                                        <TouchableOpacity onPress={() => handleRemove(item)}>
-                                            <Ionicons name="trash-outline" size={20} color="#E53935" />
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            )}
-                            style={{ maxHeight: 250 }}
-                        />
-                        
-                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setAddMode(true)}>
-                            <Ionicons name="person-add" size={18} color="white" style={{marginRight: 8}}/>
-                            <Text style={styles.primaryBtnText}>Invite Member</Text>
-                        </TouchableOpacity>
-                    </>
-                )}
-
-                {/* VIEW 2: ADD MEMBER */}
-                {addMode && (
-                    <View>
-                        <Text style={styles.sectionLabel}>Enter Email Address</Text>
-                        <TextInput 
-                            style={styles.input}
-                            placeholder="friend@gmail.com"
-                            value={inviteEmail}
-                            onChangeText={setInviteEmail}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                        />
-                        <View style={{flexDirection:'row', justifyContent:'space-between', marginTop: 20}}>
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddMode(false)}>
-                                <Text style={styles.cancelBtnText}>Back</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.primaryBtn, {marginTop:0, flex:1, marginLeft:10}]} onPress={handleInvite} disabled={processing}>
-                                {processing ? <ActivityIndicator color="white" /> : <Text style={styles.primaryBtnText}>Send Invite</Text>}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-
-            </View>
-        </View>
-      </Modal>
+        onClose={() => setModalVisible(false)}
+        data={modalData}
+        currentUserId={currentUserId}
+        onInvite={handleInvite}
+        onRemove={handleRemove} 
+      />
 
     </View>
   );
@@ -485,101 +451,4 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 8,
   },
-
-  // =================================================
-  // MODAL STYLES
-  // =================================================
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 25
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 25,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    elevation: 10
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333'
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 10,
-    marginTop: 10
-  },
-  userRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5'
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1
-  },
-  userAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#CFD8DC',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12
-  },
-  userName: {
-    fontSize: 16,
-    color: '#333',
-    maxWidth: '85%'
-  },
-  primaryBtn: {
-    backgroundColor: '#718F64',
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20
-  },
-  primaryBtnText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16
-  },
-  cancelBtn: {
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#F5F5F5',
-    width: 100,
-    alignItems: 'center'
-  },
-  cancelBtnText: {
-    color: '#666',
-    fontWeight: 'bold'
-  },
-  input: {
-    backgroundColor: '#F9F9F9',
-    padding: 15,
-    borderRadius: 12,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#EEE'
-  }
 });

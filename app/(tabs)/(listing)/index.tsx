@@ -1,7 +1,7 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
 import StickyNote from '@/components/StickyNotes';
-import { createNewList, deleteUserList, fetchCollaborators, fetchUserLists, shareList, updateUserList } from '@/services/api';
+import { createNewList, deleteUserList, fetchCollaborators, fetchUserLists, removeCollaborator, shareList, updateUserList } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -161,6 +161,7 @@ export default function ListingDashboard() {
 
     if (result.success) {
       Alert.alert("Success", "User added!");
+      handleOpenShareModal(listToShare);
       loadLists(true); // Refresh background list
       return true; 
     } else {
@@ -169,9 +170,47 @@ export default function ListingDashboard() {
     }
   };
 
-  // Helper to determine if I am the owner of the list being viewed
-  const amIOwnerOfCurrentList = currentUserId === currentListMeta.ownerId;
+  // Handle Remove User / Leaving List
+  const handleRemove = (idToRemove) => {
+    // Check if I am removing myself (Leaving)
+    const isLeaving = idToRemove === currentUserId; 
+    
+    // Set text based on action
+    const title = isLeaving ? "Leave List?" : "Remove User?";
+    const message = isLeaving 
+      ? "Are you sure you want to leave this list?" 
+      : "This will remove the user from the list.";
 
+    Alert.alert(title, message, [
+      { text: "Cancel", style: "cancel" },
+      { 
+        text: isLeaving ? "Leave" : "Remove", 
+        style: 'destructive',
+        onPress: async () => {
+            const result = await removeCollaborator(listToShare, idToRemove, currentUserId);
+            
+            if (result.success) {
+                if (isLeaving) {
+                    // CASE 1: I LEFT. 
+                    // Do NOT refresh the modal (I lost access). Close it immediately.
+                    setShareModalVisible(false);
+                    setListToShare(null); // Optional cleanup
+                } else {
+                    // CASE 2: I KICKED SOMEONE.
+                    // Refresh the modal to show they are gone.
+                    handleOpenShareModal(listToShare);
+                }
+
+                // Always refresh the dashboard background
+                loadLists(true); 
+            } else {
+                Alert.alert("Error", result.message || "Could not remove user.");
+            }
+        }
+      }
+    ]);
+  };
+  
   return (
     <View style={styles.screenContainer}>
 
@@ -329,6 +368,7 @@ export default function ListingDashboard() {
         data={currentListMeta}
         currentUserId={currentUserId}
         onInvite={handleShare}
+        onRemove={handleRemove}
       />
 
     </View>
