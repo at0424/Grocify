@@ -104,6 +104,43 @@ export const deleteUserList = async (listId, userId) => {
   }
 };
 
+// To remove collaborator from a list (only owner)
+export const removeCollaborator = async (listId, userIdToRemove, requesterId) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/removeCollaborator',
+      options: { body: { listId, userIdToRemove, requesterId } }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error removing user:", error);
+    return { success: false, message: error.message };
+  }
+};
+
+// Fetch Collaborators from listId
+export const fetchCollaborators = async (listId, requesterId) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME, 
+      path: `/getCollaborators`,
+      options: {
+        body: { 
+          listId: listId,
+          requesterId: requesterId
+        }
+      }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error fetching collaborators:", error);
+    return { success: false, collaborators: [], requesterRole: 'collaborator' };
+  }
+};
+
 // Fetch Grocery List Details
 export const fetchGroceryListDetails = async (listId) => {
   try {

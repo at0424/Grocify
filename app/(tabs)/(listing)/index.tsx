@@ -1,6 +1,6 @@
 import { getUserId } from '@/amplify/auth/authService';
 import StickyNote from '@/components/StickyNotes';
-import { createNewList, deleteUserList, fetchUserLists, shareList, updateUserList } from '@/services/api';
+import { createNewList, deleteUserList, fetchCollaborators, fetchUserLists, shareList, updateUserList } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -14,7 +14,8 @@ export default function ListingDashboard() {
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh state
-  
+  const [currentUserId, setCurrentUserId] = useState(null);
+
   // Modal State 
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
@@ -24,6 +25,8 @@ export default function ListingDashboard() {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareEmail, setShareEmail] = useState('');
   const [listToShare, setListToShare] = useState(null);
+  const [addMode, setAddMode] = useState(false); // Toggle between List View and Add View
+  const [currentListMeta, setCurrentListMeta] = useState({}); // Stores the full object (owner, collaborators)
 
   // Edit List State
   const [isEditing, setIsEditing] = useState(false); // Toggle for Edit Mode
@@ -34,6 +37,7 @@ export default function ListingDashboard() {
     if (!isPullToRefresh) setLoading(true);
 
     const currentUserId = await getUserId();
+    setCurrentUserId(currentUserId);
 
     if (currentUserId) {
       console.log("Refetching lists for:", currentUserId);
@@ -134,6 +138,28 @@ export default function ListingDashboard() {
     );
   };
 
+  // Handle fetching of details before opening model
+  const handleOpenShareModal = async (listId) => {
+    const userId = await getUserId();
+    const data = await fetchCollaborators(listId, userId);
+
+    if (data.success) {
+      setListToShare(listId);
+
+      setCurrentListMeta({
+        collaborators: data.collaborators,
+        myRole: data.requesterRole,
+        ownerEmail: data.ownerEmail // <--- Capture the Owner Email
+      });
+
+      setShareEmail('');
+      setAddMode(false);
+      setShareModalVisible(true);
+    } else {
+      Alert.alert("Error", "Could not load team members.");
+    }
+  };
+
   // Handle Share List
   const handleShare = async () => {
     if (!shareEmail.trim()) {
@@ -147,18 +173,23 @@ export default function ListingDashboard() {
       return;
     }
 
-    setLoading(true); // Reuse main loading or create new state
+    setLoading(true); // Reuse main loading 
     const result = await shareList(listToShare, shareEmail.trim());
     setLoading(false);
 
     if (result.success) {
       Alert.alert("Success", "User added!");
       setShareModalVisible(false);
+      setShareEmail('');
+      loadLists(true);
     } else {
       // Show specific error if user not found
       Alert.alert("Failed", result.message || "Could not find user with that email.");
     }
   };
+
+  // Helper to determine if I am the owner of the list being viewed
+  const amIOwnerOfCurrentList = currentUserId === currentListMeta.ownerId;
 
   return (
     <View style={styles.screenContainer}>
@@ -189,8 +220,8 @@ export default function ListingDashboard() {
 
           // Pull to refresh logic
           refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
+            <RefreshControl
+              refreshing={refreshing}
               onRefresh={onRefresh}
               tintColor="white" // iOS Spinner Color
               colors={['#718F64']} // Android Spinner Color
@@ -216,7 +247,11 @@ export default function ListingDashboard() {
                 } else {
                   router.push({  // Normal Mode: Navigate
                     pathname: "./detail_list",
-                    params: { listId: item.listId, title: item.listName }
+                    params: {
+                      listId: item.listId,
+                      title: item.listName,
+                      userRole: item.role,
+                    }
                   });
                 }
               }}
@@ -228,9 +263,7 @@ export default function ListingDashboard() {
                 if (isEditing) {
                   handleDelete(item.listId, item.listName);
                 } else {
-                  setListToShare(item.listId);
-                  setShareEmail(''); // Clear previous input
-                  setShareModalVisible(true);
+                  handleOpenShareModal(item.listId);
                 }
               }}
 
@@ -316,28 +349,92 @@ export default function ListingDashboard() {
         onRequestClose={() => setShareModalVisible(false)}
       >
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { minHeight: 250 }]}> 
-            
+          <View style={[styles.modalContent, { minHeight: 300 }]}>
+
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Collaborator</Text>
-              <TouchableOpacity onPress={() => setShareModalVisible(false)}>
+              <Text style={styles.modalTitle}>List Members</Text>
+              <TouchableOpacity onPress={() => { setShareModalVisible(false); setAddMode(false); }}>
                 <Ionicons name="close" size={24} color="#888" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>User's Email</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="friend@gmail.com"
-              value={shareEmail}
-              onChangeText={(text) => setShareEmail(text.toLowerCase())} // Force lowercase
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            {/* VIEW 1: MEMBER LIST */}
+            {!addMode && (
+              <>
+                <Text style={styles.sectionLabel}>Team</Text>
+                <FlatList
+                  data={currentListMeta.collaborators || []}
+                  keyExtractor={(item) => item}
+                  // Show Owner Header
+                  ListHeaderComponent={
+                    <View style={styles.userRow}>
+                      <View style={styles.userInfo}>
+                        <View style={[styles.userAvatar, { backgroundColor: '#FFD54F' }]}>
+                          <Ionicons name="star" size={14} color="white" />
+                        </View>
+                        <Text style={styles.userName}>
+                          {/* LOGIC UPDATE: */}
+                          {/* If I am owner, show "You (Owner)" */}
+                          {/* If I am NOT owner, show the Owner's Email we just fetched */}
+                          {currentListMeta.myRole === 'owner'
+                            ? "You (Owner)"
+                            : (currentListMeta.ownerEmail || "Owner")
+                          }
+                        </Text>
+                      </View>
+                    </View>
+                  }
+                  renderItem={({ item }) => (
+                    <View style={styles.userRow}>
+                      <View style={styles.userInfo}>
+                        <View style={styles.userAvatar}>
+                          <Ionicons name="person" size={14} color="white" />
+                        </View>
+                        <Text style={styles.userName} numberOfLines={1}>
+                          {/* If ID matches me, show "You", otherwise show EMAIL */}
+                          {item.userId === currentUserId ? "You" : item.email}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                  style={{ maxHeight: 200, marginBottom: 20 }}
+                />
 
-            <TouchableOpacity style={styles.createBtn} onPress={handleShare}>
-               <Text style={styles.createBtnText}>Invite</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.createBtn} onPress={() => setAddMode(true)}>
+                  <Ionicons name="person-add" size={18} color="white" style={{ marginRight: 8 }} />
+                  <Text style={styles.createBtnText}>Invite Member</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* VIEW 2: ADD MEMBER INPUT */}
+            {addMode && (
+              <View>
+                <Text style={styles.sectionLabel}>Invite by Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="friend@gmail.com"
+                  value={shareEmail}
+                  onChangeText={(text) => setShareEmail(text.toLowerCase())}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddMode(false)}>
+                    <Text style={styles.cancelBtnText}>Back</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.createBtn, { flex: 1, marginTop: 0, marginLeft: 10 }]}
+                    onPress={handleShare}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? <ActivityIndicator color="white" /> : <Text style={styles.createBtnText}>Send</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
           </View>
         </KeyboardAvoidingView>
@@ -349,12 +446,20 @@ export default function ListingDashboard() {
 
 const styles = StyleSheet.create({
   // ==========================================
-  // 1. MAIN LAYOUT
+  // 1. MAIN SCREEN LAYOUT
   // ==========================================
   screenContainer: {
     flex: 1,
     backgroundColor: '#718F64', // Moss Green
     paddingTop: 50, // Status bar spacing
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 100, // Space for the bottom floating button
+  },
+  row: {
+    justifyContent: 'space-between', // Keeps notes spaced evenly
+    marginBottom: 15, // Space between rows
   },
 
   // ==========================================
@@ -376,18 +481,8 @@ const styles = StyleSheet.create({
   },
 
   // ==========================================
-  // 3. LIST / GRID
+  // 3. EMPTY STATE
   // ==========================================
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100, // Space for the bottom floating button
-  },
-  row: {
-    justifyContent: 'space-between', // Keeps notes spaced evenly
-    marginBottom: 15, // Space between rows
-  },
-
-  // Empty State (When no lists exist)
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -434,7 +529,7 @@ const styles = StyleSheet.create({
   },
 
   // ==========================================
-  // 5. MODAL (Create / Rename)
+  // 5. MODAL BASE
   // ==========================================
   modalOverlay: {
     flex: 1,
@@ -466,12 +561,21 @@ const styles = StyleSheet.create({
     color: '#333'
   },
 
-  // Form Inputs
+  // ==========================================
+  // 6. FORM INPUTS & LABELS
+  // ==========================================
   label: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 12,
     color: '#555',
+    marginTop: 10
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888',
+    marginBottom: 10,
     marginTop: 10
   },
   input: {
@@ -485,7 +589,40 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 
-  // Color Picker
+  // ==========================================
+  // 7. LIST ITEMS (COLLABORATORS)
+  // ==========================================
+  userRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5'
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1
+  },
+  userAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#CFD8DC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12
+  },
+  userName: {
+    fontSize: 16,
+    color: '#333',
+    maxWidth: '85%'
+  },
+
+  // ==========================================
+  // 8. COLOR PICKER
+  // ==========================================
   colorRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -497,7 +634,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    // Shadow for circles
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -510,17 +646,35 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.1 }], // Slight pop effect
   },
 
-  // Modal Action Button
+  // ==========================================
+  // 9. BUTTONS (PRIMARY & CANCEL)
+  // ==========================================
   createBtn: {
     backgroundColor: '#718F64',
     padding: 18,
     borderRadius: 15,
     alignItems: 'center',
     marginTop: 10,
+    // Optional: Flex props in case you add icons inside
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   createBtnText: {
     color: 'white',
     fontSize: 18,
+    fontWeight: 'bold'
+  },
+  cancelBtn: {
+    padding: 18,
+    borderRadius: 15,
+    backgroundColor: '#F5F5F5',
+    width: 100,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EEE'
+  },
+  cancelBtnText: {
+    color: '#666',
     fontWeight: 'bold'
   },
 });

@@ -1,20 +1,63 @@
-import { fetchGroceryListDetails, toggleGroceryItem } from '@/services/api';
+import { getUserId } from '@/amplify/auth/authService';
+import { fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function ListingDetailScreen() {
   const router = useRouter();
-  const { listId, title } = useLocalSearchParams();
+  const { listId, title, userRole } = useLocalSearchParams();
 
+  // Data States
   const [items, setItems] = useState([]);
+  const [collaborators, setCollaborators] = useState([]); 
+  const [currentUserId, setCurrentUserId] = useState(null); 
+
+  // UI States
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh state
+
+  // Modal States (NEW)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [addMode, setAddMode] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [processing, setProcessing] = useState(false);
+
+  // Check Ownership
+  const isOwner = (userRole === 'owner');
+  
+  // Refresh Screen
+  const loadItems = async (isPullToRefresh = false) => {
+    if (!isPullToRefresh && items.length === 0) setLoading(true);
+
+    try {
+      // Get your ID
+      const uid = await getUserId();
+      setCurrentUserId(uid);
+
+      // Fetch Data
+      const data = await fetchGroceryListDetails(listId);
+      
+      // Separate Items from Collaborators
+      if (data.items) {
+        setItems(data.items);
+        setCollaborators(data.collaborators || []); 
+      } else {
+        setItems(data); // Legacy fallback
+      }
+    } catch (e) {
+      console.log("Error loading items:", e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
       // Immediate Load (Show Spinner)
-      loadItems(); 
+      loadItems();
 
       // Start Polling (The "Heartbeat")
       // Every 5000ms (5 seconds), fetch data silently
@@ -31,18 +74,11 @@ export default function ListingDetailScreen() {
     }, [listId])
   );
 
-  const loadItems = async (isSilent = false) => {
-    // Only show the big spinner if it's NOT a silent update AND list is empty
-    if (!isSilent && items.length === 0) setLoading(true);
 
-    try {
-      const data = await fetchGroceryListDetails(listId);
-      setItems(data);
-    } catch (e) {
-      console.log("Error polling:", e);
-    } finally {
-      setLoading(false);
-    }
+  // Handle Pull-to-refresh
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadItems(true); // true = isPullToRefresh
   };
 
   // Handler for toggling
@@ -60,6 +96,45 @@ export default function ListingDetailScreen() {
     await toggleGroceryItem(listId, targetItem.itemId);
   };
 
+  // Handle invite collaborator
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setProcessing(true);
+
+    const result = await shareList(listId, inviteEmail.toLowerCase().trim());
+    
+    setProcessing(false);
+    if (result.success) {
+      Alert.alert("Success", "User added!");
+      setInviteEmail('');
+      setAddMode(false);
+      loadItems(true); // Refresh to see new member
+    } else {
+      Alert.alert("Failed", result.message || "Could not find user.");
+    }
+  };
+
+
+  // Handle remove collaborator
+  const handleRemove = (idToRemove) => {
+    Alert.alert("Remove User?", "This will delete the list from their device.", [
+      { text: "Cancel", style: "cancel" },
+      { 
+        text: "Remove", 
+        style: 'destructive',
+        onPress: async () => {
+            const result = await removeCollaborator(listId, idToRemove, currentUserId);
+            if (result.success) {
+                // Remove locally immediately for speed
+                setCollaborators(prev => prev.filter(id => id !== idToRemove));
+            } else {
+                Alert.alert("Error", result.message || "Could not remove user.");
+            }
+        }
+      }
+    ]);
+  };
+
   // For each item in the list
   const renderItem = ({ item }) => {
     const isChecked = item.checked || false;
@@ -67,13 +142,13 @@ export default function ListingDetailScreen() {
     return (
       <TouchableOpacity onPress={() => handleToggle(item)} activeOpacity={0.7}>
         <View style={[styles.itemRow, isChecked && { opacity: 0.6 }]}>
-          
+
           {/* Main Row Content */}
           <View style={styles.mainRow}>
             <View style={styles.leftSide}>
               {/* Bullet turns Green when checked */}
               <View style={[styles.bulletPoint, isChecked && { backgroundColor: '#718F64' }]} />
-              
+
               <Text style={[styles.itemText, isChecked && styles.strikethrough]}>
                 {item.name}
               </Text>
@@ -86,7 +161,7 @@ export default function ListingDetailScreen() {
 
           {/* THE CROSS LINE (The "Gummy Bear" scratch-out effect) */}
           {isChecked && <View style={styles.crossLine} />}
-          
+
         </View>
       </TouchableOpacity>
     );
@@ -103,14 +178,23 @@ export default function ListingDetailScreen() {
 
         <Text style={styles.headerTitle}>{title || "Unnamed List"}</Text>
 
-        <View style={styles.avatarStack}>
-          <View style={[styles.avatar, { backgroundColor: '#ddd', right: 0, zIndex: 1 }]} />
-          <View style={[styles.avatar, { backgroundColor: '#bbb', right: 15, zIndex: 0 }]} />
-        </View>
+        <TouchableOpacity 
+            style={styles.avatarStack} 
+            onPress={() => setModalVisible(true)}
+        >
+          {/* Show count of team members */}
+          <View style={[styles.avatar, { backgroundColor: '#718F64', right: 0, zIndex: 2, alignItems:'center', justifyContent:'center' }]}>
+            <Text style={{color:'white', fontSize: 10, fontWeight:'bold'}}>
+                {collaborators.length + 1}
+            </Text>
+          </View>
+          <View style={[styles.avatar, { backgroundColor: '#A5D6A7', right: 12, zIndex: 1 }]} />
+        </TouchableOpacity>
+
       </View>
 
       {/* Content */}
-     {loading ? (
+      {loading ? (
         <ActivityIndicator size="large" color="#718F64" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
@@ -118,7 +202,17 @@ export default function ListingDetailScreen() {
           keyExtractor={(item, index) => index.toString()} // Use unique ID if available later
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
-          
+
+          // Pull to refresh logic
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="white" // iOS Spinner Color
+              colors={['#718F64']} // Android Spinner Color
+            />
+          }
+
           // The Empty State You Requested
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -130,18 +224,103 @@ export default function ListingDetailScreen() {
       )}
 
       {/* --- Floating Action Button (+) --- */}
-      <TouchableOpacity 
-        style={styles.fab} 
+      <TouchableOpacity
+        style={styles.fab}
         onPress={() => router.push({
-          pathname: "./grocery_item", 
-          params: { 
-            listId: listId, 
-            title: title    
+          pathname: "./grocery_item",
+          params: {
+            listId: listId,
+            title: title
           }
         })}
       >
         <Ionicons name="add" size={30} color="#000" />
       </TouchableOpacity>
+
+      {/* Collaborator Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+                
+                {/* Modal Header */}
+                <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>List Members</Text>
+                    <TouchableOpacity onPress={() => { setModalVisible(false); setAddMode(false); }}>
+                        <Ionicons name="close" size={24} color="#888" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* VIEW 1: MEMBER LIST */}
+                {!addMode && (
+                    <>
+                        <Text style={styles.sectionLabel}>Team</Text>
+                        <FlatList 
+                            data={collaborators}
+                            keyExtractor={(item) => item}
+                            ListHeaderComponent={
+                                <View style={styles.userRow}>
+                                    <View style={styles.userInfo}>
+                                        <View style={[styles.userAvatar, {backgroundColor:'#FFD54F'}]}><Ionicons name="star" size={14} color="white"/></View>
+                                        <Text style={styles.userName}>Owner</Text>
+                                    </View>
+                                </View>
+                            }
+                            renderItem={({ item }) => (
+                                <View style={styles.userRow}>
+                                    <View style={styles.userInfo}>
+                                        <View style={styles.userAvatar}><Ionicons name="person" size={14} color="white"/></View>
+                                        <Text style={styles.userName} numberOfLines={1}>{item}</Text>
+                                    </View>
+                                    
+                                    {/* DELETE ICON (Only if Owner) */}
+                                    {isOwner && (
+                                        <TouchableOpacity onPress={() => handleRemove(item)}>
+                                            <Ionicons name="trash-outline" size={20} color="#E53935" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            )}
+                            style={{ maxHeight: 250 }}
+                        />
+                        
+                        <TouchableOpacity style={styles.primaryBtn} onPress={() => setAddMode(true)}>
+                            <Ionicons name="person-add" size={18} color="white" style={{marginRight: 8}}/>
+                            <Text style={styles.primaryBtnText}>Invite Member</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {/* VIEW 2: ADD MEMBER */}
+                {addMode && (
+                    <View>
+                        <Text style={styles.sectionLabel}>Enter Email Address</Text>
+                        <TextInput 
+                            style={styles.input}
+                            placeholder="friend@gmail.com"
+                            value={inviteEmail}
+                            onChangeText={setInviteEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                        />
+                        <View style={{flexDirection:'row', justifyContent:'space-between', marginTop: 20}}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddMode(false)}>
+                                <Text style={styles.cancelBtnText}>Back</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.primaryBtn, {marginTop:0, flex:1, marginLeft:10}]} onPress={handleInvite} disabled={processing}>
+                                {processing ? <ActivityIndicator color="white" /> : <Text style={styles.primaryBtnText}>Send Invite</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
+
+            </View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -170,9 +349,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '600',
-    fontFamily: 'System', 
+    fontFamily: 'System',
     color: '#333',
-    flex: 1, 
+    flex: 1,
     marginLeft: 10,
     textAlign: 'center',
   },
@@ -183,9 +362,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 2,
     borderColor: '#FFF9C4', // Matches background for "cutout" effect
     position: 'absolute',
@@ -198,23 +377,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100, // Extra padding at bottom for the FAB
   },
-  sectionContainer: {
-    marginBottom: 10,
-  },
-  sectionHeader: {
-    backgroundColor: '#E6EE9C', // Darker Yellow/Green header strip
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    borderRadius: 8,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '500',
-    textAlign: 'center',
-    color: '#555',
-  },
-
+  
   // =================================================
   // ITEM ROWS
   // =================================================
@@ -227,9 +390,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: 'rgba(255,255,255,0.4)', // Slight highlight for readability
     borderRadius: 10,
-    // Optional: Border bottom to look like lined paper
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  mainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'space-between'
   },
   leftSide: {
     flexDirection: 'row',
@@ -252,19 +420,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  quantityText: { // Renamed from 'qtyText' to match your JSX
+  quantityText: {
     fontSize: 18,
     fontWeight: '600',
     color: '#555',
-    marginRight: 5,
-  },
-  subText: {
-    fontSize: 14,
-    color: '#777',
-    marginLeft: 30, // Indented under the text
-    marginTop: -5,
-    marginBottom: 10,
-    fontStyle: 'italic',
   },
 
   // =================================================
@@ -326,4 +485,101 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 8,
   },
+
+  // =================================================
+  // MODAL STYLES
+  // =================================================
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 25
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 25,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    elevation: 10
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888',
+    marginBottom: 10,
+    marginTop: 10
+  },
+  userRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5'
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1
+  },
+  userAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#CFD8DC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12
+  },
+  userName: {
+    fontSize: 16,
+    color: '#333',
+    maxWidth: '85%'
+  },
+  primaryBtn: {
+    backgroundColor: '#718F64',
+    padding: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20
+  },
+  primaryBtnText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16
+  },
+  cancelBtn: {
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#F5F5F5',
+    width: 100,
+    alignItems: 'center'
+  },
+  cancelBtnText: {
+    color: '#666',
+    fontWeight: 'bold'
+  },
+  input: {
+    backgroundColor: '#F9F9F9',
+    padding: 15,
+    borderRadius: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#EEE'
+  }
 });
