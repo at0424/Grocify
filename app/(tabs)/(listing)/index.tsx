@@ -67,6 +67,12 @@ export default function ListingDashboard() {
   const openModal = (listToEdit = null) => {
     if (listToEdit) {
       // Edit Mode
+      // Owner Check
+      if (listToEdit.role !== 'owner') {
+        Alert.alert("Permission Denied", "Only the owner can rename this list.");
+        return; // <--- STOP HERE. Do not open the modal.
+      }
+
       setEditingListId(listToEdit.listId);
       setListNameInput(listToEdit.listName);
       setSelectedColor(listToEdit.color || COLORS[0]); // Preserve color if you have it

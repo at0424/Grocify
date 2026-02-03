@@ -1,4 +1,4 @@
-import { del, get, post } from 'aws-amplify/api';
+import { del, get, post, put } from 'aws-amplify/api';
 
 const API_NAME = 'GroceryAPI'; 
 
@@ -99,7 +99,6 @@ export const deleteUserList = async (listId, userId) => {
     const response = await operation.response;
     return await response.body.json();
   } catch (error) {
-    // console.error("Error deleting list:", error);
     return { 
       success: false,
       message: error.message || String(error)
