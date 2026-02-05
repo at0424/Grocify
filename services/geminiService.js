@@ -1,9 +1,9 @@
 import { Platform } from 'react-native';
 
 const LOCAL_SERVER_URL = Platform.select({
-  android: 'http://10.0.2.2:3000/chat', 
-  ios: 'http://localhost:3000/chat',
-  default: 'http://localhost:3000/chat',
+  android: 'http://192.168.100.34:3000/chat', 
+  ios: 'http://192.168.100.34:3000/chat',
+  default: 'http://192.168.100.34:3000/chat',
 });
 
 export const sendMessageToGemini = async (userMessage) => {

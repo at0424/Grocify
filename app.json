@@ -20,7 +20,8 @@
         "monochromeImage": "./assets/images/Grocify_Logo.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "output": "static",

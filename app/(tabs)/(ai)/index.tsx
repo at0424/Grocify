@@ -5,13 +5,13 @@ import {
     FlatList,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { sendMessageToGemini } from '../../../services/geminiService.js';
 
 export default function ChatScreen() {
@@ -31,12 +31,12 @@ export default function ChatScreen() {
         // Add user message to UI
         const userMsgText = inputText;
         const userMsgId = Date.now().toString();
-        
+
         setMessages((prev) => [
-            ...prev, 
+            ...prev,
             { id: userMsgId, text: userMsgText, sender: 'user' }
         ]);
-        
+
         setInputText('');
         setIsLoading(true);
 
@@ -46,13 +46,13 @@ export default function ChatScreen() {
 
             // Add bot response to UI
             setMessages((prev) => [
-                ...prev, 
+                ...prev,
                 { id: (Date.now() + 1).toString(), text: botResponseText, sender: 'bot' }
             ]);
         } catch (error) {
             // Handle error gracefully in UI
             setMessages((prev) => [
-                ...prev, 
+                ...prev,
                 { id: (Date.now() + 1).toString(), text: "Sorry, something went wrong.", sender: 'bot' }
             ]);
         } finally {
@@ -85,20 +85,24 @@ export default function ChatScreen() {
                 <Ionicons name="menu" size={24} color="#333" />
             </View>
 
-            {/* Message List */}
-            <FlatList
-                data={messages}
-                renderItem={renderItem}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-            // Auto-scroll to bottom behavior can be added here
-            />
-
-            {/* Input Area */}
+            {/* Main Content */}
             <KeyboardAvoidingView
+                style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
             >
+                {/* Message List */}
+                <FlatList
+                    data={messages}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.listContent}
+                    style={{ flex: 1 }}
+                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                />
+
+                {/* Input Area */}
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
