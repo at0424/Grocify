@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     FlatList,
     KeyboardAvoidingView,
@@ -19,38 +20,65 @@ export default function ChatScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
     const flatListRef = useRef(null);       // For auto-scrolling
+    const [messages, setMessages] = useState([]);
 
-    // Intial message from the bot
-    const [messages, setMessages] = useState([
-        { id: '1', text: 'Hello! How can I help you today?', sender: 'bot' },
-    ]);
+    // Load chat history when screen opens
+    useEffect(() => {
+        loadChatHistory();
+    }, []);
+
+    // Save chat history whenever 'messages' changes
+    useEffect(() => {
+        if (messages.length > 0) {
+            saveChatHistory(messages);
+        }
+    }, [messages]);
+
+    const loadChatHistory = async () => {
+        try {
+            const storedMessages = await AsyncStorage.getItem('chat_history');
+            if (storedMessages) {
+                setMessages(JSON.parse(storedMessages));
+            } else {
+                // If no history, set default welcome message
+                setMessages([
+                    { id: '1', text: 'Hello! I remember our past conversations now. How can I help?', sender: 'bot' },
+                ]);
+            }
+        } catch (error) {
+            console.error('Failed to load history', error);
+        }
+    };
+
+    const saveChatHistory = async (newMessages) => {
+        try {
+            await AsyncStorage.setItem('chat_history', JSON.stringify(newMessages));
+        } catch (error) {
+            console.error('Failed to save history', error);
+        }
+    };
 
     const sendMessage = async () => {
         if (inputText.trim().length === 0) return;
 
-        // Add user message to UI
         const userMsgText = inputText;
         const userMsgId = Date.now().toString();
 
-        setMessages((prev) => [
-            ...prev,
-            { id: userMsgId, text: userMsgText, sender: 'user' }
-        ]);
-
+        // Update UI immediately
+        const updatedMessages = [...messages, { id: userMsgId, text: userMsgText, sender: 'user' }];
+        setMessages(updatedMessages);
+        
         setInputText('');
         setIsLoading(true);
 
         try {
-            // CALL THE SERVICE
             const botResponseText = await sendMessageToGemini(userMsgText);
-
-            // Add bot response to UI
+            
             setMessages((prev) => [
                 ...prev,
                 { id: (Date.now() + 1).toString(), text: botResponseText, sender: 'bot' }
             ]);
         } catch (error) {
-            // Handle error gracefully in UI
             setMessages((prev) => [
                 ...prev,
                 { id: (Date.now() + 1).toString(), text: "Sorry, something went wrong.", sender: 'bot' }
