@@ -183,7 +183,7 @@ export const shareList = async (listId, email) => {
 };
 
 // Add item to Grocery List
-export const addListItems = async (listId, name, quantity, category) => {
+export const addListItems = async (listId, name, quantity, category, shelfLife) => {
   try {
     const operation = post({ 
       apiName: API_NAME,
@@ -193,7 +193,8 @@ export const addListItems = async (listId, name, quantity, category) => {
           listId,
           name,
           quantity,
-          category
+          category,
+          shelfLife,
         }
       }
     });

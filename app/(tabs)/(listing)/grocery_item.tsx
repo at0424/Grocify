@@ -137,7 +137,7 @@ export default function AddItemScreen() {
         setAddingId(item.name); // Show spinner
 
         // Call API (Defaulting quantity to "1")
-        const result = await addListItems(listId, item.name, "1", item.category);
+        const result = await addListItems(listId, item.name, "1", item.category, item.shelfLife);
 
         setAddingId(null);
 
