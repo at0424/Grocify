@@ -22,9 +22,6 @@ export default function ListingDetailScreen() {
   // Modal States (NEW)
   const [modalVisible, setModalVisible] = useState(false);
   const [modalData, setModalData] = useState({ collaborators: [], ownerEmail: '', myRole: '' });
-
-  // Check Ownership
-  const isOwner = (userRole === 'owner');
   
   // Refresh Screen
   const loadItems = async (isPullToRefresh = false) => {
@@ -105,7 +102,7 @@ export default function ListingDetailScreen() {
     setItems(newItems);
 
     // Call Backend to save
-    await toggleGroceryItem(listId, targetItem.itemId);
+    await toggleGroceryItem(listId, targetItem.itemId, currentUserId);
   };
 
   const handleOpenModal = async () => {
