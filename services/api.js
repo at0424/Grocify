@@ -227,3 +227,36 @@ export const toggleGroceryItem = async (listId, itemId, checkedBy) => {
     return null;
   }
 };
+
+export const fetchFridgeItems = async (listId) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME, 
+      path: '/getFridgeItems', 
+      options: {
+        queryParams: { 
+          listId: listId
+        }
+      }
+    });
+
+    const response = await operation.response;
+    
+    let data;
+    if (response.body && typeof response.body.json === 'function') {
+        data = await response.body.json();
+    } else {
+        data = await response.json ? await response.json() : response; 
+    }
+
+    console.log(`Fetch success for ${listId}:`, data); 
+    return data;
+
+  } catch (error) {
+    console.error(`Error fetching fridge ${listId}:`, error);
+    if (error.response) {
+        console.error("Error Response Body:", await error.response.body.text());
+    }
+    return { success: false, items: [] }; 
+  }
+};
