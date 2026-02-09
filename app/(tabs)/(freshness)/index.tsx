@@ -18,19 +18,48 @@ import {
 } from 'react-native';
 
 // Use to calculate the expiring days remaining
-const calculateDaysRemaining = (expiryDateString) => {
-  if (!expiryDateString) return 0;
+const calculateTimeRemaining = (expiryDateString) => {
+  if (!expiryDateString) return { value: 0, unit: 'expired' };
+
   const today = new Date();
   const expiry = new Date(expiryDateString);
-  const diffTime = expiry - today;
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  
+  // Get difference in milliseconds
+  const diffMs = expiry - today;
+
+  // If time has passed, it's Expired
+  if (diffMs <= 0) {
+    return { value: 0, unit: 'expired' };
+  }
+
+  // If less than 24 hours, show HOURS
+  if (diffMs < (1000 * 60 * 60 * 24)) {
+    const hoursLeft = Math.ceil(diffMs / (1000 * 60 * 60));
+    return { value: hoursLeft, unit: 'hours' };
+  }
+
+  // Otherwise, show DAYS
+  const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return { value: daysLeft, unit: 'days' };
 };
 
 // Function to change the badge color based on expiring day
-const getBadgeColor = (days) => {
-  if (days <= 0) return '#D32F2F'; 
-  if (days <= 3) return '#F57C00'; 
-  return '#388E3C'; 
+const getBadgeStatus = (timeData) => {
+  const { value, unit } = timeData;
+
+  if (unit === 'expired') return { color: '#D32F2F', label: 'EXPIRED' }; // Red
+  
+  if (unit === 'hours') {
+    // Less than 12 hours = Critical Red, else Orange
+    return { 
+      color: value < 12 ? '#D32F2F' : '#F57C00', 
+      label: `${value}h` 
+    };
+  }
+
+  // Days Logic
+  if (value <= 3) return { color: '#F57C00', label: `${value}d` }; // Orange
+  return { color: '#388E3C', label: `${value}d` }; // Green
 };
 
 const FreshnessDashboard = () => {
@@ -114,24 +143,29 @@ const FreshnessDashboard = () => {
     ? allItems 
     : allItems.filter(item => item.listId === selectedListId);
 
+    
   const renderItem = (item, index) => {
-    const daysLeft = calculateDaysRemaining(item.expiryDate);
-    const badgeColor = getBadgeColor(daysLeft);
-    const isExpired = daysLeft <= 0;
+    // Get the precise time data
+    const timeData = calculateTimeRemaining(item.expiryDate);
+    
+    // Get the Color and Label
+    const status = getBadgeStatus(timeData);
+
     const itemImage = require('@/assets/images/Apple.png'); 
 
     return (
       <View key={`${item.itemId}-${index}`} style={[styles.itemContainer, { left: (index * 70) % 250 }]}>
         <Image source={itemImage} style={styles.itemImage} resizeMode="contain" />
         
-        <View style={[styles.timerBadge, { borderColor: badgeColor }]}>
-          {isExpired ? (
-             <Ionicons name="alert-circle" size={12} color={badgeColor} />
-          ) : (
-             <Ionicons name="time-outline" size={12} color={badgeColor} />
-          )}
-          <Text style={[styles.timerText, { color: badgeColor }]}>
-            {isExpired ? "EXPIRED" : `${daysLeft} DAYS`}
+        {/* The Timer Badge */}
+        <View style={[styles.timerBadge, { borderColor: status.color }]}>
+          {/* Show Alert Icon if Expired or very urgent (Hours) */}
+          {timeData.unit === 'expired' || timeData.unit === 'hours' ? (
+             <Ionicons name="alert-circle" size={10} color={status.color} />
+          ) : null}
+          
+          <Text style={[styles.timerText, { color: status.color }]}>
+            {status.label}
           </Text>
         </View>
 
