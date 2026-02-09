@@ -228,6 +228,7 @@ export const toggleGroceryItem = async (listId, itemId, checkedBy) => {
   }
 };
 
+// Fetch fridge item for item freshness dashboard
 export const fetchFridgeItems = async (listId) => {
   try {
     const operation = get({ 
@@ -249,7 +250,7 @@ export const fetchFridgeItems = async (listId) => {
         data = await response.json ? await response.json() : response; 
     }
 
-    console.log(`Fetch success for ${listId}:`, data); 
+    console.log(`Fetch success for ${listId}`); 
     return data;
 
   } catch (error) {
@@ -258,5 +259,27 @@ export const fetchFridgeItems = async (listId) => {
         console.error("Error Response Body:", await error.response.body.text());
     }
     return { success: false, items: [] }; 
+  }
+};
+
+// To update item properties in freshness dashboard
+export const updateFridgeItem = async (listId, itemId, action, newDate = null) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/updateFridgeItem', 
+      options: {
+        body: { 
+          listId, 
+          itemId,
+          action,   // 'CONSUME' or 'UPDATE_DATE'
+          newDate
+        }
+      }
+    });
+    return await operation.response;
+  } catch (error) {
+    console.error("Error updating fridge item:", error);
+    return null;
   }
 };
