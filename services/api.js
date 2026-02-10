@@ -283,3 +283,18 @@ export const updateFridgeItem = async (listId, itemId, action, newDate = null) =
     return null;
   }
 };
+
+export const fetchUserMealPlan = async () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      // CHANGE THIS TO 'true' LATER TO SEE THE DASHBOARD
+      const hasPlan = false; 
+      
+      if (hasPlan) {
+        resolve({ id: 'plan_123', title: 'Weekly Keto Plan', status: 'active' });
+      } else {
+        resolve(null); // No plan found
+      }
+    }, 1000); // Simulate 1 sec network delay
+  });
+};
