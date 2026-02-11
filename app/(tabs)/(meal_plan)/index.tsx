@@ -47,13 +47,13 @@ export default function MealPlanEmptyScreen() {
         );
     }
 
-    // 4. Render: If No Plan -> Show Empty State (Your requested UI)
+    // Render: If No Plan -> Show Empty State 
     return (
         <EmptyState router={router} />
     );
 };
 
-// --- SUB-COMPONENT: EMPTY STATE (Screen 1) ---
+// Screen when there is no meal plan
 const EmptyState = ({ router }) => (
     <SafeAreaView style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
@@ -70,7 +70,6 @@ const EmptyState = ({ router }) => (
         {/* Content */}
         <View style={styles.content}>
             <View style={styles.iconCircle}>
-                {/* Using a placeholder image or icon for the clipboard/apple */}
                 <ClipboardList color="#8E8E8E" size={64} strokeWidth={1.5} />
             </View>
             <Text style={styles.emptyText}>
@@ -82,7 +81,7 @@ const EmptyState = ({ router }) => (
         <View style={styles.footer}>
             <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={() => router.push('/create')} // Goes to Date Selection
+                onPress={() => router.push('/dates')} 
             >
                 <Text style={styles.primaryButtonText}>Create Plan</Text>
             </TouchableOpacity>
@@ -90,7 +89,6 @@ const EmptyState = ({ router }) => (
     </SafeAreaView>
 );
 
-// --- SUB-COMPONENT: DASHBOARD (Screen 5 Placeholder) ---
 const MealPlanDashboard = ({ plan }) => (
     <SafeAreaView style={styles.container}>
         <Stack.Screen options={{ headerShown: false }} />
@@ -106,7 +104,6 @@ const MealPlanDashboard = ({ plan }) => (
     </SafeAreaView>
 );
 
-// --- STYLES ---
 const styles = StyleSheet.create({
     container: {
         flex: 1,
