@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    DeviceEventEmitter,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -21,6 +22,7 @@ export default function MealPlanPreviewScreen() {
     const [loading, setLoading] = useState(true);
     const [plan, setPlan] = useState([]);
     const [recipePool, setRecipePool] = useState({});
+    const [swappingSlot, setSwappingSlot] = useState(null);
 
     // Initialization
     useEffect(() => {
@@ -82,6 +84,36 @@ export default function MealPlanPreviewScreen() {
         }
     };
 
+    useEffect(() => {
+        // Listen for the 'event.recipeSelected' event from RecipesListScreen
+        const subscription = DeviceEventEmitter.addListener('event.recipeSelected', (selectedRecipe) => {
+            if (swappingSlot && selectedRecipe) {
+                // Update the plan with the user's chosen recipe
+                setPlan(currentPlan => {
+                    return currentPlan.map(day => {
+                        if (day.date === swappingSlot.date) {
+                            const updatedMeals = day.meals.map(meal => {
+                                if (meal.type === swappingSlot.type) {
+                                    return { ...meal, recipe: selectedRecipe };
+                                }
+                                return meal;
+                            });
+                            return { ...day, meals: updatedMeals };
+                        }
+                        return day;
+                    });
+                });
+                // Clear the tracker
+                setSwappingSlot(null);
+            }
+        });
+
+        // Cleanup listener on unmount
+        return () => {
+            subscription.remove();
+        };
+    }, [swappingSlot]); // Re-bind if swappingSlot changes (important!)
+
     // Pick Random Recipe 
     const getRandomRecipe = (list) => {
         if (!list || list.length === 0) return null;
@@ -91,28 +123,14 @@ export default function MealPlanPreviewScreen() {
 
     // Swap Recipe
     const handleSwap = (dateKey, mealType) => {
-        // Get the list of available recipes for this type
-        const list = recipePool[mealType];
-        if (!list) return;
+        // 1. Remember which slot we are editing
+        setSwappingSlot({ date: dateKey, type: mealType });
 
-        // Pick a NEW random one
-        const newRecipe = getRandomRecipe(list);
-
-        // Update State
-        setPlan(currentPlan => {
-            return currentPlan.map(day => {
-                if (day.date === dateKey) {
-                    // Found the day, now update the specific meal in the 'meals' array
-                    const updatedMeals = day.meals.map(meal => {
-                        if (meal.type === mealType) {
-                            return { ...meal, recipe: newRecipe };
-                        }
-                        return meal;
-                    });
-                    return { ...day, meals: updatedMeals };
-                }
-                return day;
-            });
+        // 2. Navigate to the Library Screen
+        // Pass the 'type' (e.g., Breakfast) so the list filters automatically
+        router.push({
+            pathname: '/recipes_list',
+            params: { type: mealType }
         });
     };
 
@@ -219,11 +237,7 @@ export default function MealPlanPreviewScreen() {
                                     {/* We use a View to intercept the touch so swapping doesn't open the page */}
                                     <TouchableOpacity
                                         style={styles.refreshButton}
-                                        onPress={(e) => {
-                                            // Stop propagation isn't strictly needed in RN if handling separate touchables,
-                                            // but keeping it distinct helps logic.
-                                            handleSwap(day.date, meal.type);
-                                        }}
+                                        onPress={() => handleSwap(day.date, meal.type)}
                                     >
                                         <RefreshCw size={18} color="#7A9B6B" />
                                     </TouchableOpacity>
