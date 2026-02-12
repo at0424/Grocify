@@ -3,13 +3,13 @@ import { Stack, useRouter } from 'expo-router';
 import { ChevronDown, ChevronLeft } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    Modal,
-    Platform,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Modal,
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 // Data Input Component
@@ -117,7 +117,7 @@ export default function MealPlanCreateDateScreen() {
   // Passing the selected dates to the next screen
   const handleConfirm = () => {
     router.push({
-      pathname: '/selection',
+      pathname: './meals_selection',
       params: { 
         start: startDate.toISOString(),
         end: endDate.toISOString() 

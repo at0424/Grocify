@@ -284,6 +284,7 @@ export const updateFridgeItem = async (listId, itemId, action, newDate = null) =
   }
 };
 
+// Fetch meal plan for individual user
 export const fetchUserMealPlan = async () => {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -297,4 +298,21 @@ export const fetchUserMealPlan = async () => {
       }
     }, 1000); // Simulate 1 sec network delay
   });
+};
+
+// Fetch all or specific mealType of recipes
+export const fetchRecipes = async (mealType = null) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME,
+      path: '/getRecipes', 
+      options: {
+        queryParams: mealType ? { type: mealType } : undefined
+      }
+    });
+    return await operation.response;
+  } catch (error) {
+    console.error("Error fetching recipes:", error);
+    return null;
+  }
 };
