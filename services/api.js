@@ -310,7 +310,11 @@ export const fetchRecipes = async (mealType = null) => {
         queryParams: mealType ? { type: mealType } : undefined
       }
     });
-    return await operation.response;
+
+    const response = await operation.response;
+    const json = await response.body.json();
+
+    return json.data || [];
   } catch (error) {
     console.error("Error fetching recipes:", error);
     return null;
