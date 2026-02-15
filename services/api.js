@@ -11,6 +11,7 @@ export const fetchGroceryCatalog = async () => {
     });            
     
     const response = await operation.response;
+    
     return await response.body.json(); 
   } catch (error) {
     console.error("Error fetching catalog:", error);
@@ -305,7 +306,7 @@ export const fetchUserMealPlan = async (userId) => {
     return json; 
 
   } catch (error) {
-    console.error("❌ Error fetching user plan:", error);
+    console.error("Error fetching user plan:", error);
     return null;
   }
 };
@@ -348,7 +349,7 @@ export const createUserPlan = async (planDetails) => {
     return json;
 
   } catch (error) {
-    console.error("❌ Error creating plan:", error);
+    console.error("Error creating plan:", error);
     throw error; 
   }
 };

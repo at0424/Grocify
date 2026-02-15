@@ -1,5 +1,5 @@
 import { getUserId } from '@/amplify/auth/authService';
-import { createUserPlan, fetchRecipes, fetchUserLists } from '@/services/api';
+import { addListItems, createNewList, createUserPlan, fetchGroceryCatalog, fetchRecipes, fetchUserLists } from '@/services/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2, ChevronLeft, Moon, RefreshCw, Snowflake, Sun, Utensils } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -25,6 +25,7 @@ export default function MealPlanPreviewScreen() {
     const [plan, setPlan] = useState([]);
     const [recipePool, setRecipePool] = useState({});
     const [swappingSlot, setSwappingSlot] = useState(null);
+    const [catalogMap, setCatalogMap] = useState(new Map());
 
     // Fridge Selection State
     const [userFridges, setUserFridges] = useState([]);
@@ -39,6 +40,26 @@ export default function MealPlanPreviewScreen() {
         init();
     }, []);
 
+    useEffect(() => {
+        const loadCatalog = async () => {
+            try {
+                const data = await fetchGroceryCatalog();
+                const map = new Map();
+                if (Array.isArray(data)) {
+                    data.forEach(item => {
+                        if (item.name) {
+                            map.set(item.name.toLowerCase().trim(), item);
+                        }
+                    });
+                }
+                setCatalogMap(map);
+            } catch (error) {
+                console.error("Failed to load catalog for lookup:", error);
+            }
+        };
+        loadCatalog();
+    }, []);
+
     // Fetch user's fridges/lists for the selector chips
     const loadFridges = async () => {
         try {
@@ -47,7 +68,7 @@ export default function MealPlanPreviewScreen() {
 
             const userListsData = await fetchUserLists(userId);
             const lists = Array.isArray(userListsData) ? userListsData : [];
-            
+
             const formattedLists = lists.map(list => ({
                 id: list.listId,
                 name: list.listName || list.name || "Untitled List"
@@ -143,7 +164,7 @@ export default function MealPlanPreviewScreen() {
         return () => {
             subscription.remove();
         };
-    }, [swappingSlot]); 
+    }, [swappingSlot]);
 
     // Pick Random Recipe 
     const getRandomRecipe = (list) => {
@@ -163,34 +184,107 @@ export default function MealPlanPreviewScreen() {
         });
     };
 
-    // Handle create meal plan
+    const processSafely = async (items, processItem) => {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            try {
+                await processItem(item);
+                successCount++;
+
+                await new Promise(resolve => setTimeout(resolve, 20));
+
+            } catch (error) {
+                console.error(`Failed to add: ${item.name}`, error);
+                failCount++;
+            }
+
+            if (i % 5 === 0) console.log(`Processed ${i + 1}/${items.length}...`);
+        }
+
+        console.log(`DONE: ${successCount} added, ${failCount} failed.`);
+    };
+
+    // Handle create meal plan AND grocery list
     const handleCreatePlan = async () => {
         setSaving(true);
-        const currentUser = await getUserId();
-
         try {
+            const currentUser = await getUserId();
+
+            // Create List 
+            const startDateObj = new Date(params.start);
+            const dateLabel = startDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const listName = `Groceries (${dateLabel})`;
+            const listResponse = await createNewList(currentUser, listName, '#7A9B6B');
+
+            if (!listResponse || !listResponse.success) throw new Error("List creation failed");
+            const newListId = listResponse.data.listId;
+
+            // Collect Ingredients with Lookup 
+            const allIngredients = [];
+
+            plan.forEach(day => {
+                day.meals.forEach(meal => {
+                    if (meal.recipe && meal.recipe.ingredients) {
+                        meal.recipe.ingredients.forEach(ing => {
+                            const rawName = ing.groceryName || "Unknown Item";
+                            const cleanName = rawName.trim();
+                            const lowerName = cleanName.toLowerCase();
+
+                            // Check if this item exists in fetched catalog
+                            if (!catalogMap.has(lowerName)) {
+                                console.log(`⚠️ MISSING IN CATALOG: "${cleanName}"`);
+                            }
+                            const catalogItem = catalogMap.get(lowerName) || {};
+
+                            const category = catalogItem.category || ing.category || "Uncategorized";
+                            const shelfLife = catalogItem.shelfLife || ing.shelfLife || "7";
+                            const quantity = `${ing.amount || ''} ${ing.unit || ''}`.trim();
+
+                            allIngredients.push({
+                                name: cleanName,
+                                quantity: quantity,
+                                category: category,
+                                shelfLife: shelfLife
+                            });
+                        });
+                    }
+                });
+            });
+
+            console.log(`Queueing ${allIngredients.length} ingredients...`);
+
+            await processSafely(allIngredients, async (item) => {
+                await addListItems(
+                    newListId,
+                    item.name,
+                    item.quantity,
+                    item.category,
+                    item.shelfLife
+                );
+            });
+
+            // Create Plan & Finish 
             const payload = {
                 userId: currentUser,
-                startDate: params.start, 
+                startDate: params.start,
                 endDate: params.end,
                 days: plan,
                 targetFridges: [selectedFridgeId]
             };
 
-            console.log("Saving Plan...", payload);
-
             await createUserPlan(payload);
 
-            router.dismissAll();
-            router.replace({
-                pathname: '/(tabs)/(meal_plan)',
-                params: { refresh: 'true' }
-            });
+            if (router.canDismiss()) router.dismissAll();
+            router.replace({ pathname: '/(tabs)/(meal_plan)', params: { refresh: 'true' } });
 
         } catch (error) {
-            Alert.alert("Error", "Could not save your meal plan. Please try again.");
+            console.error("Creation Error:", error);
+            Alert.alert("Error", "Could not create plan.");
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
@@ -296,9 +390,9 @@ export default function MealPlanPreviewScreen() {
                 </ScrollView>
             </View>
 
-            {/* Footer */}        
-        {/* Label */}
-        <View style={styles.footerContainer}>
+            {/* Footer */}
+            {/* Label */}
+            <View style={styles.footerContainer}>
                 <View style={styles.fridgeHeaderRow}>
                     <Snowflake size={16} color="#5E8050" />
                     <Text style={styles.fridgeLabel}>Check ingredients against:</Text>
@@ -307,21 +401,21 @@ export default function MealPlanPreviewScreen() {
                 {/* Horizontal Scroll of Chips */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                     {/* Default: ALL */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.chip, selectedFridgeId === 'ALL' && styles.chipActive]}
                         onPress={() => setSelectedFridgeId('ALL')}
                     >
                         <Text style={[styles.chipText, selectedFridgeId === 'ALL' && styles.chipTextActive]}>
                             All Inventory
                         </Text>
-                        {selectedFridgeId === 'ALL' && <CheckCircle2 size={14} color="#FFF" style={{marginLeft: 4}} />}
+                        {selectedFridgeId === 'ALL' && <CheckCircle2 size={14} color="#FFF" style={{ marginLeft: 4 }} />}
                     </TouchableOpacity>
 
                     {/* Dynamic User Lists */}
                     {userFridges.map((fridge) => {
                         const isSelected = selectedFridgeId === fridge.id;
                         return (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 key={fridge.id}
                                 style={[styles.chip, isSelected && styles.chipActive]}
                                 onPress={() => setSelectedFridgeId(fridge.id)}
@@ -329,14 +423,14 @@ export default function MealPlanPreviewScreen() {
                                 <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                                     {fridge.name}
                                 </Text>
-                                {isSelected && <CheckCircle2 size={14} color="#FFF" style={{marginLeft: 4}} />}
+                                {isSelected && <CheckCircle2 size={14} color="#FFF" style={{ marginLeft: 4 }} />}
                             </TouchableOpacity>
                         );
                     })}
                 </ScrollView>
 
-                <TouchableOpacity 
-                    style={styles.confirmButton} 
+                <TouchableOpacity
+                    style={styles.confirmButton}
                     onPress={handleCreatePlan}
                     disabled={saving}
                 >
@@ -475,5 +569,5 @@ const styles = StyleSheet.create({
     chipTextActive: { color: '#FFFFFF' },
     confirmButton: { backgroundColor: '#7A9B6B', paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
     confirmButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-    
+
 });

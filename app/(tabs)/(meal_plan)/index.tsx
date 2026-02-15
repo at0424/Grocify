@@ -21,7 +21,7 @@ import {
 export default function MealPlanScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    
+
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [plan, setPlan] = useState(null);
@@ -76,7 +76,7 @@ export default function MealPlanScreen() {
                     if (item.name) inventorySet.add(item.name.toLowerCase().trim());
                 });
             });
-            
+
             setFridgeInventory(inventorySet);
         } catch (error) {
             console.error("Failed to load inventory:", error);
@@ -114,16 +114,6 @@ export default function MealPlanScreen() {
         }).filter(section => section.data.length > 0); // Remove empty days
 
         setGroupedMeals(sections);
-    };
-
-    // Check Ingredient Availability
-    const hasMissingIngredients = (recipe) => {
-        if (!recipe || !recipe.ingredients) return false;
-        
-        // Return TRUE if any ingredient is NOT found in fridgeInventory
-        return recipe.ingredients.some(ing => {
-            return !fridgeInventory.has(ing.groceryName.toLowerCase().trim());
-        });
     };
 
     // Handle More Actions (Create New, Delete)
@@ -171,9 +161,9 @@ export default function MealPlanScreen() {
             "This will remove your current meal schedule. You cannot undo this.",
             [
                 { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Delete", 
-                    style: 'destructive', 
+                {
+                    text: "Delete",
+                    style: 'destructive',
                     onPress: async () => {
                         setLoading(true);
                         const userId = await getUserId();
@@ -194,7 +184,7 @@ export default function MealPlanScreen() {
     const handleSwap = (date, type) => {
         router.push({
             pathname: '/recipes_list',
-            params: { type: type } 
+            params: { type: type }
         });
     };
 
@@ -204,6 +194,22 @@ export default function MealPlanScreen() {
             pathname: '/recipes_details',
             params: { recipeData: JSON.stringify(recipe) }
         });
+    };
+
+    // Check if any ingredient is missing for the recipes
+    const hasMissingIngredients = (recipe) => {
+        if (!recipe || !recipe.ingredients) return false;
+        return recipe.ingredients.some(ing => {
+            return !fridgeInventory.has(ing.groceryName.toLowerCase().trim());
+        });
+    };
+
+    // Returns list of missing ingredient for specific recipe
+    const getMissingItems = (recipe) => {
+        if (!recipe || !recipe.ingredients) return [];
+        return recipe.ingredients
+            .filter(ing => !fridgeInventory.has(ing.groceryName.toLowerCase().trim()))
+            .map(ing => ing.groceryName);
     };
 
     // Loading Screen
@@ -221,7 +227,7 @@ export default function MealPlanScreen() {
 
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={() => {
                         router.push('../');
                     }}
@@ -229,9 +235,9 @@ export default function MealPlanScreen() {
                 >
                     <ChevronLeft size={24} color="#FFFFFF" />
                 </TouchableOpacity>
-                
+
                 <Text style={styles.headerTitle}>Meal Plan</Text>
-                
+
                 {/* Action Button (Only show if plan exists) */}
                 {plan ? (
                     <TouchableOpacity onPress={showActionMenu} style={styles.actionButton}>
@@ -255,9 +261,9 @@ export default function MealPlanScreen() {
                 )}
                 renderItem={({ item, section }) => {
                     const showWarning = hasMissingIngredients(item.recipe);
-                    
+
                     return (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.card}
                             onPress={() => goToDetails(item.recipe)}
                             activeOpacity={0.7}
@@ -265,9 +271,9 @@ export default function MealPlanScreen() {
                             {/* Left: Icon or Image */}
                             <View style={styles.iconContainer}>
                                 {item.recipe && item.recipe.image ? (
-                                    <Image 
-                                        source={{ uri: item.recipe.image }} 
-                                        style={styles.foodImage} 
+                                    <Image
+                                        source={{ uri: item.recipe.image }}
+                                        style={styles.foodImage}
                                     />
                                 ) : (
                                     <View style={styles.placeholderIcon}>
@@ -275,11 +281,25 @@ export default function MealPlanScreen() {
                                     </View>
                                 )}
 
-                                {/* ⚠️ Warning Badge */}
+                                {/* "!" Warning Badge */}
                                 {showWarning && (
-                                    <View style={styles.warningBadge}>
+                                    <TouchableOpacity
+                                        style={styles.warningBadge}
+                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                        onPress={(e) => {
+                                            e.stopPropagation();
+
+                                            const missing = getMissingItems(item.recipe);
+
+                                            Alert.alert(
+                                                `Missing for ${item.recipe.mealName}`,
+                                                `• ` + missing.join(`\n• `),
+                                                [{ text: "OK" }]
+                                            );
+                                        }}
+                                    >
                                         <AlertTriangle size={12} color="#856404" />
-                                    </View>
+                                    </TouchableOpacity>
                                 )}
                             </View>
 
@@ -293,7 +313,7 @@ export default function MealPlanScreen() {
 
                             {/* Right: Edit Button (Only for Future Days) */}
                             {!section.isPastOrToday && (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={styles.editButton}
                                     onPress={() => handleSwap(section.date, item.type)}
                                 >
@@ -366,7 +386,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         backgroundColor: 'transparent', // Cards look transparent in screenshot or white
     },
-    
+
     // Icon / Image Area
     iconContainer: {
         position: 'relative',
@@ -388,21 +408,21 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#BBF7D0',
     },
-    
+
     // Warning Badge Logic
-    warningBadge: {
-        position: 'absolute',
-        top: -6,
-        right: -6,
-        backgroundColor: '#FEF3C7', // Light yellow
-        borderWidth: 1,
-        borderColor: '#FCD34D', // Darker yellow border
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
+    warningBadge: { 
+        position: 'absolute', 
+        top: -6, 
+        right: -6, 
+        backgroundColor: '#FEF3C7', 
+        borderWidth: 1, 
+        borderColor: '#FCD34D', 
+        width: 20, 
+        height: 20, 
+        borderRadius: 10, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        zIndex: 10 
     },
 
     // Text Area
