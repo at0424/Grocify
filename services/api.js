@@ -320,3 +320,25 @@ export const fetchRecipes = async (mealType = null) => {
     return null;
   }
 };
+
+// Create Meal Plan
+export const createUserPlan = async (planDetails) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/createMealPlan',     
+      options: {
+        body: planDetails
+      }
+    });
+
+    const response = await operation.response;
+  
+    const json = await response.body.json();
+    return json;
+
+  } catch (error) {
+    console.error("❌ Error creating plan:", error);
+    throw error; 
+  }
+};

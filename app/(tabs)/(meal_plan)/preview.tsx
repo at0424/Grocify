@@ -1,4 +1,5 @@
-import { fetchRecipes } from '@/services/api';
+import { getUserId } from '@/amplify/auth/authService';
+import { createUserPlan, fetchRecipes } from '@/services/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, Moon, RefreshCw, Sun, Utensils } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -135,16 +136,32 @@ export default function MealPlanPreviewScreen() {
     };
 
     // Handle create meal plan
-    const handleCreatePlan = () => {
-        // Here you would typically POST the 'plan' object to your DynamoDB 'UserPlans' table
-        console.log("Final Plan Confirmed:", JSON.stringify(plan, null, 2));
+    const handleCreatePlan = async () => {
+        setLoading(true);
+        const currentUser = await getUserId();
 
-        // For now, navigate to the Dashboard (Screen 5)
-        // We pass the plan data so the dashboard can render it
-        router.push({
-            pathname: '/dashboard', // You need to create this file next!
-            params: { planData: JSON.stringify(plan) }
-        });
+        try {
+            const payload = {
+                userId: currentUser,
+                startDate: params.start, 
+                endDate: params.end,
+                days: plan 
+            };
+
+            console.log("Saving Plan...", payload);
+
+            await createUserPlan(payload);
+
+            router.push({
+                pathname: '/(tabs)/(meal_plan)',
+                params: { refresh: 'true' }
+            });
+
+        } catch (error) {
+            Alert.alert("Error", "Could not save your meal plan. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Icon type
