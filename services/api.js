@@ -285,19 +285,29 @@ export const updateFridgeItem = async (listId, itemId, action, newDate = null) =
 };
 
 // Fetch meal plan for individual user
-export const fetchUserMealPlan = async () => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // CHANGE THIS TO 'true' LATER TO SEE THE DASHBOARD
-      const hasPlan = false; 
-      
-      if (hasPlan) {
-        resolve({ id: 'plan_123', title: 'Weekly Keto Plan', status: 'active' });
-      } else {
-        resolve(null); // No plan found
+export const fetchUserMealPlan = async (userId) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME, 
+      path: '/getUserPlan',        
+      options: {
+        queryParams: {
+          userId: userId
+        }
       }
-    }, 1000); // Simulate 1 sec network delay
-  });
+    });
+
+    const response = await operation.response;
+    
+    if (response.statusCode === 204) return null;
+
+    const json = await response.body.json();
+    return json; 
+
+  } catch (error) {
+    console.error("❌ Error fetching user plan:", error);
+    return null;
+  }
 };
 
 // Fetch all or specific mealType of recipes

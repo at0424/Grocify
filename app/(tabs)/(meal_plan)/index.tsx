@@ -1,182 +1,374 @@
-import { fetchUserMealPlan } from '@/services/api';
-import { Stack, useRouter } from 'expo-router';
-import { ChevronLeft, ClipboardList } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import { getUserId } from '@/amplify/auth/authService';
+import { fetchFridgeItems, fetchUserLists, fetchUserMealPlan } from '@/services/api';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { AlertTriangle, ChevronLeft, RefreshCw, Utensils } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
+    RefreshControl,
     SafeAreaView,
+    SectionList,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
 
-export default function MealPlanEmptyScreen() {
+export default function MealPlanScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
+    
     const [loading, setLoading] = useState(true);
-    const [mealPlan, setMealPlan] = useState(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const [plan, setPlan] = useState(null);
+    const [groupedMeals, setGroupedMeals] = useState([]);
+    const [fridgeInventory, setFridgeInventory] = useState(new Set()); // Uses Set for fast lookup
 
     useEffect(() => {
-        loadPlan();
+        loadData();
+    }, [params.refresh]);
+
+    const loadData = async () => {
+        setLoading(true);
+        await Promise.all([fetchPlan(), fetchInventory()]);
+        setLoading(false);
+    };
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await Promise.all([fetchPlan(), fetchInventory()]);
+        setRefreshing(false);
     }, []);
 
-    const loadPlan = async () => {
-        setLoading(true);
-        try {
-            const data = await fetchUserMealPlan();
-            setMealPlan(data);
-        } catch (error) {
-            console.error("Failed to load plan", error);
-        } finally {
-            setLoading(false);
+    // Fetch the Active Meal Plan
+    const fetchPlan = async () => {
+        const currentUserId = await getUserId();
+        const data = await fetchUserMealPlan(currentUserId);
+        if (data) {
+            setPlan(data);
+            processPlanData(data.planData);
         }
+    };
+
+    // Fetch Fridge Inventory (for the Warning Logic)
+    const fetchInventory = async () => {
+        try {
+            const userId = await getUserId();
+            if (!userId) return;
+
+            // Get all user lists
+            const lists = await fetchUserLists(userId);
+            if (!lists || lists.length === 0) return;
+
+            // Fetch items from ALL lists in parallel
+            const promises = lists.map(list => fetchFridgeItems(list.listId));
+            const results = await Promise.all(promises);
+
+            // Combine into a Set of lowercase names for easy matching
+            const inventorySet = new Set();
+            results.forEach(res => {
+                const items = res.items || res.data || [];
+                items.forEach(item => {
+                    if (item.name) inventorySet.add(item.name.toLowerCase().trim());
+                });
+            });
+            
+            setFridgeInventory(inventorySet);
+        } catch (error) {
+            console.error("Failed to load inventory:", error);
+        }
+    };
+
+    // 3. Process Dates into Sections (Today, Tomorrow, etc.)
+    const processPlanData = (daysArray) => {
+        if (!daysArray) return;
+
+        // Sort by date
+        const sortedDays = [...daysArray].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const sections = sortedDays.map(day => {
+            const dateObj = new Date(day.date);
+            dateObj.setHours(0, 0, 0, 0);
+
+            const diffTime = dateObj - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            let title = "";
+            if (diffDays === 0) title = "Today";
+            else if (diffDays === 1) title = "Tomorrow";
+            else title = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+            return {
+                title: title,
+                data: day.meals.filter(m => m.recipe), // Only show slots with recipes
+                date: day.date,
+                isPastOrToday: diffDays <= 0
+            };
+        }).filter(section => section.data.length > 0); // Remove empty days
+
+        setGroupedMeals(sections);
+    };
+
+    // 4. Check Ingredient Availability
+    const hasMissingIngredients = (recipe) => {
+        if (!recipe || !recipe.ingredients) return false;
+        
+        // Return TRUE if any ingredient is NOT found in fridgeInventory
+        return recipe.ingredients.some(ing => {
+            // Check if the ingredient name exists in our Set
+            // Note: This is a strict name check. "Eggs" != "Egg". 
+            // In a real app, you'd want fuzzy matching or ID matching.
+            return !fridgeInventory.has(ing.groceryName.toLowerCase().trim());
+        });
+    };
+
+    const handleSwap = (date, type) => {
+        router.push({
+            pathname: '/recipes_list',
+            params: { type: type } // Pass context if needed
+        });
+    };
+
+    const goToDetails = (recipe) => {
+        router.push({
+            pathname: '/recipes_details',
+            params: { recipeData: JSON.stringify(recipe) }
+        });
     };
 
     if (loading) {
         return (
             <View style={styles.centerContainer}>
                 <ActivityIndicator size="large" color="#7A9B6B" />
-                <Text style={styles.loadingText}>Checking your schedule...</Text>
             </View>
-        );
-    };
-
-    if (mealPlan) {
-        return (
-            <MealPlanDashboard plan={mealPlan} />
         );
     }
 
-    // Render: If No Plan -> Show Empty State 
     return (
-        <EmptyState router={router} />
-    );
-};
+        <SafeAreaView style={styles.container}>
+            <Stack.Screen options={{ headerShown: false }} />
 
-// Screen when there is no meal plan
-const EmptyState = ({ router }) => (
-    <SafeAreaView style={styles.container}>
-        <Stack.Screen options={{ headerShown: false }} />
-
-        {/* Header */}
-        <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                <ChevronLeft color="#FFFFFF" size={28} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Meal Plan</Text>
-            <View style={{ width: 28 }} />
-        </View>
-
-        {/* Content */}
-        <View style={styles.content}>
-            <View style={styles.iconCircle}>
-                <ClipboardList color="#8E8E8E" size={64} strokeWidth={1.5} />
+            {/* Header */}
+            <View style={styles.header}>
+                {/* Back button is optional on a Tab index, but included to match screenshot */}
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <ChevronLeft color="#FFFFFF" size={28} />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Meal Plan</Text>
+                <View style={{ width: 28 }} />
             </View>
-            <Text style={styles.emptyText}>
-                There is no meal plan now, create one!
-            </Text>
-        </View>
 
-        {/* Footer Action */}
-        <View style={styles.footer}>
-            <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => router.push('/dates')} 
-            >
-                <Text style={styles.primaryButtonText}>Create Plan</Text>
-            </TouchableOpacity>
-        </View>
-    </SafeAreaView>
-);
+            {/* List */}
+            <SectionList
+                sections={groupedMeals}
+                keyExtractor={(item, index) => item.type + index}
+                contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7A9B6B" />
+                }
+                renderSectionHeader={({ section: { title } }) => (
+                    <Text style={styles.sectionHeader}>{title}</Text>
+                )}
+                renderItem={({ item, section }) => {
+                    const showWarning = hasMissingIngredients(item.recipe);
+                    
+                    return (
+                        <TouchableOpacity 
+                            style={styles.card}
+                            onPress={() => goToDetails(item.recipe)}
+                            activeOpacity={0.7}
+                        >
+                            {/* Left: Icon or Image */}
+                            <View style={styles.iconContainer}>
+                                {item.recipe && item.recipe.image ? (
+                                    <Image 
+                                        source={{ uri: item.recipe.image }} 
+                                        style={styles.foodImage} 
+                                    />
+                                ) : (
+                                    <View style={styles.placeholderIcon}>
+                                        <Utensils size={24} color="#7A9B6B" />
+                                    </View>
+                                )}
 
-const MealPlanDashboard = ({ plan }) => (
-    <SafeAreaView style={styles.container}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.header}>
-            <View style={{ width: 28 }} />
-            <Text style={styles.headerTitle}>My Plan</Text>
-            <View style={{ width: 28 }} />
-        </View>
-        <View style={styles.content}>
-            <Text style={styles.emptyText}>Active Plan Found: {plan.title}</Text>
-            <Text style={{ marginTop: 10, color: '#7A9B6B' }}>Dashboard UI coming soon...</Text>
-        </View>
-    </SafeAreaView>
-);
+                                {/* ⚠️ Warning Badge */}
+                                {showWarning && (
+                                    <View style={styles.warningBadge}>
+                                        <AlertTriangle size={12} color="#856404" />
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Middle: Text */}
+                            <View style={styles.textContainer}>
+                                <Text style={styles.mealType}>{item.type}</Text>
+                                <Text style={styles.mealName} numberOfLines={1}>
+                                    {item.recipe ? item.recipe.mealName : "No Recipe"}
+                                </Text>
+                            </View>
+
+                            {/* Right: Edit Button (Only for Future Days) */}
+                            {!section.isPastOrToday && (
+                                <TouchableOpacity 
+                                    style={styles.editButton}
+                                    onPress={() => handleSwap(section.date, item.type)}
+                                >
+                                    <RefreshCw size={16} color="#7A9B6B" />
+                                </TouchableOpacity>
+                            )}
+                        </TouchableOpacity>
+                    );
+                }}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>No meal plan active.</Text>
+                        <TouchableOpacity onPress={() => router.push('/dates')} style={styles.createButton}>
+                            <Text style={styles.createButtonText}>Create Plan</Text>
+                        </TouchableOpacity>
+                    </View>
+                }
+            />
+        </SafeAreaView>
+    );
+}
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FFFFFF', // Matches grey/white background
     },
     centerContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
     },
-    loadingText: {
-        marginTop: 12,
-        color: '#8E8E8E',
-        fontSize: 14,
-    },
-    // Header
+    // Header Matches Screenshot
     header: {
-        backgroundColor: '#7A9B6B', // Sage Green
+        backgroundColor: '#6A8E58', // Muted Sage Green
         height: 60,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        // Shadow for depth
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 4,
     },
     headerTitle: {
         color: '#FFFFFF',
         fontSize: 18,
-        fontWeight: '600',
+        fontWeight: '700',
     },
-    // Empty State Content
-    content: {
+    backButton: {
+        padding: 4,
+    },
+
+    // List Styles
+    sectionHeader: {
+        fontSize: 15,
+        color: '#666666',
+        fontWeight: '600',
+        marginTop: 20,
+        marginBottom: 10,
+    },
+    card: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        backgroundColor: 'transparent', // Cards look transparent in screenshot or white
+    },
+    
+    // Icon / Image Area
+    iconContainer: {
+        position: 'relative',
+        marginRight: 16,
+    },
+    foodImage: {
+        width: 56,
+        height: 56,
+        borderRadius: 12,
+        backgroundColor: '#E8EDE6',
+    },
+    placeholderIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 12,
+        backgroundColor: '#DCFCE7', // Very light green background
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+    },
+    
+    // Warning Badge Logic
+    warningBadge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        backgroundColor: '#FEF3C7', // Light yellow
+        borderWidth: 1,
+        borderColor: '#FCD34D', // Darker yellow border
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+    },
+
+    // Text Area
+    textContainer: {
         flex: 1,
         justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 40,
-        marginTop: -40,
     },
-    iconCircle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: '#F5F5F5', // Light gray circle bg
+    mealType: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#4B5563', // Dark Grey
+        marginBottom: 2,
+    },
+    mealName: {
+        fontSize: 14,
+        color: '#6B7280', // Lighter Grey
+    },
+
+    // Edit Button
+    editButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#DCFCE7', // Light green circle
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 24,
+    },
+
+    // Empty State
+    emptyContainer: {
+        alignItems: 'center',
+        marginTop: 60,
     },
     emptyText: {
         fontSize: 16,
         color: '#8E8E8E',
-        textAlign: 'center',
-        fontWeight: '600',
-        lineHeight: 24,
+        marginBottom: 20,
     },
-    // Footer
-    footer: {
-        padding: 24,
-        paddingBottom: 40,
+    createButton: {
+        backgroundColor: '#6A8E58',
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 8,
     },
-    primaryButton: {
-        backgroundColor: '#7A9B6B',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        shadowColor: '#7A9B6B',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    primaryButtonText: {
+    createButtonText: {
         color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
+        fontWeight: 'bold',
     },
 });

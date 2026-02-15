@@ -1,7 +1,7 @@
 import { getUserId } from '@/amplify/auth/authService';
-import { createUserPlan, fetchRecipes } from '@/services/api';
+import { createUserPlan, fetchRecipes, fetchUserLists } from '@/services/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, Moon, RefreshCw, Sun, Utensils } from 'lucide-react-native';
+import { CheckCircle2, ChevronLeft, Moon, RefreshCw, Snowflake, Sun, Utensils } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -21,14 +21,44 @@ export default function MealPlanPreviewScreen() {
 
     // State
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [plan, setPlan] = useState([]);
     const [recipePool, setRecipePool] = useState({});
     const [swappingSlot, setSwappingSlot] = useState(null);
 
+    // Fridge Selection State
+    const [userFridges, setUserFridges] = useState([]);
+    const [selectedFridgeId, setSelectedFridgeId] = useState('ALL');
+
     // Initialization
     useEffect(() => {
-        generateInitialPlan();
+        const init = async () => {
+            await Promise.all([generateInitialPlan(), loadFridges()]);
+            setLoading(false);
+        };
+        init();
     }, []);
+
+    // Fetch user's fridges/lists for the selector chips
+    const loadFridges = async () => {
+        try {
+            const userId = await getUserId();
+            if (!userId) return;
+
+            const userListsData = await fetchUserLists(userId);
+            const lists = Array.isArray(userListsData) ? userListsData : [];
+            
+            const formattedLists = lists.map(list => ({
+                id: list.listId,
+                name: list.listName || list.name || "Untitled List"
+            }));
+
+            setUserFridges(formattedLists);
+
+        } catch (error) {
+            console.error("Failed to load user lists:", error);
+        }
+    };
 
     const generateInitialPlan = async () => {
         try {
@@ -113,7 +143,7 @@ export default function MealPlanPreviewScreen() {
         return () => {
             subscription.remove();
         };
-    }, [swappingSlot]); // Re-bind if swappingSlot changes (important!)
+    }, [swappingSlot]); 
 
     // Pick Random Recipe 
     const getRandomRecipe = (list) => {
@@ -124,11 +154,9 @@ export default function MealPlanPreviewScreen() {
 
     // Swap Recipe
     const handleSwap = (dateKey, mealType) => {
-        // 1. Remember which slot we are editing
+        // Remember which slot we are editing
         setSwappingSlot({ date: dateKey, type: mealType });
 
-        // 2. Navigate to the Library Screen
-        // Pass the 'type' (e.g., Breakfast) so the list filters automatically
         router.push({
             pathname: '/recipes_list',
             params: { type: mealType }
@@ -137,7 +165,7 @@ export default function MealPlanPreviewScreen() {
 
     // Handle create meal plan
     const handleCreatePlan = async () => {
-        setLoading(true);
+        setSaving(true);
         const currentUser = await getUserId();
 
         try {
@@ -145,14 +173,15 @@ export default function MealPlanPreviewScreen() {
                 userId: currentUser,
                 startDate: params.start, 
                 endDate: params.end,
-                days: plan 
+                days: plan,
+                targetFridges: [selectedFridgeId]
             };
 
             console.log("Saving Plan...", payload);
 
             await createUserPlan(payload);
 
-            router.push({
+            router.replace({
                 pathname: '/(tabs)/(meal_plan)',
                 params: { refresh: 'true' }
             });
@@ -266,10 +295,55 @@ export default function MealPlanPreviewScreen() {
                 </ScrollView>
             </View>
 
-            {/* Footer */}
-            <View style={styles.footer}>
-                <TouchableOpacity style={styles.confirmButton} onPress={handleCreatePlan}>
-                    <Text style={styles.confirmButtonText}>Create Meal Plan</Text>
+            {/* Footer */}        
+        {/* Label */}
+        <View style={styles.footerContainer}>
+                <View style={styles.fridgeHeaderRow}>
+                    <Snowflake size={16} color="#5E8050" />
+                    <Text style={styles.fridgeLabel}>Check ingredients against:</Text>
+                </View>
+
+                {/* Horizontal Scroll of Chips */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                    {/* Default: ALL */}
+                    <TouchableOpacity 
+                        style={[styles.chip, selectedFridgeId === 'ALL' && styles.chipActive]}
+                        onPress={() => setSelectedFridgeId('ALL')}
+                    >
+                        <Text style={[styles.chipText, selectedFridgeId === 'ALL' && styles.chipTextActive]}>
+                            All Inventory
+                        </Text>
+                        {selectedFridgeId === 'ALL' && <CheckCircle2 size={14} color="#FFF" style={{marginLeft: 4}} />}
+                    </TouchableOpacity>
+
+                    {/* Dynamic User Lists */}
+                    {userFridges.map((fridge) => {
+                        const isSelected = selectedFridgeId === fridge.id;
+                        return (
+                            <TouchableOpacity 
+                                key={fridge.id}
+                                style={[styles.chip, isSelected && styles.chipActive]}
+                                onPress={() => setSelectedFridgeId(fridge.id)}
+                            >
+                                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                                    {fridge.name}
+                                </Text>
+                                {isSelected && <CheckCircle2 size={14} color="#FFF" style={{marginLeft: 4}} />}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+
+                <TouchableOpacity 
+                    style={styles.confirmButton} 
+                    onPress={handleCreatePlan}
+                    disabled={saving}
+                >
+                    {saving ? (
+                        <ActivityIndicator color="#FFF" />
+                    ) : (
+                        <Text style={styles.confirmButtonText}>Confirm & Create Plan</Text>
+                    )}
                 </TouchableOpacity>
             </View>
 
@@ -379,31 +453,26 @@ const styles = StyleSheet.create({
     },
 
     // Footer
-    footer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 24,
-        paddingBottom: 40,
+    footerContainer: {
+        position: 'absolute', bottom: 0, left: 0, right: 0,
         backgroundColor: '#FFFFFF',
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
+        borderTopLeftRadius: 24, borderTopRightRadius: 24,
+        padding: 20, paddingBottom: 40,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 20,
     },
-    confirmButton: {
-        backgroundColor: '#7A9B6B',
-        paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        shadowColor: '#7A9B6B',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
+    fridgeHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
+    fridgeLabel: { fontSize: 14, color: '#5E8050', fontWeight: '600' },
+    chipScroll: { marginBottom: 20, maxHeight: 40 },
+    chip: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingVertical: 8, paddingHorizontal: 16,
+        borderRadius: 20, backgroundColor: '#EDF2F7',
+        marginRight: 8, borderWidth: 1, borderColor: 'transparent',
     },
-    confirmButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
+    chipActive: { backgroundColor: '#5E8050', borderColor: '#4A683E' },
+    chipText: { fontSize: 13, color: '#718096', fontWeight: '600' },
+    chipTextActive: { color: '#FFFFFF' },
+    confirmButton: { backgroundColor: '#7A9B6B', paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
+    confirmButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+    
 });
