@@ -1,11 +1,14 @@
 import { getUserId } from '@/amplify/auth/authService';
-import { fetchFridgeItems, fetchUserLists, fetchUserMealPlan } from '@/services/api';
+import { deleteUserPlan, fetchFridgeItems, fetchUserLists, fetchUserMealPlan } from '@/services/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertTriangle, ChevronLeft, RefreshCw, Utensils } from 'lucide-react-native';
+import { AlertTriangle, ChevronLeft, MoreVertical, RefreshCw, Utensils } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+    ActionSheetIOS,
     ActivityIndicator,
+    Alert,
     Image,
+    Platform,
     RefreshControl,
     SafeAreaView,
     SectionList,
@@ -80,7 +83,7 @@ export default function MealPlanScreen() {
         }
     };
 
-    // 3. Process Dates into Sections (Today, Tomorrow, etc.)
+    // Process Dates into Sections (Today, Tomorrow, etc.)
     const processPlanData = (daysArray) => {
         if (!daysArray) return;
 
@@ -113,26 +116,89 @@ export default function MealPlanScreen() {
         setGroupedMeals(sections);
     };
 
-    // 4. Check Ingredient Availability
+    // Check Ingredient Availability
     const hasMissingIngredients = (recipe) => {
         if (!recipe || !recipe.ingredients) return false;
         
         // Return TRUE if any ingredient is NOT found in fridgeInventory
         return recipe.ingredients.some(ing => {
-            // Check if the ingredient name exists in our Set
-            // Note: This is a strict name check. "Eggs" != "Egg". 
-            // In a real app, you'd want fuzzy matching or ID matching.
             return !fridgeInventory.has(ing.groceryName.toLowerCase().trim());
         });
     };
 
+    // Handle More Actions (Create New, Delete)
+    const showActionMenu = () => {
+        const options = ['Create New Plan', 'Delete Current Plan', 'Cancel'];
+        const destructiveButtonIndex = 1;
+        const cancelButtonIndex = 2;
+
+        if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions(
+                {
+                    options,
+                    destructiveButtonIndex,
+                    cancelButtonIndex,
+                    tintColor: '#7A9B6B'
+                },
+                (buttonIndex) => {
+                    if (buttonIndex === 0) handleCreateNew();
+                    if (buttonIndex === 1) confirmDelete();
+                }
+            );
+        } else {
+            // Android Alert
+            Alert.alert(
+                "Meal Plan Options",
+                "Choose an action",
+                [
+                    { text: "Create New Plan", onPress: handleCreateNew },
+                    { text: "Delete Plan", onPress: confirmDelete, style: 'destructive' },
+                    { text: "Cancel", style: "cancel" }
+                ]
+            );
+        }
+    };
+
+    // Navigate to Date Page to Create New Plan
+    const handleCreateNew = () => {
+        router.push('/dates');
+    };
+
+    // Delete Plan with Confirmation
+    const confirmDelete = () => {
+        Alert.alert(
+            "Delete Plan?",
+            "This will remove your current meal schedule. You cannot undo this.",
+            [
+                { text: "Cancel", style: "cancel" },
+                { 
+                    text: "Delete", 
+                    style: 'destructive', 
+                    onPress: async () => {
+                        setLoading(true);
+                        const userId = await getUserId();
+                        if (plan && plan.planId) {
+                            await deleteUserPlan(userId, plan.planId);
+                            // Refresh local state to show empty view
+                            setPlan(null);
+                            setGroupedMeals([]);
+                        }
+                        setLoading(false);
+                    }
+                }
+            ]
+        );
+    };
+
+    // Swap Recipe for a Meal Slot
     const handleSwap = (date, type) => {
         router.push({
             pathname: '/recipes_list',
-            params: { type: type } // Pass context if needed
+            params: { type: type } 
         });
     };
 
+    // Navigate to Recipe Details Page
     const goToDetails = (recipe) => {
         router.push({
             pathname: '/recipes_details',
@@ -140,6 +206,7 @@ export default function MealPlanScreen() {
         });
     };
 
+    // Loading Screen
     if (loading) {
         return (
             <View style={styles.centerContainer}>
@@ -154,12 +221,25 @@ export default function MealPlanScreen() {
 
             {/* Header */}
             <View style={styles.header}>
-                {/* Back button is optional on a Tab index, but included to match screenshot */}
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft color="#FFFFFF" size={28} />
+                <TouchableOpacity 
+                    onPress={() => {
+                        router.push('../');
+                    }}
+                    style={styles.backButton}
+                >
+                    <ChevronLeft size={24} color="#FFFFFF" />
                 </TouchableOpacity>
+                
                 <Text style={styles.headerTitle}>Meal Plan</Text>
-                <View style={{ width: 28 }} />
+                
+                {/* Action Button (Only show if plan exists) */}
+                {plan ? (
+                    <TouchableOpacity onPress={showActionMenu} style={styles.actionButton}>
+                        <MoreVertical color="#FFFFFF" size={24} />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={{ width: 28 }} />
+                )}
             </View>
 
             {/* List */}

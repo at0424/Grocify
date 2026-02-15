@@ -181,6 +181,7 @@ export default function MealPlanPreviewScreen() {
 
             await createUserPlan(payload);
 
+            router.dismissAll();
             router.replace({
                 pathname: '/(tabs)/(meal_plan)',
                 params: { refresh: 'true' }
@@ -248,10 +249,10 @@ export default function MealPlanPreviewScreen() {
                                     style={styles.mealCard}
                                     activeOpacity={0.7}
                                     onPress={() => {
-                                        // 1. Check if recipe exists
+                                        // Check if recipe exists
                                         if (!meal.recipe) return;
 
-                                        // 2. Navigate to Details Page
+                                        // Navigate to Details Page
                                         router.push({
                                             pathname: '/recipes_details',
                                             params: { recipeData: JSON.stringify(meal.recipe) }

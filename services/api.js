@@ -352,3 +352,22 @@ export const createUserPlan = async (planDetails) => {
     throw error; 
   }
 };
+
+// Delete Meal Plan
+export const deleteUserPlan = async (userId, planId) => {
+  try {
+    const operation = del({ 
+      apiName: API_NAME,
+      path: '/deleteMealPlan', 
+      options: {
+        queryParams: { userId, planId }
+      }
+    });
+
+    await operation.response;
+    return true;
+  } catch (error) {
+    console.error("Failed to delete plan:", error);
+    return false;
+  }
+};
