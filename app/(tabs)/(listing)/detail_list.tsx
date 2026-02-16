@@ -12,8 +12,8 @@ export default function ListingDetailScreen() {
 
   // Data States
   const [items, setItems] = useState([]);
-  const [collaborators, setCollaborators] = useState([]); 
-  const [currentUserId, setCurrentUserId] = useState(null); 
+  const [collaborators, setCollaborators] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   // UI States
   const [loading, setLoading] = useState(true);
@@ -22,7 +22,7 @@ export default function ListingDetailScreen() {
   // Modal States (NEW)
   const [modalVisible, setModalVisible] = useState(false);
   const [modalData, setModalData] = useState({ collaborators: [], ownerEmail: '', myRole: '' });
-  
+
   // Refresh Screen
   const loadItems = async (isPullToRefresh = false) => {
     // Only show big spinner on initial load
@@ -36,7 +36,7 @@ export default function ListingDetailScreen() {
         fetchGroceryListDetails(listId),
         fetchCollaborators(listId, uid)
       ]);
-      
+
       // Handle Grocery Items
       if (groceryData.items) {
         setItems(groceryData.items);
@@ -47,11 +47,11 @@ export default function ListingDetailScreen() {
       // Handle Collaborators
       if (collabData.success) {
         setCollaborators(collabData.collaborators || []); // Updates the count bubble
-        
+
         setModalData({
-            collaborators: collabData.collaborators,
-            ownerEmail: collabData.ownerEmail,
-            myRole: collabData.requesterRole
+          collaborators: collabData.collaborators,
+          ownerEmail: collabData.ownerEmail,
+          myRole: collabData.requesterRole
         });
       }
 
@@ -105,11 +105,55 @@ export default function ListingDetailScreen() {
     await toggleGroceryItem(listId, targetItem.itemId, currentUserId);
   };
 
+  // Mark All Handler
+  const handleMarkAll = async () => {
+    if (items.length === 0) return;
+
+    // 1. Determine Target Status
+    const allAreChecked = items.every(item => item.checked);
+    const targetStatus = !allAreChecked; // If all checked, uncheck. Else, check all.
+
+    // 2. Optimistic Update (Instant UI Feedback)
+    const updatedItems = items.map(item => ({
+      ...item,
+      checked: targetStatus
+    }));
+    setItems(updatedItems); // UI updates instantly!
+
+    // 3. Filter only items that actually need changing
+    const itemsToUpdate = items.filter(item => !!item.checked !== targetStatus);
+    
+    console.log(`Syncing ${itemsToUpdate.length} items to backend...`);
+
+    // 4. Send requests in Batches of 3 (Safe Mode)
+    const BATCH_SIZE = 3;
+    for (let i = 0; i < itemsToUpdate.length; i += BATCH_SIZE) {
+        const chunk = itemsToUpdate.slice(i, i + BATCH_SIZE);
+        
+        try {
+            // Process this chunk in parallel
+            await Promise.all(
+                chunk.map(item => toggleGroceryItem(listId, item.itemId, currentUserId))
+            );
+            
+            // Tiny pause to let the server breathe (50ms)
+            await new Promise(r => setTimeout(r, 50));
+            
+        } catch (error) {
+            console.error("Batch sync failed", error);
+            // Optional: Revert UI if it fails? 
+            // Usually simpler to just silently fail or show a toast at the end.
+        }
+    }
+    
+    console.log("Sync Complete");
+  };
+
   const handleOpenModal = async () => {
     const uid = await getUserId();
     // Use the new API to get emails
     const data = await fetchCollaborators(listId, uid);
-    
+
     if (data.success) {
       setModalData({
         collaborators: data.collaborators,
@@ -125,14 +169,14 @@ export default function ListingDetailScreen() {
   // Handle invite collaborator
   const handleInvite = async (emailToInvite) => {
     const result = await shareList(listId, emailToInvite);
-    
+
     if (result.success) {
       Alert.alert("Success", "User added!");
-      
+
       // Refresh both the main screen (for count) and the modal data
-      loadItems(true); 
+      loadItems(true);
       handleOpenModal(); // Refetch modal data to show new email immediately
-      return true; 
+      return true;
     } else {
       Alert.alert("Failed", result.message || "Could not find user.");
       return false;
@@ -145,29 +189,29 @@ export default function ListingDetailScreen() {
     const isLeaving = idToRemove === currentUserId;
 
     const title = isLeaving ? "Leave List?" : "Remove User?";
-    const message = isLeaving 
-      ? "Are you sure you want to leave this list?" 
+    const message = isLeaving
+      ? "Are you sure you want to leave this list?"
       : "This will remove the user from the list.";
 
     Alert.alert(title, message, [
       { text: "Cancel", style: "cancel" },
-      { 
-        text: isLeaving ? "Leave" : "Remove", 
+      {
+        text: isLeaving ? "Leave" : "Remove",
         style: 'destructive',
         onPress: async () => {
-            const result = await removeCollaborator(listId, idToRemove, currentUserId);
-            if (result.success) {
-                if (isLeaving) {
-                    // If I left, I should be navigated back to dashboard
-                    router.back();
-                } else {
-                    // If I removed someone else, refresh data
-                    loadItems(true);
-                    handleOpenModal();
-                }
+          const result = await removeCollaborator(listId, idToRemove, currentUserId);
+          if (result.success) {
+            if (isLeaving) {
+              // If I left, I should be navigated back to dashboard
+              router.back();
             } else {
-                Alert.alert("Error", result.message || "Operation failed.");
+              // If I removed someone else, refresh data
+              loadItems(true);
+              handleOpenModal();
             }
+          } else {
+            Alert.alert("Error", result.message || "Operation failed.");
+          }
         }
       }
     ]);
@@ -216,18 +260,34 @@ export default function ListingDetailScreen() {
 
         <Text style={styles.headerTitle}>{title || "Unnamed List"}</Text>
 
-        <TouchableOpacity 
-            style={styles.avatarStack} 
-            onPress={handleOpenModal}
+        <TouchableOpacity
+          style={styles.avatarStack}
+          onPress={handleOpenModal}
         >
           {/* Show count of team members */}
-          <View style={[styles.avatar, { backgroundColor: '#718F64', right: 0, zIndex: 2, alignItems:'center', justifyContent:'center' }]}>
-            <Text style={{color:'white', fontSize: 10, fontWeight:'bold'}}>
-                {collaborators.length + 1}
+          <View style={[styles.avatar, { backgroundColor: '#718F64', right: 0, zIndex: 2, alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+              {collaborators.length + 1}
             </Text>
           </View>
           <View style={[styles.avatar, { backgroundColor: '#A5D6A7', right: 12, zIndex: 1 }]} />
         </TouchableOpacity>
+
+        {/* Mark All Button */}
+        {items.length > 0 && (
+          <View style={styles.actionBar}>
+            <TouchableOpacity onPress={handleMarkAll} style={styles.markAllButton}>
+              <Ionicons
+                name={items.every(i => i.checked) ? "remove-circle-outline" : "checkmark-done-circle-outline"}
+                size={20}
+                color="#555"
+              />
+              <Text style={styles.markAllText}>
+                {items.every(i => i.checked) ? "Unmark All" : "Mark All"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
       </View>
 
@@ -276,13 +336,13 @@ export default function ListingDetailScreen() {
       </TouchableOpacity>
 
       {/* Collaborator Modal */}
-      <CollaboratorModal 
+      <CollaboratorModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         data={modalData}
         currentUserId={currentUserId}
         onInvite={handleInvite}
-        onRemove={handleRemove} 
+        onRemove={handleRemove}
       />
 
     </View>
@@ -332,6 +392,28 @@ const styles = StyleSheet.create({
     borderColor: '#FFF9C4', // Matches background for "cutout" effect
     position: 'absolute',
   },
+  // =================================================
+  // MARK ALL BUTTON
+  // =================================================
+  actionBar: {
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    alignItems: 'flex-end', // Aligns button to the right
+  },
+  markAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  markAllText: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
 
   // =================================================
   // LIST CONTENT
@@ -340,7 +422,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100, // Extra padding at bottom for the FAB
   },
-  
+
   // =================================================
   // ITEM ROWS
   // =================================================
