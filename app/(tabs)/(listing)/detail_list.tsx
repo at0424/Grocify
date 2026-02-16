@@ -113,19 +113,19 @@ export default function ListingDetailScreen() {
     const allAreChecked = items.every(item => item.checked);
     const targetStatus = !allAreChecked; // If all checked, uncheck. Else, check all.
 
-    // 2. Optimistic Update (Instant UI Feedback)
+    // Optimistic Update (Instant UI Feedback)
     const updatedItems = items.map(item => ({
       ...item,
       checked: targetStatus
     }));
     setItems(updatedItems); // UI updates instantly!
 
-    // 3. Filter only items that actually need changing
+    // Filter only items that actually need changing
     const itemsToUpdate = items.filter(item => !!item.checked !== targetStatus);
     
     console.log(`Syncing ${itemsToUpdate.length} items to backend...`);
 
-    // 4. Send requests in Batches of 3 (Safe Mode)
+    // Send requests in Batches of 3 
     const BATCH_SIZE = 3;
     for (let i = 0; i < itemsToUpdate.length; i += BATCH_SIZE) {
         const chunk = itemsToUpdate.slice(i, i + BATCH_SIZE);

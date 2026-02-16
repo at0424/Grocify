@@ -1,18 +1,21 @@
 import { getUserId } from '@/amplify/auth/authService';
 import { addListItems, createNewList, createUserPlan, fetchGroceryCatalog, fetchRecipes, fetchUserLists } from '@/services/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle2, ChevronLeft, Moon, RefreshCw, Snowflake, Sun, Utensils } from 'lucide-react-native';
+import { CheckCircle2, ChevronLeft, Edit3, Moon, RefreshCw, Snowflake, Sun, Utensils } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     DeviceEventEmitter,
+    KeyboardAvoidingView,
+    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 
 export default function MealPlanPreviewScreen() {
@@ -26,6 +29,7 @@ export default function MealPlanPreviewScreen() {
     const [recipePool, setRecipePool] = useState({});
     const [swappingSlot, setSwappingSlot] = useState(null);
     const [catalogMap, setCatalogMap] = useState(new Map());
+    const [customName, setCustomName] = useState("");
 
     // Fridge Selection State
     const [userFridges, setUserFridges] = useState([]);
@@ -216,14 +220,14 @@ export default function MealPlanPreviewScreen() {
             // Create List 
             const startDateObj = new Date(params.start);
             const dateLabel = startDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const listName = `Groceries (${dateLabel})`;
+            const listName = customName.trim() ? customName.trim() : `Groceries (${dateLabel})`;
             const listResponse = await createNewList(currentUser, listName, '#7A9B6B');
 
             if (!listResponse || !listResponse.success) throw new Error("List creation failed");
             const newListId = listResponse.data.listId;
 
             // Collect Ingredients with Lookup 
-            const allIngredients = [];
+            const aggregator = new Map();
 
             plan.forEach(day => {
                 day.meals.forEach(meal => {
@@ -239,24 +243,73 @@ export default function MealPlanPreviewScreen() {
                             }
                             const catalogItem = catalogMap.get(lowerName) || {};
 
+                            // Extract Data
                             const category = catalogItem.category || ing.category || "Uncategorized";
                             const shelfLife = catalogItem.shelfLife || ing.shelfLife || "7";
-                            const quantity = `${ing.amount || ''} ${ing.unit || ''}`.trim();
 
-                            allIngredients.push({
-                                name: cleanName,
-                                quantity: quantity,
-                                category: category,
-                                shelfLife: shelfLife
-                            });
+                            // Parse Amount & Unit
+                            const amount = parseFloat(ing.amount) || 0;
+                            const unit = (ing.unit || "").trim().toLowerCase();
+
+                            if (!aggregator.has(lowerName)) {
+                                aggregator.set(lowerName, {
+                                    name: cleanName,
+                                    category: category,
+                                    shelfLife: shelfLife,
+                                    measurements: []
+                                });
+                            }
+
+                            aggregator.get(lowerName).measurements.push({ amount, unit });
                         });
                     }
                 });
             });
 
-            console.log(`Queueing ${allIngredients.length} ingredients...`);
+            const finalIngredients = [];
 
-            await processSafely(allIngredients, async (item) => {
+            aggregator.forEach((data) => {
+                // Group amounts by their Unit
+                // Example: { "tbsp": 2, "cup": 1 }
+                const unitTotals = new Map();
+                const textOnlyUnits = []; // For items with no amount (e.g. "Salt" with no "1")
+
+                data.measurements.forEach(m => {
+                    if (m.amount > 0) {
+                        const current = unitTotals.get(m.unit) || 0;
+                        unitTotals.set(m.unit, current + m.amount);
+                    } else {
+                        if (m.unit) textOnlyUnits.push(m.unit);
+                    }
+                });
+
+                // Build the final string: "2 tbsp, 1 cup"
+                const parts = [];
+
+                unitTotals.forEach((total, unit) => {
+                    // Round to avoid "0.300000004 tbsp"
+                    const roundedTotal = Math.round(total * 100) / 100;
+                    parts.push(`${roundedTotal} ${unit}`.trim());
+                });
+
+                // Add non-numeric units (unique only)
+                [...new Set(textOnlyUnits)].forEach(u => parts.push(u));
+
+                // Fallback for empty strings
+                let finalQty = parts.join(", ");
+                if (!finalQty) finalQty = ""; // Default empty string
+
+                finalIngredients.push({
+                    name: data.name,
+                    quantity: finalQty,
+                    category: data.category,
+                    shelfLife: data.shelfLife
+                });
+            });
+
+            console.log(`Queueing ${finalIngredients.length} unique items...`);
+
+            await processSafely(finalIngredients, async (item) => {
                 await addListItems(
                     newListId,
                     item.name,
@@ -391,56 +444,78 @@ export default function MealPlanPreviewScreen() {
             </View>
 
             {/* Footer */}
-            {/* Label */}
-            <View style={styles.footerContainer}>
-                <View style={styles.fridgeHeaderRow}>
-                    <Snowflake size={16} color="#5E8050" />
-                    <Text style={styles.fridgeLabel}>Check ingredients against:</Text>
-                </View>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+                style={styles.footerWrapper} // Wrapper needed for positioning
+            >
+                <View style={styles.footerContainer}>
+                    {/* Name Input Section */}
+                    <View style={styles.inputSection}>
+                        <Text style={styles.inputLabel}>Plan Name (Optional)</Text>
+                        <View style={styles.inputWrapper}>
+                            <Edit3 size={16} color="#A0AEC0" style={{ marginRight: 8 }} />
+                            <TextInput
+                                style={styles.textInput}
+                                placeholder={`Groceries (${new Date(params.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`}
+                                placeholderTextColor="#CBD5E0"
+                                value={customName}
+                                onChangeText={setCustomName}
+                                returnKeyType="done"
+                            />
+                        </View>
+                    </View>
 
-                {/* Horizontal Scroll of Chips */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                    {/* Default: ALL */}
+                    {/* Fridge Selector */}
+                    <View style={styles.fridgeHeaderRow}>
+                        <Snowflake size={16} color="#5E8050" />
+                        <Text style={styles.fridgeLabel}>Check ingredients against:</Text>
+                    </View>
+
+                    {/* Horizontal Scroll of Chips */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                        {/* Default: ALL */}
+                        <TouchableOpacity
+                            style={[styles.chip, selectedFridgeId === 'ALL' && styles.chipActive]}
+                            onPress={() => setSelectedFridgeId('ALL')}
+                        >
+                            <Text style={[styles.chipText, selectedFridgeId === 'ALL' && styles.chipTextActive]}>
+                                All Inventory
+                            </Text>
+                            {selectedFridgeId === 'ALL' && <CheckCircle2 size={14} color="#FFF" style={{ marginLeft: 4 }} />}
+                        </TouchableOpacity>
+
+                        {/* Dynamic User Lists */}
+                        {userFridges.map((fridge) => {
+                            const isSelected = selectedFridgeId === fridge.id;
+                            return (
+                                <TouchableOpacity
+                                    key={fridge.id}
+                                    style={[styles.chip, isSelected && styles.chipActive]}
+                                    onPress={() => setSelectedFridgeId(fridge.id)}
+                                >
+                                    <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                                        {fridge.name}
+                                    </Text>
+                                    {isSelected && <CheckCircle2 size={14} color="#FFF" style={{ marginLeft: 4 }} />}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+
                     <TouchableOpacity
-                        style={[styles.chip, selectedFridgeId === 'ALL' && styles.chipActive]}
-                        onPress={() => setSelectedFridgeId('ALL')}
+                        style={styles.confirmButton}
+                        onPress={handleCreatePlan}
+                        disabled={saving}
                     >
-                        <Text style={[styles.chipText, selectedFridgeId === 'ALL' && styles.chipTextActive]}>
-                            All Inventory
-                        </Text>
-                        {selectedFridgeId === 'ALL' && <CheckCircle2 size={14} color="#FFF" style={{ marginLeft: 4 }} />}
+                        {saving ? (
+                            <ActivityIndicator color="#FFF" />
+                        ) : (
+                            <Text style={styles.confirmButtonText}>Confirm & Create Plan</Text>
+                        )}
                     </TouchableOpacity>
-
-                    {/* Dynamic User Lists */}
-                    {userFridges.map((fridge) => {
-                        const isSelected = selectedFridgeId === fridge.id;
-                        return (
-                            <TouchableOpacity
-                                key={fridge.id}
-                                style={[styles.chip, isSelected && styles.chipActive]}
-                                onPress={() => setSelectedFridgeId(fridge.id)}
-                            >
-                                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                                    {fridge.name}
-                                </Text>
-                                {isSelected && <CheckCircle2 size={14} color="#FFF" style={{ marginLeft: 4 }} />}
-                            </TouchableOpacity>
-                        );
-                    })}
-                </ScrollView>
-
-                <TouchableOpacity
-                    style={styles.confirmButton}
-                    onPress={handleCreatePlan}
-                    disabled={saving}
-                >
-                    {saving ? (
-                        <ActivityIndicator color="#FFF" />
-                    ) : (
-                        <Text style={styles.confirmButtonText}>Confirm & Create Plan</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
+                </View>
+            </KeyboardAvoidingView>
 
         </SafeAreaView>
     );
@@ -548,15 +623,46 @@ const styles = StyleSheet.create({
     },
 
     // Footer
-    footerContainer: {
+    footerWrapper: {
         position: 'absolute', bottom: 0, left: 0, right: 0,
+    },
+    footerContainer: {
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 24, borderTopRightRadius: 24,
         padding: 20, paddingBottom: 40,
         shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 20,
     },
+    // Input Section
+    inputSection: {
+        marginBottom: 16,
+    },
+    inputLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#718096',
+        marginBottom: 6,
+        marginLeft: 4,
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F7FAFC',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        height: 44,
+    },
+    textInput: {
+        flex: 1,
+        fontSize: 14,
+        color: '#2D3748',
+        fontWeight: '500',
+    },
+    // Fridge Header Row
     fridgeHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
     fridgeLabel: { fontSize: 14, color: '#5E8050', fontWeight: '600' },
+    // Chip Scroll
     chipScroll: { marginBottom: 20, maxHeight: 40 },
     chip: {
         flexDirection: 'row', alignItems: 'center',
@@ -567,6 +673,7 @@ const styles = StyleSheet.create({
     chipActive: { backgroundColor: '#5E8050', borderColor: '#4A683E' },
     chipText: { fontSize: 13, color: '#718096', fontWeight: '600' },
     chipTextActive: { color: '#FFFFFF' },
+    // Confirm Button
     confirmButton: { backgroundColor: '#7A9B6B', paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
     confirmButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 
