@@ -92,16 +92,16 @@ export default function ListingDetailScreen() {
 
   // Handler for toggling
   const handleToggle = async (targetItem) => {
-    // Optimistic Update (Update UI immediately before Server responds)
+    // Optimistic Update (Update UI immediately)
     const newItems = items.map(i => {
       if (i.itemId === targetItem.itemId) {
-        return { ...i, checked: !i.checked }; // Flip it locally
+        return { ...i, checked: !i.checked }; 
       }
       return i;
     });
     setItems(newItems);
 
-    // Call Backend to save
+    // Call Backend to save single item
     await toggleGroceryItem(listId, targetItem.itemId, currentUserId);
   };
 
@@ -109,44 +109,41 @@ export default function ListingDetailScreen() {
   const handleMarkAll = async () => {
     if (items.length === 0) return;
 
-    // 1. Determine Target Status
+    // Determine Target Logic
     const allAreChecked = items.every(item => item.checked);
-    const targetStatus = !allAreChecked; // If all checked, uncheck. Else, check all.
+    const targetStatus = !allAreChecked; // If all checked -> Unmark All. Else -> Mark All.
 
     // Optimistic Update (Instant UI Feedback)
+    const oldItems = [...items]; // Keep a backup in case the server fails
+    
     const updatedItems = items.map(item => ({
       ...item,
       checked: targetStatus
     }));
     setItems(updatedItems); // UI updates instantly!
 
-    // Filter only items that actually need changing
-    const itemsToUpdate = items.filter(item => !!item.checked !== targetStatus);
-    
-    console.log(`Syncing ${itemsToUpdate.length} items to backend...`);
+    console.log(`Sending ONE batch request to set all to ${targetStatus}...`);
 
-    // Send requests in Batches of 3 
-    const BATCH_SIZE = 3;
-    for (let i = 0; i < itemsToUpdate.length; i += BATCH_SIZE) {
-        const chunk = itemsToUpdate.slice(i, i + BATCH_SIZE);
+    // ONE Single API Call
+    try {
+        const result = await toggleGroceryItem(listId, targetStatus, currentUserId);
         
-        try {
-            // Process this chunk in parallel
-            await Promise.all(
-                chunk.map(item => toggleGroceryItem(listId, item.itemId, currentUserId))
-            );
-            
-            // Tiny pause to let the server breathe (50ms)
-            await new Promise(r => setTimeout(r, 50));
-            
-        } catch (error) {
-            console.error("Batch sync failed", error);
-            // Optional: Revert UI if it fails? 
-            // Usually simpler to just silently fail or show a toast at the end.
+        if (!result || !result.success) {
+            throw new Error("Batch update failed on server");
         }
+        
+        console.log("Batch update success!");
+        
+        if (result.items) {
+             setItems(result.items); 
+        }
+
+    } catch (error) {
+        console.error("Failed:", error);
+        Alert.alert("Sync Error", "Could not update list. Reverting changes.");
+        // Revert the UI if the server failed
+        setItems(oldItems); 
     }
-    
-    console.log("Sync Complete");
   };
 
   const handleOpenModal = async () => {

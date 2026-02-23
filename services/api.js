@@ -11,7 +11,7 @@ export const fetchGroceryCatalog = async () => {
     });            
     
     const response = await operation.response;
-    
+
     return await response.body.json(); 
   } catch (error) {
     console.error("Error fetching catalog:", error);
@@ -209,7 +209,7 @@ export const addListItems = async (listId, name, quantity, category, shelfLife) 
 };
 
 // Toggle item to check or uncheck
-export const toggleGroceryItem = async (listId, itemId, checkedBy) => {
+export const toggleGroceryItem = async (listId, status, currentUserId) => {
   try {
     const operation = post({ 
       apiName: API_NAME,
@@ -217,12 +217,13 @@ export const toggleGroceryItem = async (listId, itemId, checkedBy) => {
       options: {
         body: { 
           listId, 
-          itemId,
-          checkedBy,
+          status,
+          currentUserId,
         }
       }
     });
-    return await operation.response;
+    const response = await operation.response;
+    return await response.body.json();
   } catch (error) {
     console.error("Error toggling item:", error);
     return null;
