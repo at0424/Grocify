@@ -1,5 +1,5 @@
 import { getUserId } from '@/amplify/auth/authService';
-import { addListItems, createNewList, createUserPlan, fetchGroceryCatalog, fetchRecipes, fetchUserLists } from '@/services/api';
+import { batchAddListItems, createNewList, createUserPlan, fetchGroceryCatalog, fetchRecipes, fetchUserLists } from '@/services/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2, ChevronLeft, Edit3, Moon, RefreshCw, Snowflake, Sun, Utensils } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -188,29 +188,6 @@ export default function MealPlanPreviewScreen() {
         });
     };
 
-    const processSafely = async (items, processItem) => {
-        let successCount = 0;
-        let failCount = 0;
-
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            try {
-                await processItem(item);
-                successCount++;
-
-                await new Promise(resolve => setTimeout(resolve, 20));
-
-            } catch (error) {
-                console.error(`Failed to add: ${item.name}`, error);
-                failCount++;
-            }
-
-            if (i % 5 === 0) console.log(`Processed ${i + 1}/${items.length}...`);
-        }
-
-        console.log(`DONE: ${successCount} added, ${failCount} failed.`);
-    };
-
     // Handle create meal plan AND grocery list
     const handleCreatePlan = async () => {
         setSaving(true);
@@ -309,15 +286,12 @@ export default function MealPlanPreviewScreen() {
 
             console.log(`Queueing ${finalIngredients.length} unique items...`);
 
-            await processSafely(finalIngredients, async (item) => {
-                await addListItems(
-                    newListId,
-                    item.name,
-                    item.quantity,
-                    item.category,
-                    item.shelfLife
-                );
-            });
+            try {
+                console.log("Sending entire ingredient list to the cloud...");
+                await batchAddListItems(newListId, finalIngredients);
+            } catch (err) {
+                throw new Error("Failed to batch upload ingredients.");
+            }
 
             // Create Plan & Finish 
             const payload = {

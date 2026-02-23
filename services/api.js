@@ -208,6 +208,27 @@ export const addListItems = async (listId, name, quantity, category, shelfLife) 
   }
 };
 
+// Add Items in Batch to Grocery List (for Meal Plan integration)
+export const batchAddListItems = async (listId, itemsArray) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/addListItems', 
+      options: {
+        body: {
+            listId: listId,
+            items: itemsArray 
+        }
+      }
+    });            
+    const response = await operation.response;
+    return await response.body.json(); 
+  } catch (error) {
+    console.error("Batch add failed:", error);
+    throw error;
+  }
+};
+
 // Toggle item to check or uncheck
 export const toggleGroceryItem = async (listId, status, currentUserId) => {
   try {
