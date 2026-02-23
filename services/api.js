@@ -11,6 +11,7 @@ export const fetchGroceryCatalog = async () => {
     });            
     
     const response = await operation.response;
+
     return await response.body.json(); 
   } catch (error) {
     console.error("Error fetching catalog:", error);
@@ -183,7 +184,7 @@ export const shareList = async (listId, email) => {
 };
 
 // Add item to Grocery List
-export const addListItems = async (listId, name, quantity, category) => {
+export const addListItems = async (listId, name, quantity, category, shelfLife) => {
   try {
     const operation = post({ 
       apiName: API_NAME,
@@ -193,7 +194,8 @@ export const addListItems = async (listId, name, quantity, category) => {
           listId,
           name,
           quantity,
-          category
+          category,
+          shelfLife,
         }
       }
     });
@@ -206,19 +208,189 @@ export const addListItems = async (listId, name, quantity, category) => {
   }
 };
 
+// Add Items in Batch to Grocery List (for Meal Plan integration)
+export const batchAddListItems = async (listId, itemsArray) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/addListItems', 
+      options: {
+        body: {
+            listId: listId,
+            items: itemsArray 
+        }
+      }
+    });            
+    const response = await operation.response;
+    return await response.body.json(); 
+  } catch (error) {
+    console.error("Batch add failed:", error);
+    throw error;
+  }
+};
+
 // Toggle item to check or uncheck
-export const toggleGroceryItem = async (listId, itemId) => {
+export const toggleGroceryItem = async (listId, status, currentUserId) => {
   try {
     const operation = post({ 
       apiName: API_NAME,
       path: '/toggleItem',
       options: {
-        body: { listId, itemId }
+        body: { 
+          listId, 
+          status,
+          currentUserId,
+        }
+      }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error toggling item:", error);
+    return null;
+  }
+};
+
+// Fetch fridge item for item freshness dashboard
+export const fetchFridgeItems = async (listId) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME, 
+      path: '/getFridgeItems', 
+      options: {
+        queryParams: { 
+          listId: listId
+        }
+      }
+    });
+
+    const response = await operation.response;
+    
+    let data;
+    if (response.body && typeof response.body.json === 'function') {
+        data = await response.body.json();
+    } else {
+        data = await response.json ? await response.json() : response; 
+    }
+
+    console.log(`Fetch success for ${listId}`); 
+    return data;
+
+  } catch (error) {
+    console.error(`Error fetching fridge ${listId}:`, error);
+    if (error.response) {
+        console.error("Error Response Body:", await error.response.body.text());
+    }
+    return { success: false, items: [] }; 
+  }
+};
+
+// To update item properties in freshness dashboard
+export const updateFridgeItem = async (listId, itemId, action, newDate = null) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/updateFridgeItem', 
+      options: {
+        body: { 
+          listId, 
+          itemId,
+          action,   // 'CONSUME' or 'UPDATE_DATE'
+          newDate
+        }
       }
     });
     return await operation.response;
   } catch (error) {
-    console.error("Error toggling item:", error);
+    console.error("Error updating fridge item:", error);
     return null;
+  }
+};
+
+// Fetch meal plan for individual user
+export const fetchUserMealPlan = async (userId) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME, 
+      path: '/getUserPlan',        
+      options: {
+        queryParams: {
+          userId: userId
+        }
+      }
+    });
+
+    const response = await operation.response;
+    
+    if (response.statusCode === 204) return null;
+
+    const json = await response.body.json();
+    return json; 
+
+  } catch (error) {
+    console.error("Error fetching user plan:", error);
+    return null;
+  }
+};
+
+// Fetch all or specific mealType of recipes
+export const fetchRecipes = async (mealType = null) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME,
+      path: '/getRecipes', 
+      options: {
+        queryParams: mealType ? { type: mealType } : undefined
+      }
+    });
+
+    const response = await operation.response;
+    const json = await response.body.json();
+
+    return json.data || [];
+  } catch (error) {
+    console.error("Error fetching recipes:", error);
+    return null;
+  }
+};
+
+// Create Meal Plan
+export const createUserPlan = async (planDetails) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/createMealPlan',     
+      options: {
+        body: planDetails
+      }
+    });
+
+    const response = await operation.response;
+  
+    const json = await response.body.json();
+    return json;
+
+  } catch (error) {
+    console.error("Error creating plan:", error);
+    throw error; 
+  }
+};
+
+// Delete Meal Plan
+export const deleteUserPlan = async (userId, planId) => {
+  try {
+    const operation = del({ 
+      apiName: API_NAME,
+      path: '/deleteMealPlan', 
+      options: {
+        queryParams: { userId, planId }
+      }
+    });
+
+    await operation.response;
+    return true;
+  } catch (error) {
+    console.error("Failed to delete plan:", error);
+    return false;
   }
 };

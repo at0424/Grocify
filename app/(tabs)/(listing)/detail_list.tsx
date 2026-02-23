@@ -12,8 +12,8 @@ export default function ListingDetailScreen() {
 
   // Data States
   const [items, setItems] = useState([]);
-  const [collaborators, setCollaborators] = useState([]); 
-  const [currentUserId, setCurrentUserId] = useState(null); 
+  const [collaborators, setCollaborators] = useState([]);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   // UI States
   const [loading, setLoading] = useState(true);
@@ -23,9 +23,6 @@ export default function ListingDetailScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalData, setModalData] = useState({ collaborators: [], ownerEmail: '', myRole: '' });
 
-  // Check Ownership
-  const isOwner = (userRole === 'owner');
-  
   // Refresh Screen
   const loadItems = async (isPullToRefresh = false) => {
     // Only show big spinner on initial load
@@ -39,7 +36,7 @@ export default function ListingDetailScreen() {
         fetchGroceryListDetails(listId),
         fetchCollaborators(listId, uid)
       ]);
-      
+
       // Handle Grocery Items
       if (groceryData.items) {
         setItems(groceryData.items);
@@ -50,11 +47,11 @@ export default function ListingDetailScreen() {
       // Handle Collaborators
       if (collabData.success) {
         setCollaborators(collabData.collaborators || []); // Updates the count bubble
-        
+
         setModalData({
-            collaborators: collabData.collaborators,
-            ownerEmail: collabData.ownerEmail,
-            myRole: collabData.requesterRole
+          collaborators: collabData.collaborators,
+          ownerEmail: collabData.ownerEmail,
+          myRole: collabData.requesterRole
         });
       }
 
@@ -95,24 +92,65 @@ export default function ListingDetailScreen() {
 
   // Handler for toggling
   const handleToggle = async (targetItem) => {
-    // Optimistic Update (Update UI immediately before Server responds)
+    // Optimistic Update (Update UI immediately)
     const newItems = items.map(i => {
       if (i.itemId === targetItem.itemId) {
-        return { ...i, checked: !i.checked }; // Flip it locally
+        return { ...i, checked: !i.checked }; 
       }
       return i;
     });
     setItems(newItems);
 
-    // Call Backend to save
-    await toggleGroceryItem(listId, targetItem.itemId);
+    // Call Backend to save single item
+    await toggleGroceryItem(listId, targetItem.itemId, currentUserId);
+  };
+
+  // Mark All Handler
+  const handleMarkAll = async () => {
+    if (items.length === 0) return;
+
+    // Determine Target Logic
+    const allAreChecked = items.every(item => item.checked);
+    const targetStatus = !allAreChecked; // If all checked -> Unmark All. Else -> Mark All.
+
+    // Optimistic Update (Instant UI Feedback)
+    const oldItems = [...items]; // Keep a backup in case the server fails
+    
+    const updatedItems = items.map(item => ({
+      ...item,
+      checked: targetStatus
+    }));
+    setItems(updatedItems); // UI updates instantly!
+
+    console.log(`Sending ONE batch request to set all to ${targetStatus}...`);
+
+    // ONE Single API Call
+    try {
+        const result = await toggleGroceryItem(listId, targetStatus, currentUserId);
+        
+        if (!result || !result.success) {
+            throw new Error("Batch update failed on server");
+        }
+        
+        console.log("Batch update success!");
+        
+        if (result.items) {
+             setItems(result.items); 
+        }
+
+    } catch (error) {
+        console.error("Failed:", error);
+        Alert.alert("Sync Error", "Could not update list. Reverting changes.");
+        // Revert the UI if the server failed
+        setItems(oldItems); 
+    }
   };
 
   const handleOpenModal = async () => {
     const uid = await getUserId();
     // Use the new API to get emails
     const data = await fetchCollaborators(listId, uid);
-    
+
     if (data.success) {
       setModalData({
         collaborators: data.collaborators,
@@ -128,14 +166,14 @@ export default function ListingDetailScreen() {
   // Handle invite collaborator
   const handleInvite = async (emailToInvite) => {
     const result = await shareList(listId, emailToInvite);
-    
+
     if (result.success) {
       Alert.alert("Success", "User added!");
-      
+
       // Refresh both the main screen (for count) and the modal data
-      loadItems(true); 
+      loadItems(true);
       handleOpenModal(); // Refetch modal data to show new email immediately
-      return true; 
+      return true;
     } else {
       Alert.alert("Failed", result.message || "Could not find user.");
       return false;
@@ -148,29 +186,29 @@ export default function ListingDetailScreen() {
     const isLeaving = idToRemove === currentUserId;
 
     const title = isLeaving ? "Leave List?" : "Remove User?";
-    const message = isLeaving 
-      ? "Are you sure you want to leave this list?" 
+    const message = isLeaving
+      ? "Are you sure you want to leave this list?"
       : "This will remove the user from the list.";
 
     Alert.alert(title, message, [
       { text: "Cancel", style: "cancel" },
-      { 
-        text: isLeaving ? "Leave" : "Remove", 
+      {
+        text: isLeaving ? "Leave" : "Remove",
         style: 'destructive',
         onPress: async () => {
-            const result = await removeCollaborator(listId, idToRemove, currentUserId);
-            if (result.success) {
-                if (isLeaving) {
-                    // If I left, I should be navigated back to dashboard
-                    router.back();
-                } else {
-                    // If I removed someone else, refresh data
-                    loadItems(true);
-                    handleOpenModal();
-                }
+          const result = await removeCollaborator(listId, idToRemove, currentUserId);
+          if (result.success) {
+            if (isLeaving) {
+              // If I left, I should be navigated back to dashboard
+              router.back();
             } else {
-                Alert.alert("Error", result.message || "Operation failed.");
+              // If I removed someone else, refresh data
+              loadItems(true);
+              handleOpenModal();
             }
+          } else {
+            Alert.alert("Error", result.message || "Operation failed.");
+          }
         }
       }
     ]);
@@ -219,18 +257,34 @@ export default function ListingDetailScreen() {
 
         <Text style={styles.headerTitle}>{title || "Unnamed List"}</Text>
 
-        <TouchableOpacity 
-            style={styles.avatarStack} 
-            onPress={handleOpenModal}
+        <TouchableOpacity
+          style={styles.avatarStack}
+          onPress={handleOpenModal}
         >
           {/* Show count of team members */}
-          <View style={[styles.avatar, { backgroundColor: '#718F64', right: 0, zIndex: 2, alignItems:'center', justifyContent:'center' }]}>
-            <Text style={{color:'white', fontSize: 10, fontWeight:'bold'}}>
-                {collaborators.length + 1}
+          <View style={[styles.avatar, { backgroundColor: '#718F64', right: 0, zIndex: 2, alignItems: 'center', justifyContent: 'center' }]}>
+            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+              {collaborators.length + 1}
             </Text>
           </View>
           <View style={[styles.avatar, { backgroundColor: '#A5D6A7', right: 12, zIndex: 1 }]} />
         </TouchableOpacity>
+
+        {/* Mark All Button */}
+        {items.length > 0 && (
+          <View style={styles.actionBar}>
+            <TouchableOpacity onPress={handleMarkAll} style={styles.markAllButton}>
+              <Ionicons
+                name={items.every(i => i.checked) ? "remove-circle-outline" : "checkmark-done-circle-outline"}
+                size={20}
+                color="#555"
+              />
+              <Text style={styles.markAllText}>
+                {items.every(i => i.checked) ? "Unmark All" : "Mark All"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
       </View>
 
@@ -279,13 +333,13 @@ export default function ListingDetailScreen() {
       </TouchableOpacity>
 
       {/* Collaborator Modal */}
-      <CollaboratorModal 
+      <CollaboratorModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         data={modalData}
         currentUserId={currentUserId}
         onInvite={handleInvite}
-        onRemove={handleRemove} 
+        onRemove={handleRemove}
       />
 
     </View>
@@ -335,6 +389,28 @@ const styles = StyleSheet.create({
     borderColor: '#FFF9C4', // Matches background for "cutout" effect
     position: 'absolute',
   },
+  // =================================================
+  // MARK ALL BUTTON
+  // =================================================
+  actionBar: {
+    paddingHorizontal: 20,
+    marginBottom: 10,
+    alignItems: 'flex-end', // Aligns button to the right
+  },
+  markAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  markAllText: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
 
   // =================================================
   // LIST CONTENT
@@ -343,7 +419,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 100, // Extra padding at bottom for the FAB
   },
-  
+
   // =================================================
   // ITEM ROWS
   // =================================================

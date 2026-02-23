@@ -1,0 +1,996 @@
+[
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_001",
+    "mealName": "Nasi Lemak Bungkus",
+    "description": "The national dish. Fragrant coconut rice served with sambal, anchovies, peanuts, and boiled egg.",
+    "calories": 644,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Produce", "groceryName": "Coconut Milk", "amount": "200", "unit": "ml" },
+      { "groceryCategory": "Seafood", "groceryName": "Anchovies (Ikan Bilis)", "amount": "50", "unit": "g" },
+      { "groceryCategory": "Condiments", "groceryName": "Sambal", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "whole" },
+      { "groceryCategory": "Produce", "groceryName": "Cucumber", "amount": "3", "unit": "slices" }
+    ],
+    "steps": [
+      "Wash rice and cook with coconut milk, pandan leaves, and a pinch of salt.",
+      "Fry anchovies and peanuts until crispy.",
+      "Boil the egg and slice the cucumber.",
+      "Serve hot with a generous dollop of sambal."
+    ]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_002",
+    "mealName": "Roti Canai with Dhal",
+    "description": "Crispy, flaky flatbread served with lentil curry.",
+    "calories": 450,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Bakery", "groceryName": "Roti Canai Dough", "amount": "2", "unit": "pcs" },
+      { "groceryCategory": "Dry Goods", "groceryName": "Lentils (Dhal)", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Spices", "groceryName": "Curry Powder", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Potato", "amount": "1", "unit": "small" }
+    ],
+    "steps": [
+      "Flatten the dough and fry on a flat pan with ghee until golden and flaky.",
+      "Boil lentils with curry powder and potatoes until soft.",
+      "Serve the roti hot with the dhal dip."
+    ]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_003",
+    "mealName": "Half Boiled Eggs & Toast",
+    "description": "The classic Kopitiam breakfast. Runny eggs with soy sauce and white pepper.",
+    "calories": 280,
+    "prepTime": 7,
+    "ingredients": [
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "2", "unit": "large" },
+      { "groceryCategory": "Bakery", "groceryName": "Hainanese Bread", "amount": "2", "unit": "slices" },
+      { "groceryCategory": "Condiments", "groceryName": "Soy Sauce", "amount": "1", "unit": "tsp" },
+      { "groceryCategory": "Condiments", "groceryName": "White Pepper", "amount": "1", "unit": "dash" },
+      { "groceryCategory": "Condiments", "groceryName": "Kaya", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": [
+      "Place eggs in boiling water, cover, and let sit for 7 minutes exactly.",
+      "Toast the bread and spread with butter and kaya.",
+      "Crack eggs into a bowl and season with soy sauce and pepper."
+    ]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_004",
+    "mealName": "Mee Goreng Mamak",
+    "description": "Spicy fried yellow noodles with tofu, fritters, and lime.",
+    "calories": 580,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Yellow Noodles", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Tofu", "amount": "1", "unit": "piece" },
+      { "groceryCategory": "Condiments", "groceryName": "Soy Sauce", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Lime (Limau Kasturi)", "amount": "1", "unit": "half" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken", "amount": "50", "unit": "g" }
+    ],
+    "steps": [
+      "Heat oil and sauté onions and chicken.",
+      "Add noodles, tofu, and sauces. Stir fry on high heat.",
+      "Push noodles to side, crack an egg in the middle and scramble.",
+      "Squeeze lime over the top before serving."
+    ]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_005",
+    "mealName": "Tosai (Thosai)",
+    "description": "Fermented rice and lentil crepe, healthy and light.",
+    "calories": 300,
+    "prepTime": 10,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Tosai Batter", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Condiments", "groceryName": "Coconut Chutney", "amount": "2", "unit": "tbsp" }
+    ],
+    "steps": [
+      "Pour batter onto a hot griddle and spread thinly in a circle.",
+      "Drizzle a little oil and cook until crispy.",
+      "Fold and serve with chutney."
+    ]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_006",
+    "mealName": "Nasi Dagang",
+    "description": "East Coast favorite. Red rice steamed with coconut milk and served with fish curry.",
+    "calories": 600,
+    "prepTime": 25,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Red Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Seafood", "groceryName": "Tuna (Ikan Tongkol)", "amount": "1", "unit": "slice" },
+      { "groceryCategory": "Spices", "groceryName": "Galangal", "amount": "1", "unit": "inch" },
+      { "groceryCategory": "Produce", "groceryName": "Coconut Milk", "amount": "100", "unit": "ml" }
+    ],
+    "steps": [
+      "Steam rice with coconut milk, fenugreek, and ginger.",
+      "Cook the fish in a rich curry paste until tender.",
+      "Serve rice with the curry and pickled vegetables."
+    ]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_007",
+    "mealName": "Curry Puffs (Karipap)",
+    "description": "Deep-fried pastry filled with spicy potato and chicken curry.",
+    "calories": 380,
+    "prepTime": 40,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Flour", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Potato", "amount": "2", "unit": "medium" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken Mince", "amount": "50", "unit": "g" },
+      { "groceryCategory": "Spices", "groceryName": "Curry Powder", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": [
+      "Make the dough and let it rest.",
+      "Cook diced potatoes and chicken with curry powder.",
+      "Fill dough circles, fold, crimp edges, and deep fry."
+    ]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_001",
+    "mealName": "Hainanese Chicken Rice",
+    "description": "Poached chicken served with seasoned rice and chili sauce.",
+    "calories": 600,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Chicken", "amount": "1", "unit": "quarter" },
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Produce", "groceryName": "Ginger", "amount": "1", "unit": "inch" },
+      { "groceryCategory": "Condiments", "groceryName": "Garlic Chili Sauce", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Cucumber", "amount": "4", "unit": "slices" }
+    ],
+    "steps": [
+      "Boil chicken with ginger and scallions. Save the broth.",
+      "Cook rice using the chicken broth and garlic fat.",
+      "Chop chicken and serve with rice, cucumber, and chili sauce."
+    ]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_002",
+    "mealName": "Laksa Penang",
+    "description": "Sour and spicy fish-based noodle soup with herbs.",
+    "calories": 450,
+    "prepTime": 40,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Laksa Noodles", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Seafood", "groceryName": "Mackerel", "amount": "2", "unit": "whole" },
+      { "groceryCategory": "Produce", "groceryName": "Pineapple", "amount": "2", "unit": "slices" },
+      { "groceryCategory": "Produce", "groceryName": "Mint Leaves", "amount": "1", "unit": "handful" },
+      { "groceryCategory": "Condiments", "groceryName": "Prawn Paste (Otak Udang)", "amount": "1", "unit": "tsp" }
+    ],
+    "steps": [
+      "Boil fish, debone, and blend the meat.",
+      "Boil the fish stock with tamarind, lemongrass, and blended fish.",
+      "Pour soup over noodles and top with pineapple, mint, and cucumber."
+    ]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_003",
+    "mealName": "Nasi Campur (Ayam Merah)",
+    "description": "White rice with Chicken Masak Merah (Tomato Spicy Chicken).",
+    "calories": 700,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken", "amount": "1", "unit": "piece" },
+      { "groceryCategory": "Condiments", "groceryName": "Tomato Puree", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Spices", "groceryName": "Dried Chili Paste", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": [
+      "Deep fry turmeric-marinated chicken lightly.",
+      "Sauté chili paste and tomato puree until oil splits.",
+      "Add chicken and simmer until sauce thickens."
+    ]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_004",
+    "mealName": "Char Kway Teow",
+    "description": "Smoky flat rice noodles stir-fried with prawns and cockles.",
+    "calories": 744,
+    "prepTime": 10,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Kway Teow (Flat Noodles)", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Seafood", "groceryName": "Prawns", "amount": "3", "unit": "medium" },
+      { "groceryCategory": "Seafood", "groceryName": "Cockles", "amount": "10", "unit": "pcs" },
+      { "groceryCategory": "Produce", "groceryName": "Bean Sprouts", "amount": "1", "unit": "handful" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "large" }
+    ],
+    "steps": [
+      "Heat wok until smoking hot.",
+      "Fry garlic and prawns, then add noodles and soy sauce.",
+      "Add bean sprouts, cockles, and egg. Stir fry vigorously for 'Wok Hei'."
+    ]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_005",
+    "mealName": "Bak Kut Teh",
+    "description": "Herbal pork rib soup served with rice and youtiao.",
+    "calories": 600,
+    "prepTime": 60,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Pork Ribs (or Chicken)", "amount": "300", "unit": "g" },
+      { "groceryCategory": "Spices", "groceryName": "Herbal Soup Pack", "amount": "1", "unit": "pack" },
+      { "groceryCategory": "Produce", "groceryName": "Garlic", "amount": "2", "unit": "whole bulbs" },
+      { "groceryCategory": "Produce", "groceryName": "Mushrooms", "amount": "4", "unit": "dried" }
+    ],
+    "steps": [
+      "Boil water with the herbal pack and whole garlic bulbs.",
+      "Add meat and simmer for 45-60 minutes until tender.",
+      "Add mushrooms and season with soy sauce."
+    ]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_006",
+    "mealName": "Asam Pedas Ikan",
+    "description": "Spicy and sour fish stew with okra.",
+    "calories": 450,
+    "prepTime": 25,
+    "ingredients": [
+      { "groceryCategory": "Seafood", "groceryName": "Stingray or Mackerel", "amount": "1", "unit": "slice" },
+      { "groceryCategory": "Produce", "groceryName": "Okra (Lady Finger)", "amount": "4", "unit": "pcs" },
+      { "groceryCategory": "Condiments", "groceryName": "Tamarind Paste", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Spices", "groceryName": "Chili Paste", "amount": "2", "unit": "tbsp" }
+    ],
+    "steps": [
+      "Sauté blended onions and chili paste.",
+      "Add tamarind juice and bring to a boil.",
+      "Add fish and okra, cook for 5-7 minutes."
+    ]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_007",
+    "mealName": "Nasi Kerabu",
+    "description": "Blue rice colored with butterfly pea flower, served with herbs and salted egg.",
+    "calories": 550,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Produce", "groceryName": "Butterfly Pea Flower", "amount": "5", "unit": "flowers" },
+      { "groceryCategory": "Produce", "groceryName": "Long Beans", "amount": "2", "unit": "chopped" },
+      { "groceryCategory": "Dairy", "groceryName": "Salted Egg", "amount": "0.5", "unit": "whole" }
+    ],
+    "steps": [
+      "Cook rice with the blue flower water.",
+      "Finely chop all herbs and vegetables (Ulam).",
+      "Serve rice mixed with ulam, toasted coconut (kerisik), and salted egg."
+    ]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_001",
+    "mealName": "Chicken Satay",
+    "description": "Skewered grilled chicken with peanut sauce.",
+    "calories": 400,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Chicken Breast", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Spices", "groceryName": "Turmeric", "amount": "1", "unit": "tsp" },
+      { "groceryCategory": "Spices", "groceryName": "Lemongrass", "amount": "1", "unit": "stalk" },
+      { "groceryCategory": "Condiments", "groceryName": "Peanut Sauce", "amount": "100", "unit": "ml" }
+    ],
+    "steps": [
+      "Marinate chicken cubes with turmeric, sugar, and lemongrass.",
+      "Thread onto bamboo skewers.",
+      "Grill over charcoal until charred and cooked.",
+      "Serve with cucumber, onions, and peanut sauce."
+    ]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_002",
+    "mealName": "Maggi Goreng",
+    "description": "Stir-fried instant noodles, a late-night classic.",
+    "calories": 480,
+    "prepTime": 8,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Instant Noodles", "amount": "1", "unit": "packet" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "large" },
+      { "groceryCategory": "Produce", "groceryName": "Mustard Greens (Sawi)", "amount": "1", "unit": "stalk" },
+      { "groceryCategory": "Condiments", "groceryName": "Soy Sauce", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": [
+      "Boil noodles until slightly undercooked and drain.",
+      "Sauté onions and an egg.",
+      "Add noodles and seasoning packet, stir fry on high heat."
+    ]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_003",
+    "mealName": "Ramly Burger",
+    "description": "Malaysian style street burger wrapped in egg.",
+    "calories": 650,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Burger Patty", "amount": "1", "unit": "pc" },
+      { "groceryCategory": "Bakery", "groceryName": "Burger Bun", "amount": "1", "unit": "whole" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "whole" },
+      { "groceryCategory": "Condiments", "groceryName": "Mayonnaise", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Condiments", "groceryName": "Chili Sauce", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": [
+      "Grill the patty and season with Worcester sauce.",
+      "Crack an egg on the grill and spread it thin.",
+      "Place patty on egg and wrap it.",
+      "Place in toasted bun with lots of sauce."
+    ]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_004",
+    "mealName": "Claypot Chicken Rice",
+    "description": "Rice cooked in a claypot with marinated chicken and chinese sausage.",
+    "calories": 620,
+    "prepTime": 25,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken Thigh", "amount": "150", "unit": "g" },
+      { "groceryCategory": "Meat", "groceryName": "Chinese Sausage", "amount": "1", "unit": "link" },
+      { "groceryCategory": "Condiments", "groceryName": "Dark Soy Sauce", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": [
+      "Marinate chicken with soy sauce, ginger, and sesame oil.",
+      "Cook rice in claypot (or rice cooker) until water reduces.",
+      "Add chicken and sausage on top, cover, and cook until rice is crusty at the bottom."
+    ]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_005",
+    "mealName": "Nasi Goreng Kampung",
+    "description": "Village-style fried rice with anchovies and water spinach.",
+    "calories": 500,
+    "prepTime": 10,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Cold Rice", "amount": "1", "unit": "bowl" },
+      { "groceryCategory": "Seafood", "groceryName": "Anchovies", "amount": "1", "unit": "handful" },
+      { "groceryCategory": "Produce", "groceryName": "Kangkung (Water Spinach)", "amount": "1", "unit": "handful" },
+      { "groceryCategory": "Produce", "groceryName": "Bird's Eye Chili", "amount": "3", "unit": "pcs" }
+    ],
+    "steps": [
+      "Fry anchovies until crispy and set aside.",
+      "Pound chilies and garlic, sauté until fragrant.",
+      "Add rice and kangkung, stir fry well.",
+      "Top with crispy anchovies."
+    ]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_006",
+    "mealName": "Tandoori Chicken",
+    "description": "Yogurt marinated roasted chicken, usually served with Naan.",
+    "calories": 350,
+    "prepTime": 40,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Chicken Leg", "amount": "1", "unit": "whole" },
+      { "groceryCategory": "Dairy", "groceryName": "Yogurt", "amount": "3", "unit": "tbsp" },
+      { "groceryCategory": "Spices", "groceryName": "Tandoori Masala", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Lemon", "amount": "0.5", "unit": "wedge" }
+    ],
+    "steps": [
+      "Score the chicken leg deeply.",
+      "Marinate in yogurt, lemon juice, and spices for at least 1 hour.",
+      "Roast in oven (or tandoor) at high heat until charred."
+    ]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_007",
+    "mealName": "Sup Ekor (Oxtail Soup)",
+    "description": "Rich and spicy oxtail soup served with bread.",
+    "calories": 550,
+    "prepTime": 90,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Oxtail", "amount": "300", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Carrot", "amount": "1", "unit": "pc" },
+      { "groceryCategory": "Produce", "groceryName": "Potato", "amount": "1", "unit": "pc" },
+      { "groceryCategory": "Spices", "groceryName": "Sup Bunjut (Spice Mix)", "amount": "1", "unit": "bag" }
+    ],
+    "steps": [
+      "Boil oxtail with spices until very tender (1-2 hours).",
+      "Add potatoes and carrots, cook until soft.",
+      "Garnish with fried shallots and celery leaves."
+    ]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_008",
+    "mealName": "Lontong Sayur",
+    "description": "Compressed rice cakes in a rich vegetable turmeric coconut stew.",
+    "calories": 480,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Nasi Impit (Rice Cubes)", "amount": "1", "unit": "pack" },
+      { "groceryCategory": "Produce", "groceryName": "Cabbage", "amount": "1", "unit": "wedge" },
+      { "groceryCategory": "Produce", "groceryName": "Long Beans", "amount": "3", "unit": "stalks" },
+      { "groceryCategory": "Produce", "groceryName": "Coconut Milk", "amount": "200", "unit": "ml" }
+    ],
+    "steps": ["Boil the vegetables in diluted coconut milk with turmeric paste.", "Add thick coconut milk and simmer.", "Serve over cubed rice cakes with sambal."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_009",
+    "mealName": "Soto Ayam",
+    "description": "Yellow spicy chicken soup with vermicelli and begedil (potato patty).",
+    "calories": 450,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice Vermicelli (Bihun)", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken Breast", "amount": "150", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Bean Sprouts", "amount": "1", "unit": "handful" },
+      { "groceryCategory": "Spices", "groceryName": "Soup Spices (Sup Bunjut)", "amount": "1", "unit": "pack" }
+    ],
+    "steps": ["Boil chicken with spices to make broth.", "Shred the chicken.", "Blanch vermicelli and bean sprouts.", "Pour hot soup over noodles and top with shredded chicken."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_010",
+    "mealName": "Chee Cheong Fun",
+    "description": "Steamed rice noodle rolls served with sweet sauce and chili.",
+    "calories": 320,
+    "prepTime": 10,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice Rolls (Chee Cheong Fun)", "amount": "3", "unit": "rolls" },
+      { "groceryCategory": "Condiments", "groceryName": "Sweet Sauce (Tim Jeong)", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Condiments", "groceryName": "Chili Sauce", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Dry Goods", "groceryName": "Sesame Seeds", "amount": "1", "unit": "tsp" }
+    ],
+    "steps": ["Steam the rice rolls until soft.", "Cut into bite-sized pieces.", "Drizzle generously with sauces and sprinkle sesame seeds."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_011",
+    "mealName": "Rawa Thosai",
+    "description": "Crispy semolina crepe spiced with peppercorns and cumin.",
+    "calories": 350,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Semolina Flour", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Produce", "groceryName": "Green Chili", "amount": "1", "unit": "pc" },
+      { "groceryCategory": "Spices", "groceryName": "Black Peppercorns", "amount": "1", "unit": "tsp" },
+      { "groceryCategory": "Spices", "groceryName": "Cumin Seeds", "amount": "1", "unit": "tsp" }
+    ],
+    "steps": ["Mix semolina, spices, and water into a thin batter.", "Pour onto a hot griddle.", "Cook until lacy and crispy."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_012",
+    "mealName": "Dim Sum (Siew Mai)",
+    "description": "Steamed chicken and prawn dumplings.",
+    "calories": 250,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Minced Chicken", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Seafood", "groceryName": "Prawns", "amount": "50", "unit": "g" },
+      { "groceryCategory": "Dry Goods", "groceryName": "Wonton Skins", "amount": "10", "unit": "pcs" },
+      { "groceryCategory": "Produce", "groceryName": "Carrot", "amount": "1", "unit": "grated" }
+    ],
+    "steps": ["Mix chicken and chopped prawns with seasoning.", "Wrap mixture in wonton skins.", "Top with grated carrot and steam for 8 minutes."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_013",
+    "mealName": "Bubur Ayam (Chicken Porridge)",
+    "description": "Silky rice porridge topped with shredded chicken, peanuts, and scallions.",
+    "calories": 380,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "0.5", "unit": "cup" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken Breast", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Condiments", "groceryName": "Sesame Oil", "amount": "1", "unit": "tsp" },
+      { "groceryCategory": "Dry Goods", "groceryName": "Fried Shallots", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": ["Boil rice with plenty of water until broken down.", "Add cooked shredded chicken.", "Season with sesame oil and soy sauce."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_014",
+    "mealName": "Capati & Keema",
+    "description": "Whole wheat flatbread served with minced meat curry.",
+    "calories": 420,
+    "prepTime": 25,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Atta Flour", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Meat", "groceryName": "Minced Beef/Mutton", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Peas", "amount": "1", "unit": "handful" },
+      { "groceryCategory": "Spices", "groceryName": "Garam Masala", "amount": "1", "unit": "tsp" }
+    ],
+    "steps": ["Knead flour and water, roll flat, and cook on dry pan.", "Sauté mince with spices and peas until dry.", "Serve together."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_015",
+    "mealName": "Curry Mee",
+    "description": "Yellow noodles in a rich coconut curry broth with cockles.",
+    "calories": 550,
+    "prepTime": 25,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Yellow Noodles", "amount": "150", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Coconut Milk", "amount": "100", "unit": "ml" },
+      { "groceryCategory": "Seafood", "groceryName": "Cockles", "amount": "10", "unit": "pcs" },
+      { "groceryCategory": "Produce", "groceryName": "Tofu Puffs", "amount": "3", "unit": "pcs" }
+    ],
+    "steps": ["Prepare curry broth with curry paste and coconut milk.", "Add tofu puffs to soak up soup.", "Blanch noodles and top with cockles."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_016",
+    "mealName": "Apam Balik",
+    "description": "Malaysian pancake filled with corn and peanuts.",
+    "calories": 300,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Pancake Batter", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Dry Goods", "groceryName": "Creamed Corn", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Dry Goods", "groceryName": "Crushed Peanuts", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Condiments", "groceryName": "Sugar", "amount": "1", "unit": "tsp" }
+    ],
+    "steps": ["Pour batter on pan.", "Sprinkle sugar, peanuts, and corn.", "Fold in half when crispy."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_017",
+    "mealName": "Mee Hoon Goreng Putih",
+    "description": "Village style fried vermicelli, non-spicy, savory.",
+    "calories": 380,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice Vermicelli", "amount": "150", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Mustard Greens", "amount": "1", "unit": "stalk" },
+      { "groceryCategory": "Seafood", "groceryName": "Dried Anchovies", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "large" }
+    ],
+    "steps": ["Soak vermicelli.", "Sauté garlic and anchovies.", "Add vermicelli and greens, stir fry until soft."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_018",
+    "mealName": "Vadai",
+    "description": "Savory fried donuts made from lentil flour.",
+    "calories": 250,
+    "prepTime": 40,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Urad Dhal Flour", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Produce", "groceryName": "Green Chili", "amount": "1", "unit": "chopped" },
+      { "groceryCategory": "Produce", "groceryName": "Curry Leaves", "amount": "1", "unit": "stalk" },
+      { "groceryCategory": "Produce", "groceryName": "Onion", "amount": "1", "unit": "small" }
+    ],
+    "steps": ["Mix flour with water and spices to make dough.", "Shape into donuts.", "Deep fry until golden."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_019",
+    "mealName": "Lempeng Kelapa",
+    "description": "Traditional coconut pancake served with sambal.",
+    "calories": 320,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Flour", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Produce", "groceryName": "Grated Coconut", "amount": "0.5", "unit": "cup" },
+      { "groceryCategory": "Condiments", "groceryName": "Sambal", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": ["Mix flour, coconut, and salt.", "Cook on a flat pan like a pancake.", "Serve with spicy sambal."]
+  },
+  {
+    "mealType": "Breakfast",
+    "recipeId": "bf_020",
+    "mealName": "Wantan Mee (Dry)",
+    "description": "Egg noodles tossed in dark soy sauce with dumplings.",
+    "calories": 500,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Egg Noodles", "amount": "150", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Choy Sum", "amount": "2", "unit": "stalks" },
+      { "groceryCategory": "Condiments", "groceryName": "Dark Soy Sauce", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken Char Siu", "amount": "5", "unit": "slices" }
+    ],
+    "steps": ["Boil noodles and blanch greens.", "Toss noodles in soy sauce mixture.", "Top with chicken and serve dumplings on side."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_008",
+    "mealName": "Mee Rebus",
+    "description": "Yellow noodles in a thick, sweet and spicy potato-based gravy.",
+    "calories": 520,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Yellow Noodles", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Sweet Potato", "amount": "2", "unit": "boiled & mashed" },
+      { "groceryCategory": "Produce", "groceryName": "Lime", "amount": "1", "unit": "half" },
+      { "groceryCategory": "Dairy", "groceryName": "Hard Boiled Egg", "amount": "1", "unit": "whole" }
+    ],
+    "steps": ["Cook mashed potato with curry powder and beef stock to make gravy.", "Blanch noodles.", "Pour gravy over noodles and garnish."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_009",
+    "mealName": "Nasi Ayam Penyet",
+    "description": "Smashed fried chicken served with spicy sambal and tempeh.",
+    "calories": 750,
+    "prepTime": 40,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Chicken Leg", "amount": "1", "unit": "whole" },
+      { "groceryCategory": "Produce", "groceryName": "Tempeh", "amount": "2", "unit": "slices" },
+      { "groceryCategory": "Condiments", "groceryName": "Sambal Belacan", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Cucumber", "amount": "4", "unit": "slices" }
+    ],
+    "steps": ["Boil chicken with coriander and turmeric, then deep fry.", "Smash the chicken with a pestle.", "Serve with fried tempeh, tofu, and sambal."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_010",
+    "mealName": "Pan Mee (Soup)",
+    "description": "Hand-torn noodles in anchovy broth with mushrooms and minced meat.",
+    "calories": 480,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Flour (Dough)", "amount": "150", "unit": "g" },
+      { "groceryCategory": "Seafood", "groceryName": "Anchovies", "amount": "1", "unit": "handful" },
+      { "groceryCategory": "Meat", "groceryName": "Minced Chicken", "amount": "50", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Sayur Manis", "amount": "1", "unit": "handful" }
+    ],
+    "steps": ["Boil anchovies to make stock.", "Tear pieces of dough into the boiling soup.", "Add minced meat and vegetables."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_011",
+    "mealName": "Nasi Kandar (Curry Chicken)",
+    "description": "Penang style rice flooded with mixed curries.",
+    "calories": 800,
+    "prepTime": 10,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "1.5", "unit": "cup" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken Curry", "amount": "1", "unit": "serving" },
+      { "groceryCategory": "Produce", "groceryName": "Okra", "amount": "3", "unit": "boiled" },
+      { "groceryCategory": "Condiments", "groceryName": "Papadom", "amount": "2", "unit": "pcs" }
+    ],
+    "steps": ["Plate the rice.", "Pour two or three different curry gravies over the rice ('Banjir').", "Serve with chicken and okra."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_012",
+    "mealName": "Mee Bandung Muar",
+    "description": "Noodles in a rich shrimp and beef gravy.",
+    "calories": 560,
+    "prepTime": 25,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Yellow Noodles", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Meat", "groceryName": "Beef Slices", "amount": "50", "unit": "g" },
+      { "groceryCategory": "Seafood", "groceryName": "Dried Prawns", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "poached in soup" }
+    ],
+    "steps": ["Blend dried prawns and chilies, sauté until fragrant.", "Add beef stock and beef slices.", "Add noodles and crack an egg into the gravy."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_013",
+    "mealName": "Banana Leaf Rice (Basic)",
+    "description": "Rice served on banana leaf with three vegetable sides.",
+    "calories": 500,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Parboiled Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Produce", "groceryName": "Cucumber Raita", "amount": "1", "unit": "serving" },
+      { "groceryCategory": "Produce", "groceryName": "Fried Bitter Gourd", "amount": "1", "unit": "serving" },
+      { "groceryCategory": "Condiments", "groceryName": "Dhal Curry", "amount": "1", "unit": "bowl" }
+    ],
+    "steps": ["Place banana leaf.", "Serve hot rice.", "Add vegetable sides and pour dhal over rice."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_014",
+    "mealName": "Nasi Paprik",
+    "description": "Rice served with spicy stir-fried chicken and vegetables.",
+    "calories": 620,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken Breast", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Long Beans", "amount": "2", "unit": "stalks" },
+      { "groceryCategory": "Produce", "groceryName": "Kaffir Lime Leaf", "amount": "2", "unit": "leaves" }
+    ],
+    "steps": ["Sauté garlic, chili paste, and chicken.", "Add veggies and lime leaves.", "Season with fish sauce and serve with rice."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_015",
+    "mealName": "Mee Siam",
+    "description": "Spicy and sour fried vermicelli.",
+    "calories": 420,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Vermicelli", "amount": "150", "unit": "g" },
+      { "groceryCategory": "Condiments", "groceryName": "Taucu (Bean Paste)", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Seafood", "groceryName": "Dried Shrimps", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "shredded" }
+    ],
+    "steps": ["Fry spice paste with taucu.", "Add soaked vermicelli and stir fry until dry.", "Garnish with shredded egg."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_016",
+    "mealName": "Claypot Yee Mee",
+    "description": "Crispy egg noodles cooked in claypot soup.",
+    "calories": 450,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Yee Mee", "amount": "1", "unit": "cake" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken", "amount": "50", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Choy Sum", "amount": "2", "unit": "stalks" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "whole" }
+    ],
+    "steps": ["Boil chicken stock in claypot.", "Add noodles and chicken.", "Crack egg on top and serve bubbling hot."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_017",
+    "mealName": "Rojak Mamak",
+    "description": "Fried dough fritters, egg, and cucumber in thick peanut sauce.",
+    "calories": 650,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Bakery", "groceryName": "Fried Dough Fritters", "amount": "2", "unit": "pcs" },
+      { "groceryCategory": "Dairy", "groceryName": "Boiled Egg", "amount": "1", "unit": "whole" },
+      { "groceryCategory": "Produce", "groceryName": "Cucumber", "amount": "0.5", "unit": "shredded" },
+      { "groceryCategory": "Condiments", "groceryName": "Spicy Peanut Sauce", "amount": "1", "unit": "cup" }
+    ],
+    "steps": ["Cut fritters and egg into bite size pieces.", "Add cucumber and turnips.", "Drench in warm peanut sauce."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_018",
+    "mealName": "Ikan Bakar (Grilled Fish)",
+    "description": "Stingray or mackerel grilled in banana leaf with sambal.",
+    "calories": 350,
+    "prepTime": 25,
+    "ingredients": [
+      { "groceryCategory": "Seafood", "groceryName": "Stingray", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Condiments", "groceryName": "Sambal Paste", "amount": "3", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Banana Leaf", "amount": "1", "unit": "sheet" },
+      { "groceryCategory": "Produce", "groceryName": "Lime", "amount": "1", "unit": "wedge" }
+    ],
+    "steps": ["Coat fish in sambal.", "Wrap in banana leaf.", "Grill on flat top for 15 minutes. Squeeze lime before eating."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_019",
+    "mealName": "Pasembur",
+    "description": "Malaysian Indian salad with shredded cucumber, potatoes, beancurd, turnip, bean sprouts, prawn fritters.",
+    "calories": 500,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Produce", "groceryName": "Cucumber", "amount": "1", "unit": "shredded" },
+      { "groceryCategory": "Produce", "groceryName": "Turnip (Jicama)", "amount": "1", "unit": "shredded" },
+      { "groceryCategory": "Bakery", "groceryName": "Prawn Fritters", "amount": "2", "unit": "pcs" },
+      { "groceryCategory": "Condiments", "groceryName": "Sweet Potato Sauce", "amount": "1", "unit": "cup" }
+    ],
+    "steps": ["Arrange shredded vegetables and chopped fritters.", "Pour warm sweet potato sauce over the top.", "Serve immediately."]
+  },
+  {
+    "mealType": "Lunch",
+    "recipeId": "ln_020",
+    "mealName": "Chicken Rice Balls",
+    "description": "Malacca style chicken rice served in ball form.",
+    "calories": 600,
+    "prepTime": 40,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Rice", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Meat", "groceryName": "Steamed Chicken", "amount": "1", "unit": "breast" },
+      { "groceryCategory": "Condiments", "groceryName": "Chicken Fat", "amount": "1", "unit": "tbsp" },
+      { "groceryCategory": "Condiments", "groceryName": "Garlic Chili", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": ["Cook rice with chicken fat and stock.", "While hot, compress rice into golf-ball sizes.", "Serve with chicken and chili."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_008",
+    "mealName": "Hokkien Mee (KL Style)",
+    "description": "Thick yellow noodles braised in dark soy sauce and lard.",
+    "calories": 680,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Dry Goods", "groceryName": "Thick Yellow Noodles", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Cabbage", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Seafood", "groceryName": "Prawns", "amount": "3", "unit": "pcs" },
+      { "groceryCategory": "Condiments", "groceryName": "Thick Dark Soy Sauce", "amount": "2", "unit": "tbsp" }
+    ],
+    "steps": ["Fry garlic in lard/oil.", "Add noodles, prawns, cabbage, and soy sauce.", "Braise with a little stock until thick."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_009",
+    "mealName": "Murtabak Ayam",
+    "description": "Stuffed pan-fried bread with minced chicken and onions.",
+    "calories": 600,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Bakery", "groceryName": "Roti Dough", "amount": "1", "unit": "pc" },
+      { "groceryCategory": "Meat", "groceryName": "Minced Chicken", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Onion", "amount": "1", "unit": "chopped" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "whole" }
+    ],
+    "steps": ["Mix chicken, egg, and onion.", "Spread dough thin, place filling in center.", "Fold into a square and fry until golden."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_010",
+    "mealName": "Butter Chicken with Naan",
+    "description": "Creamy tomato based curry with garlic naan.",
+    "calories": 700,
+    "prepTime": 40,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Chicken", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Dairy", "groceryName": "Heavy Cream", "amount": "50", "unit": "ml" },
+      { "groceryCategory": "Condiments", "groceryName": "Tomato Puree", "amount": "3", "unit": "tbsp" },
+      { "groceryCategory": "Bakery", "groceryName": "Garlic Naan", "amount": "1", "unit": "pc" }
+    ],
+    "steps": ["Cook chicken in tomato spices.", "Stir in cream and butter.", "Serve hot with naan."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_011",
+    "mealName": "Siakap Tiga Rasa",
+    "description": "Deep fried Barramundi topped with sweet, sour, and spicy sauce.",
+    "calories": 450,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Seafood", "groceryName": "Siakap (Barramundi)", "amount": "1", "unit": "whole" },
+      { "groceryCategory": "Produce", "groceryName": "Pineapple", "amount": "0.5", "unit": "cup diced" },
+      { "groceryCategory": "Condiments", "groceryName": "Chili Sauce", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Tomato", "amount": "1", "unit": "diced" }
+    ],
+    "steps": ["Deep fry the fish until crispy.", "Sauté garlic, chili sauce, pineapple, and tomato.", "Pour sauce over the crispy fish."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_012",
+    "mealName": "Sambal Udang Petai",
+    "description": "Prawns cooked in spicy sambal with stink beans.",
+    "calories": 400,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Seafood", "groceryName": "Prawns", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Petai (Stink Beans)", "amount": "0.5", "unit": "cup" },
+      { "groceryCategory": "Condiments", "groceryName": "Sambal Paste", "amount": "3", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Onion", "amount": "1", "unit": "sliced" }
+    ],
+    "steps": ["Fry onions and sambal paste until fragrant.", "Add petai and prawns.", "Cook until prawns turn pink."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_013",
+    "mealName": "Daging Masak Hitam",
+    "description": "Beef slow cooked in dark soy sauce and spices.",
+    "calories": 550,
+    "prepTime": 60,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Beef Cubes", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Condiments", "groceryName": "Dark Soy Sauce", "amount": "3", "unit": "tbsp" },
+      { "groceryCategory": "Spices", "groceryName": "Star Anise", "amount": "2", "unit": "pods" },
+      { "groceryCategory": "Spices", "groceryName": "Cinnamon", "amount": "1", "unit": "stick" }
+    ],
+    "steps": ["Marinate beef in soy sauce.", "Sauté spices and cook beef slowly adding water.", "Simmer until gravy is thick and dark."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_014",
+    "mealName": "Steamboat (Hotpot)",
+    "description": "Clear soup with assortment of fish balls, tofu, and vegetables.",
+    "calories": 350,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Seafood", "groceryName": "Fish Balls", "amount": "5", "unit": "pcs" },
+      { "groceryCategory": "Produce", "groceryName": "Chinese Cabbage", "amount": "1", "unit": "cup" },
+      { "groceryCategory": "Produce", "groceryName": "Tofu", "amount": "2", "unit": "blocks" },
+      { "groceryCategory": "Meat", "groceryName": "Chicken Slices", "amount": "50", "unit": "g" }
+    ],
+    "steps": ["Boil chicken stock.", "Add ingredients one by one.", "Dip cooked items in chili sauce."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_015",
+    "mealName": "Ayam Masak Lemak Cili Padi",
+    "description": "Chicken in spicy turmeric coconut gravy.",
+    "calories": 600,
+    "prepTime": 30,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Chicken", "amount": "200", "unit": "g" },
+      { "groceryCategory": "Produce", "groceryName": "Turmeric (Fresh)", "amount": "1", "unit": "inch" },
+      { "groceryCategory": "Produce", "groceryName": "Bird's Eye Chili", "amount": "5", "unit": "pcs" },
+      { "groceryCategory": "Produce", "groceryName": "Coconut Milk", "amount": "200", "unit": "ml" }
+    ],
+    "steps": ["Blend turmeric and chilies.", "Cook paste with chicken.", "Add coconut milk and simmer gently."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_016",
+    "mealName": "Kangkung Belacan",
+    "description": "Water spinach stir fried with shrimp paste.",
+    "calories": 150,
+    "prepTime": 10,
+    "ingredients": [
+      { "groceryCategory": "Produce", "groceryName": "Kangkung", "amount": "1", "unit": "bunch" },
+      { "groceryCategory": "Condiments", "groceryName": "Belacan (Shrimp Paste)", "amount": "1", "unit": "tsp" },
+      { "groceryCategory": "Produce", "groceryName": "Chili", "amount": "2", "unit": "chopped" },
+      { "groceryCategory": "Seafood", "groceryName": "Dried Shrimps", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": ["Fry belacan and dried shrimps.", "Add kangkung and high heat stir fry.", "Serve immediately."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_017",
+    "mealName": "Tom Yam Soup",
+    "description": "Spicy and sour Thai style soup popular in Malaysia.",
+    "calories": 200,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Seafood", "groceryName": "Prawns/Squid", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Condiments", "groceryName": "Tom Yam Paste", "amount": "2", "unit": "tbsp" },
+      { "groceryCategory": "Produce", "groceryName": "Lemongrass", "amount": "2", "unit": "stalks" },
+      { "groceryCategory": "Produce", "groceryName": "Lime Leaves", "amount": "3", "unit": "leaves" }
+    ],
+    "steps": ["Boil water with lemongrass and paste.", "Add seafood and mushrooms.", "Finish with lime juice."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_018",
+    "mealName": "Telur Dadar (Malaysian Omelette)",
+    "description": "Fluffy omelette with onions and chilies.",
+    "calories": 220,
+    "prepTime": 5,
+    "ingredients": [
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "2", "unit": "large" },
+      { "groceryCategory": "Produce", "groceryName": "Onion", "amount": "0.5", "unit": "diced" },
+      { "groceryCategory": "Produce", "groceryName": "Chili", "amount": "1", "unit": "sliced" },
+      { "groceryCategory": "Condiments", "groceryName": "Soy Sauce", "amount": "1", "unit": "dash" }
+    ],
+    "steps": ["Beat eggs with onions and chili.", "Fry in hot oil until fluffy.", "Flip and cook through."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_019",
+    "mealName": "Yong Tau Foo",
+    "description": "Vegetables stuffed with fish paste, served with sauce.",
+    "calories": 300,
+    "prepTime": 20,
+    "ingredients": [
+      { "groceryCategory": "Produce", "groceryName": "Bitter Gourd", "amount": "1", "unit": "slice" },
+      { "groceryCategory": "Produce", "groceryName": "Eggplant", "amount": "1", "unit": "slice" },
+      { "groceryCategory": "Seafood", "groceryName": "Fish Paste", "amount": "100", "unit": "g" },
+      { "groceryCategory": "Condiments", "groceryName": "Sweet Sauce", "amount": "1", "unit": "tbsp" }
+    ],
+    "steps": ["Stuff vegetables with fish paste.", "Boil or fry the pieces.", "Serve with sweet and chili sauce."]
+  },
+  {
+    "mealType": "Dinner",
+    "recipeId": "dn_020",
+    "mealName": "Burger Special",
+    "description": "Double patty, cheese, and egg wrapped burger.",
+    "calories": 800,
+    "prepTime": 15,
+    "ingredients": [
+      { "groceryCategory": "Meat", "groceryName": "Beef Patty", "amount": "2", "unit": "pcs" },
+      { "groceryCategory": "Dairy", "groceryName": "Cheese Slice", "amount": "1", "unit": "pc" },
+      { "groceryCategory": "Dairy", "groceryName": "Egg", "amount": "1", "unit": "whole" },
+      { "groceryCategory": "Bakery", "groceryName": "Bun", "amount": "1", "unit": "set" }
+    ],
+    "steps": ["Cook patties and melt cheese on top.", "Cook egg.", "Assemble burger with plenty of chili sauce and mayo."]
+  }
+]
