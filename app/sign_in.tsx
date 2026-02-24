@@ -180,7 +180,7 @@ export default function SignInScreen() {
               {/* Sign Up Link */}
               <View style={styles.signupContainer}>
                 <Text style={[styles.signupText, isTablet && styles.signupTextTablet]}>Don't have an account? </Text>
-                <TouchableOpacity onPress={() => router.push("/sign_up")}>
+                <TouchableOpacity onPress={() => router.replace("/sign_up")}>
                   <Text style={[styles.linkText, isTablet && styles.linkTextTablet]}>Sign up</Text>
                 </TouchableOpacity>
               </View>

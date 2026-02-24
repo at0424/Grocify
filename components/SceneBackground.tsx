@@ -1,4 +1,3 @@
-// SceneBackground.tsx
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Image, StyleSheet, useWindowDimensions, View } from 'react-native';
 
