@@ -76,10 +76,10 @@ export default function SignUpScreen() {
 
   return (
     <View style={styles.root}>
-      {/* 1. Shared Pixel Background */}
+      {/* Shared Pixel Background */}
       <SceneBackground />
       
-      {/* 2. Layout Wrappers for scrolling & keyboard */}
+      {/* Layout Wrappers for scrolling & keyboard */}
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView 
           style={styles.keyboardAvoid} 
@@ -254,6 +254,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    fontSize: 12,
     color: "#2D1B00",
     fontFamily: 'PixelFont',
     paddingVertical: 0,
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   inputTablet: {
-    fontSize: 15,
+    fontSize: 14,
   },
   buttonTablet: {
     padding: 20,

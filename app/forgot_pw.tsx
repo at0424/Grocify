@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   formContainerTablet: {
-    maxWidth: 480,
+    maxWidth: 580,
   },
 
   // --- Magnifier ---
