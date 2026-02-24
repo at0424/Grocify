@@ -312,7 +312,6 @@ const styles = StyleSheet.create({
     fontFamily: 'PixelFont',
     paddingVertical: 0,
     includeFontPadding: false,
-
   },
   forgotPassword: {
     width: "100%",
