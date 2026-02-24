@@ -1,9 +1,11 @@
 import SceneBackground from '@/components/SceneBackground';
 import { signIn } from 'aws-amplify/auth';
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  Easing,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -23,6 +25,8 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const logoScaleAnim = useRef(new Animated.Value(0.96)).current;
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 710;
@@ -52,6 +56,32 @@ export default function SignInScreen() {
     }
   };
 
+  // --- Logo Animation ---
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        // Enlarge
+        Animated.timing(logoScaleAnim, {
+          toValue: 1.08, 
+          duration: 1500, 
+          easing: Easing.inOut(Easing.ease), 
+          useNativeDriver: true, 
+        }),
+        // Shrink
+        Animated.timing(logoScaleAnim, {
+          toValue: 0.96, 
+          duration: 1500, 
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const animatedLogoStyle = {
+    transform: [{ scale: logoScaleAnim }],
+  };
+
   return (
     <View style={styles.root}>
       {/* Background */}
@@ -69,10 +99,11 @@ export default function SignInScreen() {
           >
             {/* Logo Area */}
             <View style={styles.headerContainer}>
-              <Image
+              <Animated.Image
                 source={require('@/assets/images/Grocify_Logo.png')}
                 style={[
                   styles.logoImage,
+                  animatedLogoStyle,
                   isTablet && styles.logoImageTablet
                 ]}
                 resizeMode="contain"
