@@ -1,21 +1,63 @@
 // SceneBackground.tsx
-import React from 'react';
-import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Image, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 export default function SceneBackground() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 710;
 
+  const cloud1Anim = useRef(new Animated.Value(0)).current;
+  const cloud2Anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animateCloud = (
+      animValue: Animated.Value,
+      duration: number,
+      startOffset: number
+    ) => {
+      // Set the starting position off-screen to the right
+      animValue.setValue(width + startOffset);
+
+      // Start the looping animation
+      Animated.loop(
+        Animated.timing(animValue, {
+          toValue: -width, // Move completely off-screen to the left
+          duration: duration, // How long it takes to cross the screen (speed)
+          easing: Easing.linear, // Constant speed, no acceleration
+          useNativeDriver: true, 
+        })
+      ).start();
+    };
+
+    // Start the animations with different speeds and offsets
+    animateCloud(cloud1Anim, 25000, 0);
+    animateCloud(cloud2Anim, 40000, width / 2);
+    
+  }, [width]);
+
+  const animatedStyle1 = {
+    transform: [{ translateX: cloud1Anim }],
+  };
+  const animatedStyle2 = {
+    transform: [{ translateX: cloud2Anim }, { scale: 0.7}],
+  };
+
   return (
-    <>
+    <View style={styles.container} pointerEvents="none">
       {/* Sky */}
       <View style={styles.skyBackground} pointerEvents="none" />
       
       {/* Clouds */}
-      <Image 
-        source={require('@/assets/images/sign_in/Clouds.png')} 
-        style={styles.cloudsBackground} 
-        resizeMode="repeat" 
+      <Animated.Image
+        source={require('@/assets/images/sign_in/Clouds.png')}
+        style={[styles.cloudImage, styles.cloudLayer2, animatedStyle2]}
+        resizeMode="contain"
+      />
+
+      <Animated.Image
+        source={require('@/assets/images/sign_in/Clouds.png')}
+        style={[styles.cloudImage, styles.cloudLayer1, animatedStyle1]}
+        resizeMode="contain"
       />
       
       {/* Bushes */}
@@ -61,26 +103,36 @@ export default function SceneBackground() {
         style={[styles.rightStall, isTablet && styles.rightStallTablet]} 
         resizeMode="contain" 
       />
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  skyBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '45%', 
-    backgroundColor: '#0cd3eeff', 
-    zIndex: 0,
+  container: {
+    ...StyleSheet.absoluteFillObject, 
+    backgroundColor: '#6B9E49',
   },
-  cloudsBackground: {
-    position: 'absolute',
+  skyBackground: {
+    ...StyleSheet.absoluteFillObject,
     width: '100%',
-    zIndex: 1,       
-    opacity: 0.9,  
+    height: '100%', 
     justifyContent: 'center',
+    backgroundColor: '#0cd3eeff', 
+  },
+  cloudImage: {
+    position: 'absolute',
+    width: '100%', 
+    height: '25%', 
+  },
+  cloudLayer1: {
+    top: '3%', 
+    opacity: 0.95,
+    zIndex: 1, 
+  },
+  cloudLayer2: {
+    top: '10%', 
+    opacity: 0.5, 
+    zIndex: 1,
   },
   bushesContainer: {
     position: 'absolute',
