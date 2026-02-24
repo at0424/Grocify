@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     textShadowColor: '#3a5a2b',
     textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 0,
+    textShadowRadius: 1,
   },
   inputLabel: {
     alignSelf: 'flex-start',
@@ -297,6 +297,9 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     fontFamily: 'PixelFont',
     textTransform: 'uppercase',
+    textShadowColor: '#1A2F10', 
+    textShadowOffset: { width: 2, height: 2 }, 
+    textShadowRadius: 1,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -336,6 +339,9 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 12,
     fontFamily: 'PixelFont',
+    textShadowColor: '#1A2F10', 
+    textShadowOffset: { width: 2, height: 2 }, 
+    textShadowRadius: 1,
   },
 
   // --- RETRO BUTTON STYLES ---
@@ -351,14 +357,17 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "white",
-    fontWeight: "bold",
     fontSize: 16,
     fontFamily: 'PixelFont',
     textTransform: 'uppercase',
+    paddingVertical: 0,
+    includeFontPadding: false,
     textShadowColor: '#3D200E',
     textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 0,
+    textShadowRadius: 1,
   },
+
+  // --- Sign Up Link Styles ---
   signupContainer: {
     flexDirection: "row",
     marginTop: 20,
@@ -367,12 +376,18 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 12,
     fontFamily: 'PixelFont',
+    textShadowColor: '#1A2F10', 
+    textShadowOffset: { width: 2, height: 2 }, 
+    textShadowRadius: 1,
   },
   linkText: {
     color: "#eee015ff",
     fontSize: 12,
     fontFamily: 'PixelFont',
     textTransform: 'uppercase',
+    textShadowColor: '#1A2F10', 
+    textShadowOffset: { width: 2, height: 2 }, 
+    textShadowRadius: 1,
   },
   eyeButton: {
     padding: 5,

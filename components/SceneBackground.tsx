@@ -3,65 +3,111 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Image, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 export default function SceneBackground() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isTablet = width >= 710;
+  const isTallScreen = height > 850;
 
+  // --- Animation Values ---
   const cloud1Anim = useRef(new Animated.Value(0)).current;
   const cloud2Anim = useRef(new Animated.Value(0)).current;
+  const flowerSwayAnim = useRef(new Animated.Value(0)).current; 
 
   useEffect(() => {
+    // --- Cloud Animation Logic ---
     const animateCloud = (
       animValue: Animated.Value,
       duration: number,
       startOffset: number
     ) => {
-      // Set the starting position off-screen to the right
       animValue.setValue(width + startOffset);
-
-      // Start the looping animation
       Animated.loop(
         Animated.timing(animValue, {
-          toValue: -width, // Move completely off-screen to the left
-          duration: duration, // How long it takes to cross the screen (speed)
-          easing: Easing.linear, // Constant speed, no acceleration
+          toValue: -width, 
+          duration: duration, 
+          easing: Easing.linear, 
           useNativeDriver: true, 
         })
       ).start();
     };
 
-    // Start the animations with different speeds and offsets
     animateCloud(cloud1Anim, 25000, 0);
     animateCloud(cloud2Anim, 40000, width / 2);
+
+    // --- Flower Sway Animation Logic ---
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(flowerSwayAnim, {
+          toValue: 1, 
+          duration: 2500, // 2.5 seconds to lean right
+          easing: Easing.inOut(Easing.sin), 
+          useNativeDriver: true,
+        }),
+        Animated.timing(flowerSwayAnim, {
+          toValue: -1, 
+          duration: 5000, // 5 seconds to swing all the way left
+          easing: Easing.inOut(Easing.sin), 
+          useNativeDriver: true,
+        }),
+        Animated.timing(flowerSwayAnim, {
+          toValue: 0, 
+          duration: 2500, // 2.5 seconds to return to center
+          easing: Easing.inOut(Easing.sin), 
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
     
   }, [width]);
 
-  const animatedStyle1 = {
+  // --- Animation Styles ---
+  const animatedCloudStyle1 = {
     transform: [{ translateX: cloud1Anim }],
   };
-  const animatedStyle2 = {
-    transform: [{ translateX: cloud2Anim }, { scale: 0.7}],
+  const animatedCloudStyle2 = {
+    transform: [{ translateX: cloud2Anim }, { scale: 0.7 }], 
   };
+  
+  const animatedFlowerStyle = {
+    transform: [
+      { 
+        skewX: flowerSwayAnim.interpolate({ 
+          inputRange: [-1, 1], 
+          outputRange: ['-4deg', '4deg'] // Gentle 4-degree lean
+        }) 
+      },
+      { 
+        translateX: flowerSwayAnim.interpolate({ 
+          inputRange: [-1, 1], 
+          outputRange: [-4, 4] // Slight shift to enhance the lean
+        }) 
+      }
+    ],
+  };
+  
 
   return (
     <View style={styles.container} pointerEvents="none">
       {/* Sky */}
       <View style={styles.skyBackground} pointerEvents="none" />
       
+      {/* Grass */}
+      <View style={styles.grassFloor} pointerEvents="none" />
+
       {/* Clouds */}
       <Animated.Image
         source={require('@/assets/images/sign_in/Clouds.png')}
-        style={[styles.cloudImage, styles.cloudLayer2, animatedStyle2]}
+        style={[styles.cloudImage, styles.cloudLayer2, animatedCloudStyle2]}
         resizeMode="contain"
       />
 
       <Animated.Image
         source={require('@/assets/images/sign_in/Clouds.png')}
-        style={[styles.cloudImage, styles.cloudLayer1, animatedStyle1]}
+        style={[styles.cloudImage, styles.cloudLayer1, animatedCloudStyle1]}
         resizeMode="contain"
       />
       
       {/* Bushes */}
-      <View style={styles.bushesContainer} pointerEvents="none">
+      <View style={[styles.bushesContainer, isTallScreen && { top: '35%'}]} pointerEvents="none">
         <Image 
           source={require('@/assets/images/sign_in/Bushes.png')} 
           style={styles.bushesBackground} 
@@ -69,10 +115,10 @@ export default function SceneBackground() {
         />
       </View>
       
-      {/* Grass */}
-      <Image 
-        source={require('@/assets/images/sign_in/GrassBG.png')} 
-        style={styles.grassBackground} 
+      {/* Flowers */}
+      <Animated.Image 
+        source={require('@/assets/images/sign_in/Flowers.png')} 
+        style={[styles.flowers, isTablet && styles.flowersTablet, animatedFlowerStyle]} 
         resizeMode="repeat" 
       />
 
@@ -115,10 +161,19 @@ const styles = StyleSheet.create({
   skyBackground: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
-    height: '100%', 
+    height: '49%', 
     justifyContent: 'center',
     backgroundColor: '#0cd3eeff', 
+    zIndex: 0,
   },
+  grassFloor: {
+    ...StyleSheet.absoluteFillObject,
+    height: '50%', 
+    backgroundColor: '#6B9E49',
+    zIndex: -1,
+  },
+
+  // --- Cloud Styles ---
   cloudImage: {
     position: 'absolute',
     width: '100%', 
@@ -134,27 +189,34 @@ const styles = StyleSheet.create({
     opacity: 0.5, 
     zIndex: 1,
   },
+
+  // --- Grass Area Styles ---
+  flowers: {
+    position: 'absolute',
+    top: '53%', 
+    left: -20,  
+    right: -20,
+    bottom: 0,
+    zIndex: 1,
+    width: '110%',
+    height: '110%', 
+  },
+  flowersTablet: {
+    top: '50%'
+  },
   bushesContainer: {
     position: 'absolute',
-    top: '26%',      
+    top: '28%',      
     width: '100%',
     height: '20%',   
     zIndex: 1,       
-    transform: [{ scale: 2.1 }], 
+    transform: [{ scale: 2.3 }], 
   },
   bushesBackground: {
     width: '100%',
     height: '100%',   
-    opacity: 0.9,  
   },
-  grassBackground: {
-    position: 'absolute',
-    top: '40%',    
-    left: 0,
-    right: 0,
-    width: '100%',
-    zIndex: 0,
-  },
+
   // --- Stall Styles ---
   leftStall: {
       position: 'absolute',
