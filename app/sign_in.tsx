@@ -21,27 +21,28 @@ export default function SignInScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const { width } = useWindowDimensions();
   const isTablet = width >= 710;
 
   const handleSignIn = async () => {
-    if (loading) return; 
+    if (loading) return;
     setLoading(true);
 
     try {
-      const { isSignedIn, nextStep } = await signIn({ 
-        username: email, 
+      const { isSignedIn, nextStep } = await signIn({
+        username: email,
         password,
         options: { authFlowType: "USER_PASSWORD_AUTH" }
       });
-      
+
       if (isSignedIn) {
-        router.replace("/(tabs)"); 
+        router.replace("/(tabs)");
       } else {
         if (nextStep?.signInStep === 'CONFIRM_SIGN_UP') {
-          Alert.alert("Login Issue", "Could not complete sign-in.");        
+          Alert.alert("Login Issue", "Could not complete sign-in.");
         }
       }
     } catch (err: any) {
@@ -57,12 +58,12 @@ export default function SignInScreen() {
       <SceneBackground />
 
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView 
-          style={styles.keyboardAvoid} 
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent} 
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             bounces={false}
           >
@@ -73,14 +74,14 @@ export default function SignInScreen() {
                 style={[
                   styles.logoImage,
                   isTablet && styles.logoImageTablet
-                ]} 
+                ]}
                 resizeMode="contain"
               />
             </View>
 
             {/* Form Area */}
             <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
-              
+
               <Text style={[styles.title, isTablet && styles.titleTablet]}>Sign in</Text>
 
               {/* Email Input Group */}
@@ -117,16 +118,29 @@ export default function SignInScreen() {
                   placeholderTextColor="#8C7A6B"
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   style={[styles.input, isTablet && styles.inputTablet]}
                 />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                >
+                  <Image
+                    source={showPassword
+                      ? require('@/assets/images/sign_in/EyeOpen.png')
+                      : require('@/assets/images/sign_in/EyeClosed.png')
+                    }
+                    style={[styles.icon, isTablet && styles.iconTablet]}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
               </View>
 
               {/* Forgot Password */}
               <TouchableOpacity onPress={() => router.push("/forgot_pw")} style={styles.forgotPassword}>
                 <Text style={[styles.forgotText, isTablet && styles.forgotTextTablet]}>Forgot password?</Text>
               </TouchableOpacity>
-              
+
               {/* Sign In Button */}
               <TouchableOpacity onPress={handleSignIn} style={[styles.button, isTablet && styles.buttonTablet]}>
                 <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>{loading ? "Signing In..." : "Login"}</Text>
@@ -153,7 +167,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#6B9E49',
   },
-  safeArea: { 
+  safeArea: {
     flex: 1,
     zIndex: 10,
     elevation: 10,
@@ -161,77 +175,77 @@ const styles = StyleSheet.create({
   keyboardAvoid: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center", 
+    justifyContent: "center",
     alignItems: "center",
-    paddingTop: 80, 
+    paddingTop: 80,
     paddingBottom: 20,
   },
 
   // --- Stall Styles ---
   leftStall: {
-      position: 'absolute',
-      left: '-15%',      
-      top: '25%',
-      width: '52%',
-      aspectRatio: 0.9, 
-      zIndex: 3,
+    position: 'absolute',
+    left: '-15%',
+    top: '25%',
+    width: '52%',
+    aspectRatio: 0.9,
+    zIndex: 3,
   },
   rightStall: {
-      position: 'absolute',
-      right: '-15%',      
-      top: '35%',
-      width: '50%',
-      aspectRatio: 0.9, 
-      zIndex: 3,
+    position: 'absolute',
+    right: '-15%',
+    top: '35%',
+    width: '50%',
+    aspectRatio: 0.9,
+    zIndex: 3,
   },
   leftStallTablet: {
-      position: 'absolute',
-      right: '-10%',  
-      top: '35%',    
-      height: '35%', 
-      aspectRatio: 0.9,
-      zIndex: 3,      
+    position: 'absolute',
+    right: '-10%',
+    top: '35%',
+    height: '35%',
+    aspectRatio: 0.9,
+    zIndex: 3,
   },
   rightStallTablet: {
-      position: 'absolute',
-      right: '-10%',  
-      top: '35%',    
-      height: '35%', 
-      aspectRatio: 0.9,
-      zIndex: 3,      
+    position: 'absolute',
+    right: '-10%',
+    top: '35%',
+    height: '35%',
+    aspectRatio: 0.9,
+    zIndex: 3,
   },
   // --- Trees Styles ---
   singleTreeLeft: {
-      position: 'absolute',
-      left: '-20%',       
-      top: '10%',          
-      width: '65%',       
-      aspectRatio: 0.60,  
-      zIndex: 2,
+    position: 'absolute',
+    left: '-20%',
+    top: '10%',
+    width: '65%',
+    aspectRatio: 0.60,
+    zIndex: 2,
   },
   singleTreeRight: {
-      position: 'absolute',
-      right: '-20%',      
-      top: '10%',
-      width: '65%',
-      aspectRatio: 0.60, 
-      zIndex: 2,
+    position: 'absolute',
+    right: '-20%',
+    top: '10%',
+    width: '65%',
+    aspectRatio: 0.60,
+    zIndex: 2,
   },
   singleTreeLeftTablet: {
-      position: 'absolute',
-      left: '-20%', 
-      top: '-5%',
-      height: '85%',       
-      aspectRatio: 0.60,  
-      zIndex: 2,    
+    position: 'absolute',
+    left: '-20%',
+    top: '-5%',
+    height: '85%',
+    aspectRatio: 0.60,
+    zIndex: 2,
   },
   singleTreeRightTablet: {
-      position: 'absolute',
-      right: '-20%', 
-      top: '-5%',
-      height: '85%',       
-      aspectRatio: 0.60,  
-      zIndex: 2,    
+    position: 'absolute',
+    right: '-20%',
+    top: '-5%',
+    height: '85%',
+    aspectRatio: 0.60,
+    zIndex: 2,
   },
 
   // --- Grocify Logo ---
@@ -239,16 +253,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     maxHeight: '30%',
-    zIndex: 10, 
+    zIndex: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 0, 
+    shadowRadius: 0,
   },
   logoImage: {
-    width: '70%',      
+    width: '70%',
     maxWidth: 280,
-    aspectRatio: 1.1,  
+    aspectRatio: 1.1,
   },
   logoImageTablet: {
     width: '50%',
@@ -256,7 +270,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: "100%",
-    maxWidth: 340, 
+    maxWidth: 340,
     alignItems: "center",
     zIndex: 10,
   },
@@ -269,11 +283,11 @@ const styles = StyleSheet.create({
     color: "#FFF",
     alignSelf: 'flex-start',
     marginBottom: 20,
-    fontFamily: 'PixelFont', 
-    textTransform: 'uppercase', 
-    textShadowColor: '#3a5a2b', 
-    textShadowOffset: { width: 2, height: 2 }, 
-    textShadowRadius: 0, 
+    fontFamily: 'PixelFont',
+    textTransform: 'uppercase',
+    textShadowColor: '#3a5a2b',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 0,
   },
   inputLabel: {
     alignSelf: 'flex-start',
@@ -288,12 +302,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F4EBD9', 
+    backgroundColor: '#F4EBD9',
     width: '100%',
     borderRadius: 6,
     borderWidth: 2,
     borderColor: '#3a5a2b',
-    borderBottomWidth: 5, 
+    borderBottomWidth: 5,
     paddingHorizontal: 12,
     marginBottom: 16,
     height: 50,
@@ -327,12 +341,12 @@ const styles = StyleSheet.create({
   // --- RETRO BUTTON STYLES ---
   button: {
     width: "100%",
-    backgroundColor: "#9A6B48", 
+    backgroundColor: "#9A6B48",
     padding: 14,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#3D200E',
-    borderBottomWidth: 6, 
+    borderBottomWidth: 6,
     alignItems: "center",
   },
   buttonText: {
@@ -341,8 +355,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'PixelFont',
     textTransform: 'uppercase',
-    textShadowColor: '#3D200E', 
-    textShadowOffset: { width: 1, height: 1 }, 
+    textShadowColor: '#3D200E',
+    textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 0,
   },
   signupContainer: {
@@ -360,21 +374,26 @@ const styles = StyleSheet.create({
     fontFamily: 'PixelFont',
     textTransform: 'uppercase',
   },
+  eyeButton: {
+    padding: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   // --- Wording Styles (Tablet) ---
   titleTablet: {
     fontSize: 42,
     marginBottom: 30,
-    textShadowOffset: { width: 3, height: 3 }, 
+    textShadowOffset: { width: 3, height: 3 },
   },
   inputLabelTablet: {
     fontSize: 18,
     marginBottom: 8,
   },
   inputWrapperTablet: {
-    height: 70, 
+    height: 70,
     marginBottom: 24,
     borderWidth: 3,
-    borderBottomWidth: 7, 
+    borderBottomWidth: 7,
     borderRadius: 8,
     paddingHorizontal: 16,
   },

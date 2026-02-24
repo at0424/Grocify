@@ -22,6 +22,7 @@ export default function ResetPasswordScreen() {
 
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const { width } = useWindowDimensions();
@@ -42,10 +43,10 @@ export default function ResetPasswordScreen() {
       });
 
       Alert.alert("Success", "Your password has been changed.");
-      
+
       // Navigate back to Login
       router.dismissAll();
-      router.replace("/"); 
+      router.replace("/");
     } catch (err: any) {
       Alert.alert("Error", err.message);
     } finally {
@@ -56,8 +57,8 @@ export default function ResetPasswordScreen() {
   return (
     <SafeAreaView style={styles.root}>
       {/* Shared Brick Background */}
-      <Image 
-        source={require('@/assets/images/forgot_pw/BricksBG.png')} 
+      <Image
+        source={require('@/assets/images/forgot_pw/BricksBG.png')}
         style={styles.backgroundImage}
         resizeMode="repeat"
       />
@@ -70,21 +71,21 @@ export default function ResetPasswordScreen() {
         <Text style={styles.closeText}>X</Text>
       </TouchableOpacity>
 
-      <KeyboardAvoidingView 
-        style={styles.keyboardAvoid} 
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView 
-          contentContainerStyle={[styles.scrollContent, isTablet && { paddingTop: 380}]} 
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, isTablet && { paddingTop: 380 }]}
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
           {/* Hanging Padlock */}
-            <Image
-              source={require('@/assets/images/forgot_pw/Chains.png')}
-              style={[styles.padlocksImage, isTablet && styles.padlocksImageTablet]}
-              resizeMode="contain"
-            />
+          <Image
+            source={require('@/assets/images/forgot_pw/Chains.png')}
+            style={[styles.padlocksImage, isTablet && styles.padlocksImageTablet]}
+            resizeMode="contain"
+          />
 
           <View style={[styles.formContainer, isTablet && styles.formContainerTablet]}>
 
@@ -99,7 +100,7 @@ export default function ResetPasswordScreen() {
             {/* Code Input Group */}
             <View style={[styles.inputWrapper, isTablet && styles.inputWrapperTablet]}>
               <Image
-                source={require('@/assets/images/sign_in/Email.png')} 
+                source={require('@/assets/images/sign_in/Email.png')}
                 style={[styles.icon, isTablet && styles.iconTablet]}
                 resizeMode="contain"
               />
@@ -127,9 +128,22 @@ export default function ResetPasswordScreen() {
                 placeholderTextColor="#8C7A6B"
                 value={newPassword}
                 onChangeText={setNewPassword}
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 style={[styles.input, isTablet && styles.inputTablet]}
               />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <Image
+                  source={showPassword
+                    ? require('@/assets/images/sign_in/EyeOpen.png')
+                    : require('@/assets/images/sign_in/EyeClosed.png')
+                  }
+                  style={[styles.icon, isTablet && styles.iconTablet]}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
             </View>
 
             {/* Reset Button */}
@@ -149,13 +163,13 @@ export default function ResetPasswordScreen() {
 
       {/* Grocery Bags Background Ornaments */}
       <View style={styles.bagsContainer} pointerEvents="none">
-        <Image 
-          source={require('@/assets/images/forgot_pw/BagLeft.png')} 
+        <Image
+          source={require('@/assets/images/forgot_pw/BagLeft.png')}
           style={[styles.bagLeft, isTablet && styles.bagLeftTablet]}
           resizeMode="contain"
         />
-        <Image 
-          source={require('@/assets/images/forgot_pw/BagRight.png')} 
+        <Image
+          source={require('@/assets/images/forgot_pw/BagRight.png')}
           style={[styles.bagRight, isTablet && styles.bagRightTablet]}
           resizeMode="contain"
         />
@@ -174,23 +188,23 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     right: 0,
-    zIndex: -1, 
+    zIndex: -1,
   },
-  keyboardAvoid: { 
+  keyboardAvoid: {
     flex: 1,
     zIndex: 10,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "center", 
+    justifyContent: "center",
     alignItems: "center",
-    paddingTop: 200, 
-    paddingBottom: '35%', 
+    paddingTop: 200,
+    paddingBottom: '35%',
   },
-  
+
   closeButton: {
     position: "absolute",
-    top: Platform.OS === 'ios' ? 50 : 30, 
+    top: Platform.OS === 'ios' ? 50 : 30,
     left: 20,
     zIndex: 20,
     padding: 10,
@@ -203,7 +217,7 @@ const styles = StyleSheet.create({
 
   formContainer: {
     width: "100%",
-    maxWidth: 340, 
+    maxWidth: 340,
     alignItems: "center",
     zIndex: 10,
   },
@@ -215,7 +229,7 @@ const styles = StyleSheet.create({
   padlocksImage: {
     position: 'absolute',
     top: -10,
-    width: '100%',  
+    width: '100%',
     height: 260,
     zIndex: 0,
     marginBottom: 20,
@@ -223,27 +237,27 @@ const styles = StyleSheet.create({
   padlocksImageTablet: {
     height: 380,
   },
-  
+
   // --- Typography ---
   title: {
     fontSize: 24,
     color: "#FFF",
     marginBottom: 16,
     textAlign: "center",
-    fontFamily: 'PixelFont', 
-    textTransform: 'uppercase', 
-    textShadowColor: '#1A1D24', 
-    textShadowOffset: { width: 2, height: 2 }, 
-    textShadowRadius: 0, 
+    fontFamily: 'PixelFont',
+    textTransform: 'uppercase',
+    textShadowColor: '#1A1D24',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 0,
   },
   description: {
     fontSize: 12,
-    color: "#D0D4DF", 
+    color: "#D0D4DF",
     textAlign: "center",
     marginBottom: 30,
     paddingHorizontal: 10,
     fontFamily: 'PixelFont',
-    lineHeight: 20, 
+    lineHeight: 20,
   },
   emailText: {
     color: '#eee015ff', // Yellow highlight for the email
@@ -254,12 +268,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F4EBD9', 
+    backgroundColor: '#F4EBD9',
     width: '100%',
     borderRadius: 6,
     borderWidth: 2,
     borderColor: '#282e25db',
-    borderBottomWidth: 5, 
+    borderBottomWidth: 5,
     paddingHorizontal: 12,
     marginBottom: 20,
     height: 50,
@@ -283,14 +297,14 @@ const styles = StyleSheet.create({
   // --- Retro Button ---
   button: {
     width: "100%",
-    backgroundColor: "#9A6B48", 
-    paddingTop: 16,       
-    paddingBottom: 12,    
+    backgroundColor: "#9A6B48",
+    paddingTop: 16,
+    paddingBottom: 12,
     paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#3D200E',
-    borderBottomWidth: 6, 
+    borderBottomWidth: 6,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
@@ -300,11 +314,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'PixelFont',
     textTransform: 'uppercase',
-    textShadowColor: '#3D200E', 
-    textShadowOffset: { width: 1, height: 1 }, 
+    textShadowColor: '#3D200E',
+    textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 0,
-    includeFontPadding: false, 
+    includeFontPadding: false,
     textAlignVertical: 'center',
+  },
+  eyeButton: {
+    padding: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // --- Background Decor (Bags) ---
@@ -318,7 +337,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 10,
     paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-    zIndex: 1, 
+    zIndex: 1,
   },
   bagLeft: {
     width: 130,
@@ -340,10 +359,10 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   inputWrapperTablet: {
-    height: 70, 
+    height: 70,
     marginBottom: 30,
     borderWidth: 3,
-    borderBottomWidth: 7, 
+    borderBottomWidth: 7,
     borderRadius: 8,
     paddingHorizontal: 16,
   },
