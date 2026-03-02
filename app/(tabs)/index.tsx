@@ -1,55 +1,84 @@
 import { getCurrentUser, signOut } from 'aws-amplify/auth';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, Dimensions, Image, ImageBackground, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Dimensions, Image, ImageBackground, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-// --- PIXEL ART PERSPECTIVE FLOOR ---
-const CheckeredFloor = ({ containerWidth }: { containerWidth: number }) => {
-  const rows = 14; 
-  const cols = 12; 
+// --- PIXEL ART PERSPECTIVE CEILING ---
+const WoodCeiling = ({ containerWidth, animatedTranslateX }) => {
+  const rows = 10;
+  const cols = 40;
   const grid = [];
-  
-  const rowHeight = 40; 
+
+  const rowHeight = 30;
+
+  for (let r = 0; r < rows; r++) {
+    let rowBlocks = [];
+    for (let c = 0; c < cols; c++) {
+      const isDark = c % 2 === 0; 
+      rowBlocks.push(
+        <View
+          key={`${r}-${c}`}
+          style={{ 
+            flex: 1, 
+            backgroundColor: isDark ? '#4a2f1d' : '#5c3a21', 
+            borderBottomWidth: 2,
+            borderColor: '#2e1c10' 
+          }}
+        />
+      );
+    }
+    grid.push(
+      <View key={r} style={{ height: rowHeight, flexDirection: 'row', width: containerWidth * 5 }}>
+        {rowBlocks}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.ceilingPerspective}>
+      <Animated.View style={{ transform: [{ translateX: animatedTranslateX }] }}>
+        {grid}
+      </Animated.View>
+    </View>
+  );
+};
+
+// --- PIXEL ART PERSPECTIVE FLOOR ---
+const CheckeredFloor = ({ containerWidth, animatedTranslateX }) => {
+  const rows = 14;
+  const cols = 35;
+  const grid = [];
+
+  const rowHeight = 40;
 
   for (let r = 0; r < rows; r++) {
     let rowBlocks = [];
     for (let c = 0; c < cols; c++) {
       const isDark = (r + c) % 2 === 0;
       rowBlocks.push(
-        <View 
-          key={`${r}-${c}`} 
-          style={{ flex: 1, backgroundColor: isDark ? '#5c707d' : '#d1d8dd' }} 
+        <View
+          key={`${r}-${c}`}
+          style={{ flex: 1, backgroundColor: isDark ? '#5c707d' : '#d1d8dd' }}
         />
       );
     }
     grid.push(
-        <View key={r} style={{ height: rowHeight, flexDirection: 'row', width: containerWidth * 2 }}>
-            {rowBlocks}
-        </View>
+      <View key={r} style={{ height: rowHeight, flexDirection: 'row', width: containerWidth * 5 }}>
+        {rowBlocks}
+      </View>
     );
   }
 
   return (
     <View style={styles.floorPerspective}>
-      {grid}
+      <Animated.View style={{ transform: [{ translateX: animatedTranslateX }] }}>
+        {grid}
+      </Animated.View>
     </View>
   );
 };
-
-// --- HELPER COMPONENT ---
-const DashboardItem = ({ title, subTitle, onPress, extraStyle }: {title: string, subTitle: string, onPress: () => void, extraStyle?: any}) => (
-  <TouchableOpacity style={[styles.itemWrapper, extraStyle]} onPress={onPress}>
-    <View style={styles.placeholderBlock}>
-      <Text style={styles.blockEmoji}>{extraStyle?.backgroundColor ? extraStyle.backgroundColor.substring(0, 1) : '🖼️'}</Text>
-    </View>
-    <View style={styles.itemTextContainer}>
-        <Text style={styles.itemTitle}>{title}</Text>
-        <Text style={styles.itemSubTitle}>{subTitle}</Text>
-    </View>
-  </TouchableOpacity>
-);
 
 // --- MAIN DASHBOARD SCREEN ---
 export default function HomeScreen() {
@@ -59,18 +88,18 @@ export default function HomeScreen() {
 
   useEffect(() => {
     checkUser();
-    
+
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setIsTabletView(window.width > 600);
     });
-    
+
     return () => subscription?.remove();
   }, []);
 
   async function checkUser() {
     try {
       const user = await getCurrentUser();
-      setUserEmail(user.username || "User"); 
+      setUserEmail(user.username || "User");
     } catch (err) {
       setUserEmail("Guest");
     }
@@ -78,71 +107,191 @@ export default function HomeScreen() {
 
   async function handleSignOut() {
     try {
-      await signOut(); 
+      await signOut();
       router.replace("/sign_in");
     } catch (err) {
       Alert.alert("Error", "Failed to sign out.");
     }
   }
 
-  const sceneWidth = isTabletView ? width * 0.75 : width; 
+  const sceneWidth = isTabletView ? width * 0.75 : width;
 
+  // For horizontal scrolling
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const wallTranslateX = scrollX.interpolate({
+    inputRange: [0, sceneWidth * 4], 
+    outputRange: [0, -(sceneWidth * 4) * 0.5], 
+    extrapolate: 'clamp',
+  });
+  const cityViewTranslateX = scrollX.interpolate({
+    inputRange: [0, sceneWidth * 4], 
+    outputRange: [0, -(sceneWidth * 4) * 0.2], 
+    extrapolate: 'clamp',
+  });
+
+  // ===============================
+  // Animation
+  // ===============================
+
+  // Add this near your other state variables
+  const windAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // This creates a gentle, continuous swinging motion (0 -> 1 -> -1 -> 0)
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(windAnimation, {
+          toValue: 1,
+          duration: 1500, // 1.5 seconds to swing right
+          useNativeDriver: true, 
+        }),
+        Animated.timing(windAnimation, {
+          toValue: -1,
+          duration: 3000, // 3.0 seconds to swing all the way left
+          useNativeDriver: true,
+        }),
+        Animated.timing(windAnimation, {
+          toValue: 0,
+          duration: 1500, // 1.5 seconds to return to center
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [windAnimation]); // Add to dependency 
+  
+  const spin = windAnimation.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-1.5deg', '1.5deg'], // Keep this small! 
+  });
+  
   return (
     <View style={styles.container}>
 
       {/* --- GAME AREA (Holds Fixed Background + Swipeable Foreground) --- */}
       <View style={styles.gameArea}>
-        
+
         {/* THE FIXED BACKGROUND */}
         <View style={styles.fixedBackgroundLayer}>
-            
-            <View style={styles.wallBackground}>
-                <ImageBackground
-                    source={require('@/assets/images/main_dashboard/BrickWall.png')}
-                    style={styles.brickSection} 
-                    resizeMode="repeat"
-                />
-                
-                <ImageBackground
-                    source={require('@/assets/images/main_dashboard/PlainWainscoting.png')}
-                    style={styles.wainscotingSection} 
-                    resizeMode="stretch"
-                />
 
-            </View>
+          {/* Ceiling */}
+          <Animated.View style={styles.ceilingBackground}>
+            <WoodCeiling containerWidth={width} animatedTranslateX={wallTranslateX} />
+          </Animated.View>
+          <Image
+            source={require('@/assets/images/main_dashboard/WoodenLinen.png')}
+            style={styles.woodenLinen}
+            resizeMode="repeat"
+          />
 
-            {/* THE FLOOR (Remains locked below the wall area) */}
-            <View style={styles.floorBackground}>
-              <CheckeredFloor containerWidth={width} />
-            </View>
+          {/* Wall Background */}
+          <Animated.View style={[
+            styles.wallBackground,
+            { 
+              width: width * 5, 
+              transform: [{ translateX: wallTranslateX }] 
+            }
+          ]}>
+            <ImageBackground
+              source={
+                Platform.OS === 'ios' 
+                  ? require('@/assets/images/main_dashboard/BrickWall.png') 
+                  : require('@/assets/images/main_dashboard/BrickWallZoomed.png')
+              }
+              style={styles.brickSection}
+              resizeMode="repeat"
+            />
+
+            <ImageBackground
+              source={require('@/assets/images/main_dashboard/PlainWainscoting.png')}
+              style={styles.wainscotingSection}
+              resizeMode="stretch"
+            />
+
+          </Animated.View>
+
+          {/* THE FLOOR */}
+          <View style={styles.floorBackground}>
+            <CheckeredFloor containerWidth={width} animatedTranslateX={wallTranslateX} />
           </View>
+        </View>
 
         {/* THE SWIPEABLE FOREGROUND */}
-        <ScrollView 
-          horizontal 
-          pagingEnabled={false} 
-          snapToInterval={sceneWidth} 
+        <Animated.ScrollView
+          horizontal
+          pagingEnabled={false}
+          snapToInterval={sceneWidth}
           decelerationRate="fast"
           showsHorizontalScrollIndicator={false}
           bounces={false}
           style={styles.scrollLayer}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: true } 
+          )}
+          scrollEventThrottle={16}
         >
-          
+
           {/* ROOM 1: Door */}
           <View style={[styles.scene, { width: sceneWidth }]}>
             <View style={[styles.foregroundLayer, styles.foregroundLayerItem]}>
+
+              {/* Hanging Light */}
+              <View style={styles.hangingLightWrapper}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/HangingLight.png')} 
+                  style={styles.hangingLightImage} 
+                  resizeMode="contain"
+                />
+              </View>
+              
+              {/* Light Beam */}
+              <View style={styles.downwardBeamWrapper} pointerEvents="none">
+                <Image
+                  source={require('@/assets/images/main_dashboard/DownwardBeam.png')} 
+                  style={styles.beamImage}
+                  resizeMode="stretch"
+                />
+              </View>
+
+              {/* Tall Flower Pot */}
+              <View style={styles.tallFlowerPotWrapper}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/TallFlowerPot.png')} 
+                  style={styles.tallPotImage} 
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Door */}
+              <TouchableOpacity
+                onPress={handleSignOut}
+                style={styles.doorWrapper}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={require('@/assets/images/main_dashboard/Door.png')}
+                  style={styles.doorImage}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+
+              {/* Cabinet */}
+              <View style={[styles.bottomCabinetWrapper, { width: width * 0.5, right: - (width * 0.50) / 2, }]}>
                 
-                <TouchableOpacity 
-                    // onPress={handleSignOut} 
-                    style={styles.doorWrapper}
-                    activeOpacity={0.8}
-                >
-                    <Image 
-                        source={require('@/assets/images/main_dashboard/Door.png')}
-                        style={styles.doorImage}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
+                {/* Pot */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/MediumFlowerPot.png')}
+                  style={styles.mediumPotImage}
+                  resizeMode="contain"
+                />
+
+                {/* Cabinet */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/BottomCabinet3Drawer.png')}
+                  style={styles.cabinetImage}
+                  resizeMode="contain"
+                />
+              </View>
 
             </View>
           </View>
@@ -150,18 +299,96 @@ export default function HomeScreen() {
           {/* ROOM 2: Fridge */}
           <View style={[styles.scene, { width: sceneWidth }]}>
             <View style={[styles.foregroundLayer, styles.foregroundLayerItem]}>
+
+              {/* Ceiling Cabinet */}
+              <View style={styles.topCabinetWrapper}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/CabinetTop.png')} 
+                  style={styles.cabinetImage} 
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Item on top of Fridge */}
+              <View style={styles.fridgeTopRow}>
+                {/* Cat */}
+                <Image
+                    source={require('@/assets/images/main_dashboard/Cat.gif')} 
+                    style={[styles.fridgeTopImage, {aspectRatio:2, top: "10%"}]}
+                    resizeMode="contain"
+                  />
+                {/* Pot */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/FlowerPot1.png')} 
+                  style={styles.fridgeTopImage}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Fridge */}
+              <TouchableOpacity
+                onPress={() => router.push('./(freshness)')}
+                style={styles.fridgeWrapper}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={require('@/assets/images/main_dashboard/Fridge.png')}
+                  style={styles.fridgeImage}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+      
+              {/* Window */}
+              <View style={[styles.windowWrapper, isTabletView && styles.windowWrapperTablet]}>
+                {/* City Sunset View */}
+                <View style={styles.viewContainer}>
+                  <Animated.Image                     
+                    source={require('@/assets/images/main_dashboard/SunsetView.png')}
+                    style={[
+                      styles.viewImage, 
+                      { 
+                        width: '200%', 
+                        left: 0,
+                        transform: [{ translateX: cityViewTranslateX }] 
+                      }
+                    ]}
+                    resizeMode="cover"
+                  />
+                </View>
                 
-                <TouchableOpacity 
-                    onPress={() => router.push('./(freshness)')} 
-                    style={styles.fridgeWrapper}
-                    activeOpacity={0.8}
-                >
-                    <Image 
-                        source={require('@/assets/images/main_dashboard/Fridge.png')}
-                        style={styles.fridgeImage}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
+                {/* Window Frame */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/Window.png')}
+                  style={styles.windowImage}
+                  resizeMode="stretch"
+                />
+
+                {/* Light Beam */}
+                <View style={styles.windowBeamWrapper} pointerEvents="none">
+                  <Image
+                    source={require('@/assets/images/main_dashboard/WindowBeamLight.png')}
+                    style={styles.beamImage}
+                    resizeMode="stretch"
+                  />
+                </View>
+
+                {/* FlowerPot */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/SmallFlowerPot.png')}
+                  style={[styles.smallFlowerPotImage, isTabletView && styles.smallFlowerPotImageTablet]}
+                  resizeMode="contain"
+                />
+              </View>
+    
+              {/* Cabinet */}
+              <View style={styles.bottomCabinetWrapper}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/CabinetBottom.png')}
+                  style={styles.cabinetImage}
+                  resizeMode="contain"
+                />
+              </View>
+
 
             </View>
           </View>
@@ -169,18 +396,55 @@ export default function HomeScreen() {
           {/* ROOM 3: Listing */}
           <View style={[styles.scene, { width: sceneWidth }]}>
             <View style={[styles.foregroundLayer, styles.foregroundLayerBoard]}>
+
+              {/* Hanging Cabinet */}
+              <View style={[styles.topCabinetWrapper, {height:'25%', top: "6%"}]}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/HangingCabinet.png')} 
+                  style={styles.cabinetImage}
+                  resizeMode="contain"
+                />
+              </View>
+      
+              {/* Listing Board */}
+              <TouchableOpacity
+                onPress={() => router.push('./(listing)')}
+                style={styles.boardWrapper}
+                activeOpacity={0.8}
+              >
+                {/* Board */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/Board.png')}
+                  style={styles.boardImage}
+                  resizeMode="contain"
+                />
                 
-                <TouchableOpacity 
-                    onPress={() => router.push('./(listing)')} 
-                    style={styles.boardWrapper}
-                    activeOpacity={0.8}
-                >
-                    <Image 
-                        source={require('@/assets/images/main_dashboard/Board.png')}
-                        style={styles.boardImage}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
+                {/* Tag */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/GroceriesListTag.png')}
+                  style={styles.boardTag}
+                  resizeMode="contain"
+                />
+
+                {/* Sticky Notes */}
+                <Animated.Image
+                  source={require('@/assets/images/main_dashboard/StickyNotes.png')} 
+                  style={[
+                    styles.stickyNotesOverBoard,
+                    { transform: [{ rotate: spin }] } // This applies the swinging motion
+                  ]}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+
+              {/* Table */}
+              <View style={styles.tableWrapper}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/WorkingTable.png')}
+                  style={styles.cabinetImage}
+                  resizeMode="contain"
+                />
+              </View>
 
             </View>
           </View>
@@ -188,18 +452,83 @@ export default function HomeScreen() {
           {/* ROOM 4: Meal Plan */}
           <View style={[styles.scene, { width: sceneWidth }]}>
             <View style={[styles.foregroundLayer, styles.foregroundLayerOven]}>
+              
+              {/* Hanging Shelf */}
+              <View style={[styles.hangingShelfWrapper]}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/HangingShelf.png')} 
+                  style={styles.hangingShelfImage}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Wide Window */}
+              <View style={styles.wideWindowWrapper}>
+                {/* City Sunset View */}
+                <View style={styles.viewContainer}>
+                  <Animated.Image
+                    source={require('@/assets/images/main_dashboard/SunsetView.png')}
+                    style={[
+                      styles.viewImage,
+                      {
+                        width: '200%',
+                        left: 0,
+                        transform: [{ translateX: cityViewTranslateX }] 
+                      }
+                    ]}
+                    resizeMode="cover"
+                  />
+                </View>
                 
-                <TouchableOpacity 
-                    onPress={() => router.push('./(meal_plan)')} 
-                    style={styles.ovenWrapper}
-                    activeOpacity={0.8}
-                >
-                    <Image 
-                        source={require('@/assets/images/main_dashboard/Oven.png')}
-                        style={styles.ovenImage}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
+                {/* Window Frame */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/WindowWide.png')}
+                  style={styles.windowImage}
+                  resizeMode="stretch"
+                />
+
+                {/* Light Beam */}
+                <View style={styles.wideWindowBeamWrapper} pointerEvents="none">
+                  <Image
+                    source={require('@/assets/images/main_dashboard/WindowBeamLight.png')}
+                    style={styles.beamImage}
+                    resizeMode="stretch"
+                  />
+                </View>
+              </View>
+
+              {/* Oven */}
+              <TouchableOpacity
+                onPress={() => router.push('./(meal_plan)')}
+                style={styles.ovenWrapper}
+                activeOpacity={0.8}
+              >
+                {/* Steam */}
+                <View style={styles.steamOverlayWrapper} pointerEvents="none">
+                  <Image
+                    source={require('@/assets/images/main_dashboard/Steam.gif')}
+                    style={styles.steamImage}
+                    resizeMode="contain"
+                  />
+                </View>
+
+                {/* Oven */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/Oven.png')}
+                  style={styles.ovenImage}
+                  resizeMode="contain"
+                />
+
+                {/* Fire */}
+                <View style={styles.fireOverlayWrapper} pointerEvents="none">
+                  <Image
+                    source={require('@/assets/images/main_dashboard/Fire.gif')}
+                    style={styles.fireImage}
+                    resizeMode="contain"
+                  />
+                </View>
+
+              </TouchableOpacity>
 
             </View>
           </View>
@@ -207,23 +536,93 @@ export default function HomeScreen() {
           {/* ROOM 5: AI */}
           <View style={[styles.scene, { width: sceneWidth }]}>
             <View style={[styles.foregroundLayer, styles.foregroundLayerItem]}>
+
+              {/* Ceiling Cabinet */}
+              <View style={[styles.topCabinetWrapper, {left: "20%"}]}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/CabinetTop.png')} 
+                  style={styles.cabinetImage} 
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Window */}
+              <View style={[
+                styles.windowWrapper, 
+                { 
+                  alignSelf: 'center',
+                  left: "40%",
+                  zIndex: 0
+                }
+              ]}>
+                {/* City Sunset View */}
+                <View style={styles.viewContainer}>
+                  <Animated.Image                     
+                    source={require('@/assets/images/main_dashboard/SunsetView.png')}
+                    style={[
+                      styles.viewImage, 
+                      { 
+                        width: '400%',
+                        left: 0, 
+                        transform: [{ translateX: cityViewTranslateX }] 
+                      }
+                    ]}
+                    resizeMode="cover"
+                  />
+                </View>
                 
-                <TouchableOpacity 
-                    onPress={() => router.push('./(ai)')} 
-                    style={styles.AIWrapper}
-                    activeOpacity={0.8}
+                {/* Window Frame */}
+                <Image
+                  source={require('@/assets/images/main_dashboard/Window.png')}
+                  style={styles.windowImage}
+                  resizeMode="stretch"
+                />
+
+                {/* Light Beam */}
+                <View style={[
+                  styles.windowBeamWrapper,
+                  {
+                    left: '-30%'
+                  }
+                ]}
+                  pointerEvents="none"
                 >
-                    <Image 
-                        source={require('@/assets/images/main_dashboard/AI.png')}
-                        style={styles.AIImage}
-                        resizeMode="contain"
-                    />
-                </TouchableOpacity>
+                  <Image
+                    source={require('@/assets/images/main_dashboard/WindowBeamLight.png')}
+                    style={styles.beamImage}
+                    resizeMode="stretch"
+                  />
+                </View>
+              </View>
+
+              {/* AI Bot */}
+              <TouchableOpacity
+                onPress={() => router.push('./(ai)')}
+                style={styles.AIWrapper}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={require('@/assets/images/main_dashboard/AIBot.gif')}
+                  style={styles.AIImage}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+
+              {/* Long Bottom Cabinet */}
+              <View style={styles.longBottomCabinetWrapper}>
+
+                <Image
+                  source={require('@/assets/images/main_dashboard/LongBottomCabinet.png')}
+                  style={styles.cabinetImage}
+                  resizeMode="contain"
+                />
+
+              </View>
 
             </View>
           </View>
 
-        </ScrollView>
+        </Animated.ScrollView>
 
       </View>
     </View>
@@ -248,46 +647,73 @@ const styles = StyleSheet.create({
 
   // --- FIXED BACKGROUND STYLES ---
   gameArea: {
-    flex: 1, 
+    flex: 1,
   },
   fixedBackgroundLayer: {
-    ...StyleSheet.absoluteFillObject, 
+    ...StyleSheet.absoluteFillObject,
     zIndex: 1,
   },
   scrollLayer: {
-    ...StyleSheet.absoluteFillObject, 
-    zIndex: 5, 
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
   },
   wallBackground: {
-    flex: 0.90, 
-    backgroundColor: '#eecfa1', 
+    flex: 0.85,
+    backgroundColor: '#eecfa1',
     zIndex: 2,
   },
   brickSection: {
-    flex: 0.75, 
+    flex: 0.75,
     width: '100%',
   },
   wainscotingSection: {
-    flex: 0.35, 
+    flex: 0.35,
   },
   floorBackground: {
-    flex: 0.10, 
-    overflow: 'hidden', 
+    flex: 0.10,
+    overflow: 'hidden',
     backgroundColor: '#5c707d',
+  },
+  roomTwoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    width: '100%',
+    gap: 10,
+  },
+  ceilingBackground: {
+    flex: 0.05, 
+    overflow: 'hidden',
+    backgroundColor: '#2e1c10',
+  },
+  ceilingPerspective: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'flex-end', 
+    transform: [
+      { perspective: 800 },
+      { rotateX: '-65deg' },
+      { scaleY: 2 },
+      { scaleX: 2 },
+      { translateY: 100 }
+    ],
+  },
+  woodenLinen: {
+    height: 27,
+    width: "100%"
   },
   floorPerspective: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',       
-    justifyContent: 'flex-start', 
+    alignItems: 'center',
+    justifyContent: 'flex-start',
     transform: [
-      { perspective: 800 },     
-      { rotateX: '65deg' },     
+      { perspective: 800 },
+      { rotateX: '65deg' },
       { scaleY: 2 },
-      { scaleX: 2 },           
-      { translateY: -100 }       
+      { scaleX: 2 },
+      { translateY: -100 }
     ],
   },
-  
+
   // --- SWIPEABLE SCREEN STYLE ---
   scene: {
     flex: 1,
@@ -296,20 +722,20 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   foregroundLayerItem: {
-    justifyContent: 'flex-end', 
-    alignItems: 'center',   
-    paddingBottom: height * 0.09,     
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: height * 0.09,
   },
   foregroundLayerBoard: {
-    justifyContent: 'center', 
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: height * 0.09,        
+    paddingBottom: height * 0.09,
   },
   foregroundLayerOven: {
-    justifyContent: 'flex-end', 
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingLeft: 40,
-    top: height * 0.09,        
+    top: height * 0.09,
   },
   singleItemLayer: {
     justifyContent: 'center',
@@ -318,20 +744,24 @@ const styles = StyleSheet.create({
   mobileStackLayer: {
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 20, 
+    gap: 20,
   },
   tabletGroupLayer: {
-    flexDirection: 'row', 
-    justifyContent: 'space-evenly', 
-    alignItems: 'flex-end', 
-    paddingBottom: height * 0.05, 
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'flex-end',
+    paddingBottom: height * 0.05,
   },
-  
+
+  // ==============================
+  // --- FUNCTIONAL ITEM STYLES ---
+  // ==============================
+
   // --- ITEM STYLES (DOOR) ---
   doorWrapper: {
-    width: width * 0.28, 
-    height: '70%',
-    aspectRatio: 0.6, 
+    width: width * 0.28,
+    height: '60%',
+    aspectRatio: 0.6,
   },
   doorImage: {
     width: '100%',
@@ -340,9 +770,9 @@ const styles = StyleSheet.create({
 
   // --- ITEM STYLES (Fridge) ---
   fridgeWrapper: {
-    width: width * 0.45, 
-    height: '65%',
-    aspectRatio: 0.6
+    height: '55%',
+    aspectRatio: 0.6,
+    zIndex: 1,
   },
   fridgeImage: {
     width: '100%',
@@ -351,64 +781,276 @@ const styles = StyleSheet.create({
 
   // --- ITEM STYLES (Board) ---
   boardWrapper: {
-    width: width * 0.20, 
-    height: '40%',
-    aspectRatio: 0.6,
+    height: '38%',
+    aspectRatio: 0.65,
+    justifyContent: "center",
   },
   boardImage: {
     width: '100%',
     height: '100%',
+    zIndex: 0,
   },
 
   // --- ITEM STYLES (Oven) ---
   ovenWrapper: {
-    width: width * 0.50, 
+    width: width * 0.50,
     height: '60%',
     aspectRatio: 0.6,
-    top: 15
+    top: '6%'
   },
   ovenImage: {
+    width: '90%',
+    height: '90%',
+  },
+  fireOverlayWrapper: {
+    position: 'absolute',
+    top: '10%',    
+    left: '52%',  
+    width: '10%', 
+    height: '20%', 
+    zIndex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fireImage: {
     width: '100%',
     height: '100%',
+    opacity: 0.9
+  },
+  steamOverlayWrapper: {
+    position: 'absolute',
+    top: '-4%',    
+    left: '52%',  
+    width: '20%', 
+    height: '20%', 
+    zIndex: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  steamImage: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.2
   },
 
   // --- ITEM STYLES (AI) ---
   AIWrapper: {
-    width: width * 0.25, 
-    height: '50%',
+    height: '30%',
     aspectRatio: 0.6,
-    top: 20
+    bottom: '18%',
+    right: '10%',
+    zIndex: 2
   },
   AIImage: {
     width: '100%',
     height: '100%',
   },
 
-  // --- TEMPLATE DASHBOARD BLOCKS ---
-  itemWrapper: {
-    width: width * 0.40, 
-    alignItems: 'center',
-    gap: 10,
+  // ==========================
+  // --- DESIGN ITEM STYLES ---
+  // ==========================
+
+  // --- Light Styles ---
+  hangingLightWrapper:{
+    height: "30%",
+    aspectRatio: 1,
+    position: "absolute",
+    top: 0,
+    zIndex: 1,
+    shadowColor: '#ffffffff', 
+    shadowOffset: { width: 0, height: 100 }, 
+    shadowOpacity: 1,       
+    shadowRadius: 100,         
+    elevation: 0,
   },
-  placeholderBlock: {
+  hangingLightImage: {
     width: '100%',
-    height: 120, 
-    backgroundColor: '#ddd',
-    borderWidth: 2,
-    borderColor: '#333', 
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 15,
+    height: '100%'
   },
-  blockEmoji: { fontSize: 32 },
-  itemTextContainer: { alignItems: 'center' },
-  itemTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  itemSubTitle: { fontSize: 12, color: '#666', textAlign: 'center' },
-  
-  /* CUSTOM STYLING */
-  itemLogout: { backgroundColor: '#ffb3b3', width: 140 },
-  itemFridge: { backgroundColor: '#add8e6' },
-  itemNotes: { backgroundColor: '#ffebcd' },
-  itemPan: { backgroundColor: '#ffb347' },
-  itemAI: { backgroundColor: '#fffacd' }
+  downwardBeamWrapper: {
+    position: 'absolute',
+    top: '20%',           
+    width: width * 0.8,   
+    height: '85%',        
+    zIndex: 2,            
+    opacity: 0.2,         
+  },
+  windowBeamWrapper: {
+    position: 'absolute',
+    top: '-10%',    
+    right: "-30%",          
+    height: '120%',    
+    aspectRatio: 1,    
+    zIndex: 2,            
+    opacity: 0.2    
+  },
+  wideWindowBeamWrapper: {
+    position: 'absolute',
+    top: '-15%', 
+    left: '-15%',             
+    height: '130%',    
+    aspectRatio: 1,    
+    zIndex: 2,            
+    opacity: 0.2    
+  },
+  beamImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // --- Flower Pot Styles ---
+  tallFlowerPotWrapper:{
+    width: width * 0.80,
+    height: "60%",
+    position: "absolute",
+    left: - (width * 0.70) / 2,
+    bottom: '9%',
+    zIndex: 1
+  },
+  tallPotImage: {
+    width: '100%',
+    height: '100%'
+  },
+  mediumPotImage: {
+    position: 'absolute',
+    alignSelf: 'center', 
+    height: "80%",
+    bottom: height * 0.267,
+    aspectRatio: 1,
+    zIndex: 1,
+  },
+  smallFlowerPotImage: {
+    position: 'absolute',
+    bottom: '-18%',
+    right: '15%',
+    height: 200,
+    width: 50,
+    zIndex: 2,
+  },
+  smallFlowerPotImageTablet: {
+    height: 260,
+    width: 75,
+  },
+
+  // --- Cabinet Styles ---
+  topCabinetWrapper: {
+    position: 'absolute',
+    top: '5%',
+    height: "28%",
+    aspectRatio: 2,
+    zIndex: 0,
+  },
+  bottomCabinetWrapper: {
+    width: width * 0.80,
+    height: "30%",
+    position: "absolute",
+    right: - (width * 0.80) / 2,
+    bottom: '9%',
+    zIndex: 0,
+  },
+  longBottomCabinetWrapper: {
+    position: 'absolute',
+    left: '-10%',
+    bottom: '-10%',
+    height: '75%',
+    aspectRatio: 1,
+    zIndex: 1,
+  },
+  cabinetImage: {
+    width: '100%',
+    height: '100%',
+  },
+  hangingShelfWrapper: {
+    position: "absolute",
+    top: "-40%",
+    height: "120%",
+    width: "150%",
+    zIndex: 1
+  },
+  hangingShelfImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // --- Fridge Decor ---
+  fridgeTopRow: {
+    flexDirection: 'row',
+    width: "50%",         
+    justifyContent: 'space-around', 
+    alignItems: 'flex-end',   
+    height: '10%',         
+    top: 5,      
+    zIndex: 2,    
+  },
+  fridgeTopImage: {
+    width: '48%',                
+    aspectRatio: 1,
+  },
+  windowWrapper: {
+    position: 'absolute',
+    right: -(width * 0.4) / 2,
+    top: "35%",                   
+    height: height * 0.3,     
+    width: width * 0.4,
+    zIndex: 0,
+  },
+  windowWrapperTablet: {
+    height: height * 0.3,
+    width: width * 0.35,
+    right: -(width * 0.35) / 2
+  },
+  wideWindowWrapper: {
+    position: 'absolute',
+    top: "26%",                   
+    height: height * 0.3,     
+    aspectRatio: 1,
+    zIndex: 0,
+  },
+  windowImage: {
+    width: '100%',
+    height: '100%',
+  },
+  viewContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: -1,
+    overflow: 'hidden'
+  },
+  viewImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  // --- Listing Decor ---
+  stickyNotesOverBoard: {
+    position: 'absolute',
+    height: '70%', 
+    maxWidth: 200,
+    bottom: '11%',
+    alignSelf: 'center',
+    zIndex: 1, 
+  },
+  boardTag: {
+    position: 'absolute',
+    top: '4%',           
+    height: '15%',      
+    width: '80%',       
+    alignSelf: 'center',
+    zIndex: 2,
+  },
+  boardNotes: {
+    position: 'absolute',
+    top: '30%',          
+    height: '62%',       
+    width: '85%',
+    alignSelf: 'center',
+    zIndex: 1, 
+  },
+  tableWrapper: {
+    position: 'absolute',
+    bottom: '8%',
+    left: 0,
+    height: '41%',
+    aspectRatio: 1.8,
+  },
+
 });
