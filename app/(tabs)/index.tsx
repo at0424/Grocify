@@ -133,36 +133,6 @@ export default function HomeScreen() {
   // Animation
   // ===============================
 
-  // Add this near your other state variables
-  const windAnimation = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    // This creates a gentle, continuous swinging motion (0 -> 1 -> -1 -> 0)
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(windAnimation, {
-          toValue: 1,
-          duration: 1500, // 1.5 seconds to swing right
-          useNativeDriver: true, 
-        }),
-        Animated.timing(windAnimation, {
-          toValue: -1,
-          duration: 3000, // 3.0 seconds to swing all the way left
-          useNativeDriver: true,
-        }),
-        Animated.timing(windAnimation, {
-          toValue: 0,
-          duration: 1500, // 1.5 seconds to return to center
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [windAnimation]); // Add to dependency 
-  
-  const spin = windAnimation.interpolate({
-    inputRange: [-1, 1],
-    outputRange: ['-1.5deg', '1.5deg'], // Keep this small! 
-  });
   
   return (
     <View style={styles.container}>
@@ -427,12 +397,9 @@ export default function HomeScreen() {
                 />
 
                 {/* Sticky Notes */}
-                <Animated.Image
+                <Image
                   source={require('@/assets/images/main_dashboard/StickyNotes.png')} 
-                  style={[
-                    styles.stickyNotesOverBoard,
-                    { transform: [{ rotate: spin }] } // This applies the swinging motion
-                  ]}
+                  style={styles.stickyNotesOverBoard}
                   resizeMode="contain"
                 />
               </TouchableOpacity>
