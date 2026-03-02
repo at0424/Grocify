@@ -5,9 +5,23 @@ export default function TabsLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        contentStyle: { backgroundColor: 'transparent' }
       }}
     >
-      <Stack.Screen name="index" />
+      {/* Main Dashboard */}
+      <Stack.Screen name="index" options={{ headerShown: false }}/>
+
+      {/* Listing  */}
+      <Stack.Screen 
+        name="(listing)" 
+        options={{ 
+          headerShown: false,
+          presentation: 'transparentModal', 
+          animation: 'fade', 
+          contentStyle: { backgroundColor: 'transparent' }
+        }} 
+      />
+  
     </Stack>
   );
 }
