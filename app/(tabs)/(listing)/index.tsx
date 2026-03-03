@@ -2,14 +2,14 @@ import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
 import StickyNote from '@/components/StickyNotes';
 import { createNewList, deleteUserList, fetchCollaborators, fetchUserLists, removeCollaborator, shareList, updateUserList } from '@/services/api';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function ListingDashboard() {
   const router = useRouter();
+  const AnimatedImageBackground = Animated.createAnimatedComponent(ImageBackground);
   const COLORS = ['#FFF9C4', '#E1F5FE', '#FFEBEE', '#E8F5E9', '#F3E5F5'];
 
   const [lists, setLists] = useState([]);
@@ -131,12 +131,12 @@ export default function ListingDashboard() {
             // Call Delete API
             setLoading(true);
             const result = await deleteUserList(listId, currentUserId);
-            
+
             if (result.success) {
               loadLists();
             } else {
               setLoading(false); // Stop loading first
-              
+
               const errorMsg = String(result.message || "");
 
               // --- CHECK FOR PERMISSION ERROR ---
@@ -181,149 +181,219 @@ export default function ListingDashboard() {
       Alert.alert("Success", "User added!");
       handleOpenShareModal(listToShare);
       loadLists(true); // Refresh background list
-      return true; 
+      return true;
     } else {
       Alert.alert("Failed", result.message || "Could not find user.");
-      return false; 
+      return false;
     }
   };
 
   // Handle Remove User / Leaving List
   const handleRemove = (idToRemove) => {
     // Check if I am removing myself (Leaving)
-    const isLeaving = idToRemove === currentUserId; 
-    
+    const isLeaving = idToRemove === currentUserId;
+
     // Set text based on action
     const title = isLeaving ? "Leave List?" : "Remove User?";
-    const message = isLeaving 
-      ? "Are you sure you want to leave this list?" 
+    const message = isLeaving
+      ? "Are you sure you want to leave this list?"
       : "This will remove the user from the list.";
 
     Alert.alert(title, message, [
       { text: "Cancel", style: "cancel" },
-      { 
-        text: isLeaving ? "Leave" : "Remove", 
+      {
+        text: isLeaving ? "Leave" : "Remove",
         style: 'destructive',
         onPress: async () => {
-            const result = await removeCollaborator(listToShare, idToRemove, currentUserId);
-            
-            if (result.success) {
-                if (isLeaving) {
-                    // CASE 1: I LEFT. 
-                    // Do NOT refresh the modal (I lost access). Close it immediately.
-                    setShareModalVisible(false);
-                    setListToShare(null); // Optional cleanup
-                } else {
-                    // CASE 2: I KICKED SOMEONE.
-                    // Refresh the modal to show they are gone.
-                    handleOpenShareModal(listToShare);
-                }
+          const result = await removeCollaborator(listToShare, idToRemove, currentUserId);
 
-                // Always refresh the dashboard background
-                loadLists(true); 
+          if (result.success) {
+            if (isLeaving) {
+              // CASE 1: I LEFT. 
+              // Do NOT refresh the modal (I lost access). Close it immediately.
+              setShareModalVisible(false);
+              setListToShare(null); // Optional cleanup
             } else {
-                Alert.alert("Error", result.message || "Could not remove user.");
+              // CASE 2: I KICKED SOMEONE.
+              // Refresh the modal to show they are gone.
+              handleOpenShareModal(listToShare);
             }
+
+            // Always refresh the dashboard background
+            loadLists(true);
+          } else {
+            Alert.alert("Error", result.message || "Could not remove user.");
+          }
         }
       }
     ]);
   };
-  
+
+  // =======================================
+  // Animation
+  // =======================================
+
+  const scaleAnim = useRef(new Animated.Value(0.6)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 5,
+        tension: 60,
+        useNativeDriver: true,
+      }),
+
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
+
   return (
     <View style={styles.screenContainer}>
 
-      {/* Header Bar */}
-      <View style={styles.header}>
-        <Ionicons name="close" size={28} color="white" onPress={() => router.back()} />
-        <Text style={styles.headerTitle}>My Lists</Text>
-        <TouchableOpacity onPress={() => setIsEditing(!isEditing)}>
-          <Ionicons
-            name={isEditing ? "checkmark-circle" : "create-outline"}
-            size={28}
-            color="white"
+      {/* Invisible background that closes the modal if tapped outside the board */}
+      <TouchableOpacity
+        style={StyleSheet.absoluteFill}
+        activeOpacity={1}
+        onPress={() => router.back()}
+      />
+
+      <Animated.View
+        style={[
+          styles.modalContainer,
+          {
+            opacity: opacityAnim,
+            transform: [{ scale: scaleAnim }]
+          }
+        ]}
+      >
+
+        {/* Header Bar */}
+        <View style={styles.header}>
+
+          {/* Wooden Panel */}
+          <Image
+            source={require('@/assets/images/listing/WoodenPanel.png')}
+            style={styles.woodenPanelImage}
+            resizeMode="stretch"
           />
-        </TouchableOpacity>
-      </View>
 
-      {/* Grid of Notes */}
-      {loading ? (
-        <ActivityIndicator size="large" color="white" style={{ marginTop: 50 }} />
-      ) : (
-        <FlatList
-          data={lists}
-          keyExtractor={(item) => item.listId}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.listContent}
-
-          // Pull to refresh logic
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="white" // iOS Spinner Color
-              colors={['#718F64']} // Android Spinner Color
+          {/* Exit */}
+          <TouchableOpacity onPress={() => router.back()} style={[styles.iconButton, { left: '5%' }]}>
+            <Image
+              source={require('@/components/images/ExitButton.png')}
+              style={styles.iconImage}
+              resizeMode="contain"
             />
-          }
+          </TouchableOpacity>
 
-          // Fallback when don't have list
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="basket-outline" size={60} color="rgba(255,255,255,0.5)" />
-              <Text style={styles.emptyText}>No Grocery List Created.</Text>
-              <Text style={styles.emptySubText}>Please create or join one!</Text>
-            </View>
-          }
+          {/* Title */}
+          <View style={styles.titleWrapper}>
+            <Image
+              source={require('@/assets/images/main_dashboard/GroceriesListTag.png')}
+              style={styles.woodenPanelImage}
+              resizeMode="stretch"
+            />
+          </View>
 
-          renderItem={({ item }) => (
-            <StickyNote
-              title={item.listName}
-              collaborators={item.collaborators || []}
-              onPress={() => {
-                if (isEditing) {
-                  openModal(item); // Edit Mode: Rename
-                } else {
-                  router.push({  // Normal Mode: Navigate
-                    pathname: "./detail_list",
-                    params: {
-                      listId: item.listId,
-                      title: item.listName,
-                      userRole: item.role,
+          {/* Action Button */}
+          <TouchableOpacity onPress={() => setIsEditing(!isEditing)} style={[styles.iconButton, { right: '5%' }]}>
+            <Image
+              source={
+                isEditing
+                  ? require('@/components/images/BinButton.png')
+                  : require('@/components/images/EditButton.png')
+              }
+              style={styles.iconImage}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+
+        </View>
+
+        {/* Cork Board */}
+        <View style={styles.corkBoardContainer}>
+          <Image
+            source={require('@/assets/images/main_dashboard/Board.png')}
+            style={[StyleSheet.absoluteFillObject, { width: '100%', height: '90%' }]}
+            resizeMode="stretch"
+          />
+
+          {/* Grid of Notes */}
+          {loading ? (
+            <ActivityIndicator size="large" color="#5C4033" style={{ marginTop: 50 }} />
+          ) : (
+            <FlatList
+              data={lists}
+              keyExtractor={(item) => item.listId}
+              numColumns={2}
+              style={{ flex: 1, width: '100%' }}
+              columnWrapperStyle={styles.row}
+              contentContainerStyle={[
+                styles.listContent,
+                lists.length === 0 && { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100 }
+              ]}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#5C4033" />
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Image
+                    source={require('@/assets/images/listing/EmptyBasket.png')}
+                    style={styles.basketImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.emptyText}>No Grocery List Created.</Text>
+                  <Text style={styles.emptySubText}>Please create or join one!</Text>
+                </View>
+              }
+              renderItem={({ item }) => (
+                <StickyNote
+                  title={item.listName}
+                  color={item.color}
+                  collaborators={item.collaborators || []}
+                  onPress={() => {
+                    if (isEditing) {
+                      openModal(item);
+                    } else {
+                      router.push({
+                        pathname: "./detail_list",
+                        params: { listId: item.listId, title: item.listName, userRole: item.role }
+                      });
                     }
-                  });
-                }
-              }}
-
-              actionIcon={isEditing ? "trash-outline" : "person-add-outline"}
-
-              // Handle the action press
-              onActionPress={() => {
-                if (isEditing) {
-                  handleDelete(item.listId, item.listName);
-                } else {
-                  handleOpenShareModal(item.listId);
-                }
-              }}
-
-              // Visual cue for edit mode (Optional: make it wiggle or dim)
-              style={isEditing ? { opacity: 0.9, transform: [{ scale: 0.98 }] } : {}}
+                  }}
+                  actionIcon={isEditing ? "trash-outline" : "person-add-outline"}
+                  onActionPress={() => {
+                    if (isEditing) {
+                      handleDelete(item.listId, item.listName);
+                    } else {
+                      handleOpenShareModal(item.listId);
+                    }
+                  }}
+                  style={isEditing ? { opacity: 0.9, transform: [{ scale: 0.98 }] } : {}}
+                />
+              )}
             />
           )}
-        />
-      )}
+        </View>
 
-      {/* "New List" Button */}
-      {!isEditing && (
-        <TouchableOpacity
-          style={styles.newListButton}
-          onPress={() => openModal(null)}
-        >
-          <Text style={styles.newListText}>NEW LIST</Text>
-        </TouchableOpacity>
-      )}
+        {/* "New List" Button */}
+        <View style={styles.buttonWrapper}>
+          {!isEditing && (
+            <TouchableOpacity style={styles.newListButton} onPress={() => openModal(null)}>
+              <Text style={styles.newListText}>NEW LIST</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-      {/* Create List Modal */}
-      {/* Modal */}
+      </Animated.View>
+
+      {/* New List Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -331,55 +401,83 @@ export default function ListingDashboard() {
         onRequestClose={() => setModalVisible(false)}
       >
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
 
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingListId ? "Rename List" : "New List"}
-              </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#888" />
+          {/* Modal */}
+          <ImageBackground
+            source={require('@/components/images/Modal.png')}
+            style={styles.backgroundImage}
+            resizeMode="stretch"
+          >
+
+            <View style={styles.modalContent}>
+
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                
+                {/* Placeholder for Format */}
+                <View style={{opacity: 0}}>
+                  <Image
+                    source={require('@/components/images/ExitButton.png')}
+                    style={[styles.exitIcon, {marginRight: 0}]}
+                  />
+                </View>
+
+                {/* Modal Title */}
+                <Text style={styles.modalTitle}>
+                  {editingListId ? "Rename List" : "New List"}
+                </Text>
+
+                {/* Exit Button */}
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Image
+                    source={require('@/components/images/ExitButton.png')}
+                    style={styles.exitIcon}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+
+            {/* Main Content */}
+            <View style={styles.mainContent}>
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Party Shopping"
+                value={listNameInput}
+                onChangeText={setListNameInput}
+                autoFocus={true}
+              />
+
+              {!editingListId && (
+                <>
+                  <Text style={styles.label}>Color</Text>
+                  <View style={styles.colorRow}>
+                    {COLORS.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={[styles.colorCircle, { backgroundColor: c }, selectedColor === c && styles.selectedColor]}
+                        onPress={() => setSelectedColor(c)}
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <TouchableOpacity style={styles.createBtn} onPress={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? <ActivityIndicator color="white" /> : (
+                  <Text style={styles.createBtnText}>
+                    {editingListId ? "Save Changes" : "Create List"}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Party Shopping"
-              value={listNameInput}
-              onChangeText={setListNameInput}
-              autoFocus={true}
-            />
-
-            {/* Only show Color Picker for New Lists */}
-            {!editingListId && (
-              <>
-                <Text style={styles.label}>Color</Text>
-                <View style={styles.colorRow}>
-                  {COLORS.map((c) => (
-                    <TouchableOpacity
-                      key={c}
-                      style={[styles.colorCircle, { backgroundColor: c }, selectedColor === c && styles.selectedColor]}
-                      onPress={() => setSelectedColor(c)}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
-
-            <TouchableOpacity style={styles.createBtn} onPress={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? <ActivityIndicator color="white" /> : (
-                <Text style={styles.createBtnText}>
-                  {editingListId ? "Save Changes" : "Create List"}
-                </Text>
-              )}
-            </TouchableOpacity>
-
-          </View>
+          </ImageBackground>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* SHARE MODAL */}
+      {/* Collaborator Modal */}
       <CollaboratorModal
         visible={shareModalVisible}
         onClose={() => setShareModalVisible(false)}
@@ -393,77 +491,170 @@ export default function ListingDashboard() {
   );
 }
 
+const { width, height } = Dimensions.get('window');
+const isTabletView = width > 600;
+
+
 const styles = StyleSheet.create({
   // ==========================================
-  // 1. MAIN SCREEN LAYOUT
+  // MAIN SCREEN LAYOUT
   // ==========================================
   screenContainer: {
     flex: 1,
-    backgroundColor: '#718F64', // Moss Green
-    paddingTop: 50, // Status bar spacing
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100, // Space for the bottom floating button
-  },
-  row: {
-    justifyContent: 'space-between', // Keeps notes spaced evenly
-    marginBottom: 15, // Space between rows
+  modalContainer: {
+    width: '90%',
+    height: '85%',
+    alignSelf: 'center',
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 20,
+    zIndex: 1,
   },
 
   // ==========================================
-  // 2. HEADER
+  // CORKBOARD CONTAINER
+  // ==========================================
+  corkBoardContainer: {
+    flex: 1,
+    width: '100%',
+    marginTop: -8,
+    zIndex: 1,
+  },
+  listContent: {
+    padding: '7%',
+    flexGrow: 1,
+  },
+  row: {
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+
+  // ==========================================
+  // HEADER
   // ==========================================
   header: {
+    width: '100%',
+    alignSelf: 'center',
+    height: '10%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 25,
-    marginBottom: 20,
-    height: 50,
+    marginBottom: 15,
+  },
+  woodenPanelImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    zIndex: 0,
+  },
+  iconButton: {
+    height: '50%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    zIndex: 3,
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  iconImage: {
+    width: '100%',
+    height: '100%',
+
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 20
+  },
+  titleWrapper: {
+    width: '55%',
+    height: '90%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  tagBackgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    zIndex: 0,
   },
   headerTitle: {
-    color: 'white',
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    color: '#3E2723',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    zIndex: 1,
+
+    textShadowColor: 'rgba(255, 255, 255, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 0,
   },
 
   // ==========================================
-  // 3. EMPTY STATE
+  // EMPTY STATE
   // ==========================================
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 120,
-    opacity: 0.9,
+    paddingBottom: '10%'
   },
   emptyText: {
-    color: 'white',
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
     fontSize: 20,
-    fontWeight: 'bold',
     marginTop: 15,
+    textAlign: 'center',
+    maxWidth: '95%'
   },
   emptySubText: {
-    color: 'rgba(255,255,255,0.8)',
+    fontFamily: 'PixelFont',
+    color: 'rgba(62, 39, 35, 0.7)',
     fontSize: 16,
     marginTop: 5,
+    textAlign: 'center',
+    maxWidth: '95%'
+  },
+  basketImage: {
+    height: height * 0.1,
+    aspectRatio: 1
   },
 
   // ==========================================
-  // 4. FLOATING "NEW LIST" BUTTON
+  // FLOATING "NEW LIST" BUTTON
   // ==========================================
-  newListButton: {
-    backgroundColor: 'white',
-    marginHorizontal: 40,
-    paddingVertical: 18,
-    borderRadius: 30,
-    alignItems: 'center',
+  buttonWrapper: {
     position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    // Shadow for visibility
+    bottom: 0,
+    marginHorizontal: '20%',
+    width: '60%',
+    height: '7%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  newListButton: {
+    backgroundColor: '#FFF8DC',
+    borderWidth: 3,
+    borderColor: '#8B5A2B',
+    width: '85%',
+    height: '100%',
+    alignItems: 'center',
+    alignSelf: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 12,
+
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -471,159 +662,124 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   newListText: {
-    color: '#718F64',
-    fontWeight: 'bold',
+    color: '#3E2723',
+    fontFamily: 'PixelFont',
     fontSize: 18,
     letterSpacing: 1,
+    // for android bug
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
 
   // ==========================================
-  // 5. MODAL BASE
+  // MODAL STATE
   // ==========================================
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)', // Darker dim for better focus
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  backgroundImage: {
+    width: width * 0.9,
+    height: height * 0.6,
+    justifyContent: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    padding: 30,
-    minHeight: 450,
-    paddingBottom: 50,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 20,
+    flex: 1,
+    padding: 15,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 25
+    height: '20%',
+    marginTop: height * 0.025,
+    zIndex: 1,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333'
-  },
+    fontSize: isTabletView ? 35 : 20,
+    fontFamily: 'PixelFont',
+    color: '#ffff',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
 
-  // ==========================================
-  // 6. FORM INPUTS & LABELS
-  // ==========================================
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: '#555',
-    marginTop: 10
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 20,
   },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 10,
-    marginTop: 10
+  buttonBackground: {
+    height: '50%',
+    aspectRatio: 1,
+  },
+  exitIcon: {
+    height: '50%',
+    aspectRatio: 1,
+    marginRight: "5%",
+    
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 20,
+  },
+  mainContent: {
+    flex: 1,
+    paddingHorizontal: '8%',
+    justifyContent: 'flex-start',
+    bottom: '28%'
+  },
+  label: {
+    fontSize: isTabletView ? 20 : 14,
+    fontFamily: 'PixelFont',
+    color: '#8B5A2B',
+    marginBottom: 8,
+    includeFontPadding: false,
   },
   input: {
-    backgroundColor: '#F5F5F5',
-    padding: 16,
-    borderRadius: 15,
-    fontSize: 18,
-    marginBottom: 25,
-    borderWidth: 1,
-    borderColor: '#EEE',
-    color: '#333',
-  },
-
-  // ==========================================
-  // 7. LIST ITEMS (COLLABORATORS)
-  // ==========================================
-  userRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5'
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1
-  },
-  userAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#CFD8DC',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12
-  },
-  userName: {
+    backgroundColor: '#FFF8DC',
+    padding: 15,
+    borderRadius: 8,
     fontSize: 16,
-    color: '#333',
-    maxWidth: '85%'
+    marginBottom: 20,
+    borderWidth: 3,
+    borderColor: '#8B5A2B',
+    color: '#3E2723',
+    fontFamily: 'PixelFont',
   },
-
-  // ==========================================
-  // 8. COLOR PICKER
-  // ==========================================
   colorRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 35
+    marginBottom: 25
   },
   colorCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    width: "15%",
+    aspectRatio: 1,
+    borderRadius: 8,
+    borderWidth: isTabletView ? 5 : 3,
+    borderColor: '#8B5A2B'
   },
   selectedColor: {
-    borderWidth: 4,
-    borderColor: '#718F64',
-    transform: [{ scale: 1.1 }], // Slight pop effect
+    borderColor: '#3E2723',
+    transform: [{ scale: 1.1 }]
   },
-
-  // ==========================================
-  // 9. BUTTONS (PRIMARY & CANCEL)
-  // ==========================================
   createBtn: {
     backgroundColor: '#718F64',
-    padding: 18,
-    borderRadius: 15,
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: '#5B764A',
     alignItems: 'center',
-    marginTop: 10,
-    // Optional: Flex props in case you add icons inside
-    flexDirection: 'row',
-    justifyContent: 'center',
+    marginTop: 10
   },
   createBtnText: {
     color: 'white',
+    fontFamily: 'PixelFont',
     fontSize: 18,
-    fontWeight: 'bold'
-  },
-  cancelBtn: {
-    padding: 18,
-    borderRadius: 15,
-    backgroundColor: '#F5F5F5',
-    width: 100,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#EEE'
-  },
-  cancelBtnText: {
-    color: '#666',
-    fontWeight: 'bold'
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });
