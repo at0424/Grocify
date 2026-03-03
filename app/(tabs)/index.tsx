@@ -760,14 +760,15 @@ const styles = StyleSheet.create({
 
   // --- ITEM STYLES (Oven) ---
   ovenWrapper: {
-    width: width * 0.50,
+    //width: width * 0.50,
     height: '60%',
-    aspectRatio: 0.6,
-    top: '6%'
+    aspectRatio: 0.55,
+    top: '2%',
+    zIndex: 2
   },
   ovenImage: {
-    width: '90%',
-    height: '90%',
+    width: '100%',
+    height: '100%',
   },
   fireOverlayWrapper: {
     position: 'absolute',
@@ -932,7 +933,7 @@ const styles = StyleSheet.create({
     top: "-40%",
     height: "120%",
     width: "150%",
-    zIndex: 1
+    zIndex: 1,
   },
   hangingShelfImage: {
     width: '100%',

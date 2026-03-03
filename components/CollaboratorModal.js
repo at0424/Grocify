@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, ImageBackground, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function CollaboratorModal({ 
   visible, 
@@ -42,20 +42,26 @@ export default function CollaboratorModal({
         <ImageBackground 
           source={require('@/components/images/Modal.png')} 
           style={styles.backgroundImage}
-          resizeMode="contain"
+          resizeMode="stretch"
         >
-          {/* Main container for the modal content with proper padding to stay within borders */}
           <View style={styles.modalContent}>
             
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>List Members</Text>
-              <TouchableOpacity onPress={onClose}>
-                <Ionicons name="close" size={24} color="white" />
-              </TouchableOpacity>
+            {/* --- HEADER: Layered Wooden Panel --- */}
+            <View style={styles.headerWrapper}>
+
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>List Members</Text>
+                <TouchableOpacity onPress={onClose}>
+                  <Image
+                    source={require('@/components/images/ExitButton.png')}
+                    style={styles.exitIcon}
+                  />
+                </TouchableOpacity>
+              </View>
+
             </View>
 
-            {/* Main Content*/}
+            {/* --- MAIN CONTENT --- */}
             <View style={styles.mainContent}>
               {!addMode && (
                 <>
@@ -66,7 +72,6 @@ export default function CollaboratorModal({
                     ListHeaderComponent={
                       <View style={styles.userRow}>
                         <View style={styles.userInfo}>
-                          {/* Updated Avatar Colors */}
                           <View style={[styles.userAvatar, { backgroundColor: '#FFD54F', borderColor: '#8B5A2B' }]}><Ionicons name="star" size={14} color="#8B5A2B" /></View>
                           <Text style={styles.userName}>{isOwner ? "You (Owner)" : (data.ownerEmail || "Owner")}</Text>
                         </View>
@@ -78,14 +83,13 @@ export default function CollaboratorModal({
                       return (
                         <View style={styles.userRow}>
                           <View style={styles.userInfo}>
-                            {/* Updated Avatar Colors */}
                             <View style={[styles.userAvatar, { backgroundColor: '#F0E0C0', borderColor: '#A08060' }]}><Ionicons name="person" size={14} color="#A08060" /></View>
-                            <Text style={styles.userName} numberOfLines={1}>{isMe ? "You" : item.email}</Text>
+                            <Text style={styles.userName} numberOfLines={2}>{isMe ? "You" : item.email}</Text>
                           </View>
                           
                           {/* OWNER KICKING OTHERS */}
                           {isOwner && !isMe && (
-                            <TouchableOpacity onPress={() => onRemove(item.userId)}>
+                            <TouchableOpacity style={styles.removeButton} onPress={() => onRemove(item.userId)}>
                               <Ionicons name="trash-outline" size={20} color="#E53935" />
                             </TouchableOpacity>
                           )}
@@ -94,7 +98,7 @@ export default function CollaboratorModal({
                           {!isOwner && isMe && (
                             <TouchableOpacity onPress={() => onRemove(item.userId)} style={styles.leaveBtn}>
                               <Text style={styles.leaveText}>Leave</Text>
-                              <Ionicons name="log-out-outline" size={20} color="#E53935" />
+                              <Ionicons name="log-out-outline" size={16} color="#E53935" />
                             </TouchableOpacity>
                           )}
 
@@ -145,58 +149,99 @@ export default function CollaboratorModal({
 }
 
 const { width, height } = Dimensions.get('window');
+const isTabletView = width > 600; 
 
 const styles = StyleSheet.create({
   modalOverlay: { 
     flex: 1, 
     backgroundColor: 'rgba(0,0,0,0.6)', 
     justifyContent: 'center', 
-    alignItems: 'center' 
+    alignItems: 'center',
+    zIndex: 999 
   },
   backgroundImage: {
     width: width * 0.9, 
-    height: height * 0.65, 
+    height: height * 0.6, 
     justifyContent: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 30,
   },
   modalContent: {
     flex: 1,
     padding: 15,
   },
   
+  // ==========================================
+  // HEADER BAR LAYERING
+  // ==========================================
+  headerWrapper: {
+    width: '100%',
+    height: '10%',
+    justifyContent: 'center',
+    marginBottom: 15,
+    marginTop: 15,           
+  },
   modalHeader: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center', 
-    marginBottom: 10,
-    marginTop: 10,
-    height: 35,
-    paddingHorizontal: 15,
+    marginTop: height * 0.025,
+    height: '100%',
+    paddingHorizontal: 20,
+    zIndex: 1,
   },
   modalTitle: { 
-    fontSize: 20, 
-    fontWeight: '900', 
-    color: 'white', 
-    letterSpacing: 1.2
+    fontSize: isTabletView ? 30 : 18, 
+    fontFamily: 'PixelFont', 
+    color: 'white',        
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    paddingLeft: '5%',
+
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 20,
+  },
+  exitIcon: {
+    height: '50%',
+    aspectRatio: 1,
+    marginRight: "5%",
+    
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 20,
   },
   
-  // All other controls go here
+  // ==========================================
+  // MAIN CONTENT & CONTROLS
+  // ==========================================
   mainContent: {
     flex: 1,
-    paddingHorizontal: 15,
-    marginTop: 15,
+    paddingHorizontal: '5%',
+    paddingTop: '8%',
   },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#8B5A2B', marginBottom: 10, marginTop: 10 },
-  userRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F0E0C0' },
+  sectionLabel: { 
+    fontSize: isTabletView ? 25 : 20,
+    fontFamily: 'PixelFont', 
+    color: '#8B5A2B', 
+    marginBottom: 10, 
+    marginTop: 10,
+    includeFontPadding: false 
+  },
+  userRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingVertical: 12, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F0E0C0' 
+  },
   userInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  // Updated Avatar to be square with wooden borders
   userAvatar: { 
-    width: 32, 
-    height: 32, 
+    height: isTabletView ? 60 : 50, 
+    aspectRatio: 1,
     borderRadius: 8, 
     borderWidth: 3,
     backgroundColor: '#F0E0C0', 
@@ -205,24 +250,30 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     marginRight: 12 
   },
-  userName: { fontSize: 16, color: '#3E2723', maxWidth: '85%', fontWeight: '600' },
+  userName: { 
+    fontSize: isTabletView ? 25 : 15, 
+    color: '#3E2723', 
+    maxWidth: '80%', 
+    fontFamily: 'PixelFont',
+    includeFontPadding: false 
+  },
   
-  // Updated Inputs and Buttons for Pixel Art Theme
+  // Inputs and Buttons
   input: { 
     backgroundColor: '#FFF8DC', 
-    padding: 16, 
+    padding: 15, 
     borderRadius: 8, 
     fontSize: 16, 
     marginBottom: 25, 
     borderWidth: 3, 
     borderColor: '#8B5A2B', 
     color: '#3E2723',
-    fontWeight: '600',
+    fontFamily: 'PixelFont',
   },
   primaryBtn: { 
     backgroundColor: '#718F64', 
-    padding: 18, 
-    borderRadius: 12, // slightly square corners
+    padding: 15, 
+    borderRadius: 12, 
     borderWidth: 3,
     borderColor: '#5B764A',
     alignItems: 'center', 
@@ -230,18 +281,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'center' 
   },
-  primaryBtnText: { color: 'white', fontWeight: '900', fontSize: 18, letterSpacing: 1.1 },
-  cancelBtn: { 
-    padding: 18, 
+  primaryBtnText: { 
+    color: 'white', 
+    fontFamily: 'PixelFont', 
+    fontSize: 18, 
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  removeButton: { 
+    padding: 15, 
     borderRadius: 12, 
     backgroundColor: '#F0E0C0', 
-    width: 100, 
     alignItems: 'center', 
     borderWidth: 3, 
     borderColor: '#A08060' 
   },
-  cancelBtnText: { color: '#666', fontWeight: 'bold' },
+  cancelBtn: { 
+    padding: 15, 
+    borderRadius: 12,
+    width: 100, 
+    backgroundColor: '#F0E0C0', 
+    alignItems: 'center', 
+    borderWidth: 3, 
+    borderColor: '#A08060' 
+  },
+  cancelBtnText: { 
+    color: '#8B5A2B', 
+    fontFamily: 'PixelFont',
+    fontSize: 16,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
+  },
   
-  leaveBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFEBEE', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  leaveText: { color: '#E53935', fontWeight: 'bold', marginRight: 5, fontSize: 12 }
+  leaveBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFEBEE', 
+    paddingHorizontal: 10, 
+    paddingVertical: 8, 
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E53935'
+  },
+  leaveText: { 
+    color: '#E53935', 
+    fontFamily: 'PixelFont', 
+    marginRight: 5, 
+    fontSize: 14,
+    includeFontPadding: false 
+  }
 });

@@ -355,6 +355,7 @@ export default function ListingDashboard() {
               renderItem={({ item }) => (
                 <StickyNote
                   title={item.listName}
+                  color={item.color}
                   collaborators={item.collaborators || []}
                   onPress={() => {
                     if (isEditing) {
@@ -527,10 +528,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   listContent: {
-    paddingHorizontal: 15,
-    paddingBottom: 100,
-    paddingTop: 10,
-    flexGrow: 1
+    padding: '7%',
+    flexGrow: 1,
   },
   row: {
     justifyContent: 'space-between',
@@ -560,6 +559,12 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     alignItems: 'center',
     zIndex: 3,
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
   },
   iconImage: {
     width: '100%',
@@ -602,6 +607,7 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: '10%'
   },
   emptyText: {
     fontFamily: 'PixelFont',
