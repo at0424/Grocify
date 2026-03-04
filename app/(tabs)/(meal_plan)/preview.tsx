@@ -1,5 +1,5 @@
 import { getUserId } from '@/amplify/auth/authService';
-import { batchAddListItems, createNewList, createUserPlan, fetchGroceryCatalog, fetchRecipes, fetchUserLists } from '@/services/api';
+import { batchAddListItems, createNewList, createUserPlan, fetchGroceryCatalog, fetchRecipes, fetchUserLists, fetchUserMealPlan, updateUserPlan } from '@/services/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2, ChevronLeft, Edit3, Moon, RefreshCw, Snowflake, Sun, Utensils } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -30,6 +30,7 @@ export default function MealPlanPreviewScreen() {
     const [swappingSlot, setSwappingSlot] = useState(null);
     const [catalogMap, setCatalogMap] = useState(new Map());
     const [customName, setCustomName] = useState("");
+    const [existingPlan, setExistingPlan] = useState(null);
 
     // Fridge Selection State
     const [userFridges, setUserFridges] = useState([]);
@@ -38,6 +39,13 @@ export default function MealPlanPreviewScreen() {
     // Initialization
     useEffect(() => {
         const init = async () => {
+            const currentUserId = await getUserId();
+            const activePlan = await fetchUserMealPlan(currentUserId);
+            
+            if (activePlan && activePlan.planData) {
+                setExistingPlan(activePlan);
+            }
+
             await Promise.all([generateInitialPlan(), loadFridges()]);
             setLoading(false);
         };
@@ -208,7 +216,7 @@ export default function MealPlanPreviewScreen() {
 
                             // Check if this item exists in fetched catalog
                             if (!catalogMap.has(lowerName)) {
-                                console.log(`⚠️ MISSING IN CATALOG: "${cleanName}"`);
+                                console.log(`MISSING IN CATALOG: "${cleanName}"`);
                             }
                             const catalogItem = catalogMap.get(lowerName) || {};
 
@@ -277,7 +285,7 @@ export default function MealPlanPreviewScreen() {
             });
 
             console.log(`Queueing ${finalIngredients.length} unique items...`);
-
+            
             try {
                 console.log("Sending entire ingredient list to the cloud...");
                 await batchAddListItems(newListId, finalIngredients);
@@ -295,16 +303,38 @@ export default function MealPlanPreviewScreen() {
                 finalTargetFridges = [selectedFridgeId];
             }
 
-            // Create Plan & Finish 
-            const payload = {
-                userId: currentUser,
-                startDate: params.start,
-                endDate: params.end,
-                days: plan,
-                targetFridges: finalTargetFridges
-            };
+            if (existingPlan && existingPlan.planId) {
+                console.log("Extending existing meal plan...");
+                
+                // Combine the old days and the new days
+                const combinedDays = [...existingPlan.planData, ...plan];
+                
+                // Combine the fridge tracking (so it checks old & new grocery lists)
+                const combinedFridges = [...new Set([...(existingPlan.targetFridges || []), ...finalTargetFridges])];
 
-            await createUserPlan(payload);
+                const updatePayload = {
+                    planId: existingPlan.planId,
+                    userId: currentUser,
+                    endDate: params.end, // The new extended end date
+                    planData: combinedDays,
+                    targetFridges: combinedFridges
+                };
+
+                await updateUserPlan(updatePayload); // We will create this API next
+
+            } else {
+                console.log("Creating brand new meal plan...");
+                
+                const createPayload = {
+                    userId: currentUser,
+                    startDate: params.start,
+                    endDate: params.end,
+                    days: plan,
+                    targetFridges: finalTargetFridges
+                };
+
+                await createUserPlan(createPayload);
+            }
 
             if (router.canDismiss()) router.dismissAll();
             router.replace({ pathname: '/(tabs)/(meal_plan)', params: { refresh: 'true' } });

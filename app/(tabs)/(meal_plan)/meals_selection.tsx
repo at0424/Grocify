@@ -2,13 +2,13 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ban, CheckCircle2, ChevronLeft, Utensils } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function MealSelectionScreen() {
@@ -30,10 +30,16 @@ export default function MealSelectionScreen() {
     const initialSelection = {};
     
     let currentDate = new Date(startDate);
+    currentDate.setHours(0, 0, 0, 0);
+    let finalDate = new Date(endDate);
+    finalDate.setHours(0, 0, 0, 0);
     
-    while (currentDate <= endDate) {
-      const dateKey = currentDate.toISOString().split('T')[0]; 
-      
+    while (currentDate <= finalDate) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
+            
       generatedDates.push(new Date(currentDate));
       
       // Default: All meals selected
@@ -129,7 +135,12 @@ export default function MealSelectionScreen() {
         {/* --- The Grid --- */}
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
           {dates.map((date, index) => {
-            const dateKey = date.toISOString().split('T')[0];
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateKey = `${year}-${month}-${day}`;
+
+            // Now it will correctly find the matching state
             const dayState = selections[dateKey] || { breakfast: false, lunch: false, dinner: false };
 
             return (

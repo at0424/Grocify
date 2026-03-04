@@ -398,6 +398,24 @@ export const createUserPlan = async (planDetails) => {
   }
 };
 
+// Append / Extend an existing meal plan
+export const updateUserPlan = async (payload) => {
+  try {
+    const operation = post({
+      apiName: API_NAME,
+      path: '/updateUserPlan', 
+      options: {
+        body: payload
+      }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error updating meal plan:", error);
+    throw error;
+  }
+};
+
 // Delete Meal Plan
 export const deleteUserPlan = async (userId, planId) => {
   try {
