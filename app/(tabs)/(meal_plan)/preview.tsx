@@ -85,6 +85,8 @@ export default function MealPlanPreviewScreen() {
         }
     };
 
+    const generateSlotId = () => `slot-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
     const generateInitialPlan = async () => {
         try {
             const selections = JSON.parse(params.selections || '{}');
@@ -109,22 +111,13 @@ export default function MealPlanPreviewScreen() {
                 const dayPlan = { date: dateKey, meals: [] };
 
                 if (daySelection.breakfast) {
-                    dayPlan.meals.push({
-                        type: 'Breakfast',
-                        recipe: getRandomRecipe(bfList)
-                    });
+                    dayPlan.meals.push({ slotId: generateSlotId(), type: 'Breakfast', recipe: getRandomRecipe(bfList) });
                 }
                 if (daySelection.lunch) {
-                    dayPlan.meals.push({
-                        type: 'Lunch',
-                        recipe: getRandomRecipe(lnList)
-                    });
+                    dayPlan.meals.push({ slotId: generateSlotId(), type: 'Lunch', recipe: getRandomRecipe(lnList) });
                 }
                 if (daySelection.dinner) {
-                    dayPlan.meals.push({
-                        type: 'Dinner',
-                        recipe: getRandomRecipe(dnList)
-                    });
+                    dayPlan.meals.push({ slotId: generateSlotId(), type: 'Dinner', recipe: getRandomRecipe(dnList) });
                 }
 
                 return dayPlan;
@@ -149,7 +142,7 @@ export default function MealPlanPreviewScreen() {
                     return currentPlan.map(day => {
                         if (day.date === swappingSlot.date) {
                             const updatedMeals = day.meals.map(meal => {
-                                if (meal.type === swappingSlot.type) {
+                                if (meal.slotId === swappingSlot.slotId) {
                                     return { ...meal, recipe: selectedRecipe };
                                 }
                                 return meal;
@@ -178,9 +171,8 @@ export default function MealPlanPreviewScreen() {
     };
 
     // Swap Recipe
-    const handleSwap = (dateKey, mealType) => {
-        // Remember which slot we are editing
-        setSwappingSlot({ date: dateKey, type: mealType });
+    const handleSwap = (dateKey, slotId, mealType) => {
+        setSwappingSlot({ date: dateKey, slotId: slotId, type: mealType });
 
         router.push({
             pathname: '/recipes_list',
@@ -292,6 +284,16 @@ export default function MealPlanPreviewScreen() {
             } catch (err) {
                 throw new Error("Failed to batch upload ingredients.");
             }
+            
+            // Choosing Target Fridges
+            let finalTargetFridges = [];
+            if (selectedFridgeId === 'ALL') {
+                finalTargetFridges = ['ALL'];
+            } else if (selectedFridgeId === 'CURRENT_PLAN') {
+                finalTargetFridges = [newListId]; 
+            } else {
+                finalTargetFridges = [selectedFridgeId];
+            }
 
             // Create Plan & Finish 
             const payload = {
@@ -299,7 +301,7 @@ export default function MealPlanPreviewScreen() {
                 startDate: params.start,
                 endDate: params.end,
                 days: plan,
-                targetFridges: [selectedFridgeId]
+                targetFridges: finalTargetFridges
             };
 
             await createUserPlan(payload);
@@ -313,6 +315,49 @@ export default function MealPlanPreviewScreen() {
         } finally {
             setSaving(false);
         }
+    };
+    
+    // Add Extra Dishes
+    const handleAddDishPrompt = (dateKey) => {
+        Alert.alert(
+            "Add Another Dish",
+            "Which meal would you like to add an extra dish to?",
+            [
+                { text: "Breakfast", onPress: () => addExtraDish(dateKey, 'Breakfast') },
+                { text: "Lunch", onPress: () => addExtraDish(dateKey, 'Lunch') },
+                { text: "Dinner", onPress: () => addExtraDish(dateKey, 'Dinner') },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
+    };
+
+    const addExtraDish = (dateKey, mealType) => {
+        // Pick the correct recipe pool
+        const pool = mealType === 'Breakfast' ? recipePool.breakfast :
+                     mealType === 'Lunch' ? recipePool.lunch :
+                     recipePool.dinner;
+
+        setPlan(currentPlan => {
+            return currentPlan.map(day => {
+                if (day.date === dateKey) {
+                    const newDish = {
+                        slotId: generateSlotId(),
+                        type: mealType,
+                        recipe: getRandomRecipe(pool)
+                    };
+                    
+                    // Add the new dish to the day's array
+                    const updatedMeals = [...day.meals, newDish];
+                    
+                    // Keep them sorted properly (Breakfast -> Lunch -> Dinner)
+                    const order = { 'Breakfast': 1, 'Lunch': 2, 'Dinner': 3 };
+                    updatedMeals.sort((a, b) => order[a.type] - order[b.type]);
+
+                    return { ...day, meals: updatedMeals };
+                }
+                return day;
+            });
+        });
     };
 
     // Icon type
@@ -366,7 +411,7 @@ export default function MealPlanPreviewScreen() {
                             {/* Meal Cards */}
                             {day.meals.map((meal, mIndex) => (
                                 <TouchableOpacity
-                                    key={`${day.date}-${meal.type}`}
+                                    key={meal.slotId}
                                     style={styles.mealCard}
                                     activeOpacity={0.7}
                                     onPress={() => {
@@ -405,13 +450,20 @@ export default function MealPlanPreviewScreen() {
                                     {/* We use a View to intercept the touch so swapping doesn't open the page */}
                                     <TouchableOpacity
                                         style={styles.refreshButton}
-                                        onPress={() => handleSwap(day.date, meal.type)}
+                                        onPress={() => handleSwap(day.date, meal.slotId, meal.type)}
                                     >
                                         <RefreshCw size={18} color="#7A9B6B" />
                                     </TouchableOpacity>
-
-                                </TouchableOpacity>
+                                </TouchableOpacity>      
                             ))}
+
+                            <TouchableOpacity 
+                                style={styles.addDishButton}
+                                onPress={() => handleAddDishPrompt(day.date)}
+                            >
+                                <Text style={styles.addDishText}>+ Add dish to this day</Text>
+                            </TouchableOpacity>
+
                         </View>
                     ))}
                 </ScrollView>
@@ -457,6 +509,16 @@ export default function MealPlanPreviewScreen() {
                                 All Inventory
                             </Text>
                             {selectedFridgeId === 'ALL' && <CheckCircle2 size={14} color="#FFF" style={{ marginLeft: 4 }} />}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.chip, selectedFridgeId === 'CURRENT_PLAN' && styles.chipActive]}
+                            onPress={() => setSelectedFridgeId('CURRENT_PLAN')}
+                        >
+                            <Text style={[styles.chipText, selectedFridgeId === 'CURRENT_PLAN' && styles.chipTextActive]}>
+                                Current Meal Plan
+                            </Text>
+                            {selectedFridgeId === 'CURRENT_PLAN' && <CheckCircle2 size={14} color="#FFF" style={{ marginLeft: 4 }} />}
                         </TouchableOpacity>
 
                         {/* Dynamic User Lists */}
@@ -594,6 +656,18 @@ const styles = StyleSheet.create({
         color: '#A0AEC0',
         fontStyle: 'italic',
         fontSize: 13,
+    },
+    // Add Dish Button
+    addDishButton: {
+        paddingVertical: 10,
+        alignItems: 'center',
+        marginTop: -4,
+        marginBottom: 10,
+    },
+    addDishText: {
+        color: '#7A9B6B',
+        fontWeight: '600',
+        fontSize: 14,
     },
 
     // Footer
