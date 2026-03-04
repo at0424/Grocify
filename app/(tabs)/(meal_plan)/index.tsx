@@ -44,13 +44,45 @@ export default function MealPlanScreen() {
         setRefreshing(false);
     }, []);
 
-    // Fetch the Active Meal Plan
+    // Fetch the Active Meal Plan and Auto-Clean Past Dates
     const fetchPlan = async () => {
         const currentUserId = await getUserId();
         const data = await fetchUserMealPlan(currentUserId);
-        if (data) {
+        
+        if (data && data.planData) {
+            // Get today's date at exactly midnight for accurate comparison
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Filter out any days that are strictly BEFORE today
+            const activeDays = data.planData.filter(day => {
+                const dateObj = new Date(day.date);
+                dateObj.setHours(0, 0, 0, 0);
+                
+                // Keep the day if it is Today or in the Future
+                return dateObj >= today; 
+            });
+
+            // AUTO-DELETE: If all days are in the past, the plan is over!
+            if (activeDays.length === 0) {
+                console.log("Meal plan has expired. Auto-deleting...");
+                
+                await deleteUserPlan(currentUserId, data.planId);
+                
+                // Clear the screen
+                setPlan(null);
+                setGroupedMeals([]);
+                return;
+            }
+
+            // Update the local data to ONLY include active days
+            data.planData = activeDays;
+
             setPlan(data);
-            processPlanData(data.planData);
+            processPlanData(activeDays);
+        } else {
+            setPlan(null);
+            setGroupedMeals([]);
         }
     };
 
