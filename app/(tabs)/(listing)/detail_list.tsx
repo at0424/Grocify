@@ -1,6 +1,6 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
-import { fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
+import { batchToggleGroceryItem, fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
@@ -126,7 +126,7 @@ export default function ListingDetailScreen() {
 
     // ONE Single API Call
     try {
-        const result = await toggleGroceryItem(listId, targetStatus, currentUserId);
+        const result = await batchToggleGroceryItem(listId, targetStatus, currentUserId);
         
         if (!result || !result.success) {
             throw new Error("Batch update failed on server");

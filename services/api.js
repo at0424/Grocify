@@ -230,16 +230,16 @@ export const batchAddListItems = async (listId, itemsArray) => {
 };
 
 // Toggle item to check or uncheck
-export const toggleGroceryItem = async (listId, status, currentUserId) => {
+export const toggleGroceryItem = async (listId, itemId, currentUserId) => {
   try {
     const operation = post({ 
       apiName: API_NAME,
       path: '/toggleItem',
       options: {
         body: { 
-          listId, 
-          status,
-          currentUserId,
+          listId: listId, 
+          itemId: itemId,
+          checkedBy: currentUserId,
         }
       }
     });
@@ -248,6 +248,28 @@ export const toggleGroceryItem = async (listId, status, currentUserId) => {
   } catch (error) {
     console.error("Error toggling item:", error);
     return null;
+  }
+};
+
+export const batchToggleGroceryItem = async (listId, status, currentUserId) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME, 
+      path: '/toggleItem', 
+      options: {
+        body: {
+            listId: listId,
+            status: status, 
+            checkedBy: currentUserId
+        }
+      }
+    });            
+    
+    const response = await operation.response;
+    return await response.body.json(); 
+  } catch (error) {
+    console.error("Batch update failed:", error);
+    return { success: false };
   }
 };
 
