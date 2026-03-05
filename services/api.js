@@ -355,6 +355,30 @@ export const fetchUserMealPlan = async (userId) => {
   }
 };
 
+export const markMealAsConsumed = async (userId, planId, date, mealType, ingredients, targetFridges) => {
+  try {
+    const operation = post({
+      apiName: API_NAME, 
+      path: '/consumeMeal', 
+      options: {
+        body: {
+          userId,
+          planId,
+          date,
+          mealType,
+          ingredients,
+          targetFridges
+        }
+      }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error consuming meal:", error);
+    return { success: false };
+  }
+};
+
 // Fetch all or specific mealType of recipes
 export const fetchRecipes = async (mealType = null) => {
   try {

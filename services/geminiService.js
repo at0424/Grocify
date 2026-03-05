@@ -1,3 +1,4 @@
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { Platform } from 'react-native';
 
 const LOCAL_SERVER_URL = Platform.select({
@@ -6,17 +7,23 @@ const LOCAL_SERVER_URL = Platform.select({
   default: 'http://192.168.100.34:3000/chat',
 });
 
-export const sendMessageToGemini = async (userMessage) => {
+export const sendMessageToGemini = async (userMessage, recipesContext = [], updatedMessages = []) => {
   console.log(`[Connecting] Sending message to: ${LOCAL_SERVER_URL}`);
+
+  const session = await fetchAuthSession();
+  const userToken = session.tokens?.idToken?.toString();
 
   try {
     const response = await fetch(LOCAL_SERVER_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`
       },
       body: JSON.stringify({
         message: userMessage, 
+        recipes: recipesContext,
+        history: updatedMessages
       }),
     });
 
