@@ -1,14 +1,15 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
-import { batchToggleGroceryItem, fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
+import { fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Image, ImageBackground, RefreshControl, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ListingDetailScreen() {
   const router = useRouter();
-  const { listId, title, userRole } = useLocalSearchParams();
+  const { listId, title, userRole, color } = useLocalSearchParams();
 
   // Data States
   const [items, setItems] = useState([]);
@@ -17,15 +18,13 @@ export default function ListingDetailScreen() {
 
   // UI States
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Modal States (NEW)
+  // Modal States
   const [modalVisible, setModalVisible] = useState(false);
   const [modalData, setModalData] = useState({ collaborators: [], ownerEmail: '', myRole: '' });
 
-  // Refresh Screen
   const loadItems = async (isPullToRefresh = false) => {
-    // Only show big spinner on initial load
     if (!isPullToRefresh && items.length === 0) setLoading(true);
 
     try {
@@ -37,17 +36,14 @@ export default function ListingDetailScreen() {
         fetchCollaborators(listId, uid)
       ]);
 
-      // Handle Grocery Items
       if (groceryData.items) {
         setItems(groceryData.items);
       } else {
-        setItems(groceryData); // Legacy fallback
+        setItems(groceryData);
       }
 
-      // Handle Collaborators
       if (collabData.success) {
-        setCollaborators(collabData.collaborators || []); // Updates the count bubble
-
+        setCollaborators(collabData.collaborators || []);
         setModalData({
           collaborators: collabData.collaborators,
           ownerEmail: collabData.ownerEmail,
@@ -65,90 +61,52 @@ export default function ListingDetailScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // Immediate Load (Show Spinner)
       loadItems();
-
-      // Start Polling (The "Heartbeat")
-      // Every 5000ms (5 seconds), fetch data silently
-      // const intervalId = setInterval(() => {
-      //   console.log("Heartbeat: Checking for friend's updates...");
-      //   loadItems(true); 
-      // }, 5000);
-
-      // Stop polling when unfocus
-      // return () => {
-      //   clearInterval(intervalId);
-      //   console.log("Polling stopped");
-      // };
     }, [listId])
   );
 
-
-  // Handle Pull-to-refresh
   const onRefresh = () => {
     setRefreshing(true);
-    loadItems(true); // true = isPullToRefresh
+    loadItems(true);
   };
 
-  // Handler for toggling
   const handleToggle = async (targetItem) => {
-    // Optimistic Update (Update UI immediately)
     const newItems = items.map(i => {
       if (i.itemId === targetItem.itemId) {
-        return { ...i, checked: !i.checked }; 
+        return { ...i, checked: !i.checked };
       }
       return i;
     });
     setItems(newItems);
-
-    // Call Backend to save single item
     await toggleGroceryItem(listId, targetItem.itemId, currentUserId);
   };
 
-  // Mark All Handler
   const handleMarkAll = async () => {
     if (items.length === 0) return;
 
-    // Determine Target Logic
     const allAreChecked = items.every(item => item.checked);
-    const targetStatus = !allAreChecked; // If all checked -> Unmark All. Else -> Mark All.
+    const targetStatus = !allAreChecked;
 
-    // Optimistic Update (Instant UI Feedback)
-    const oldItems = [...items]; // Keep a backup in case the server fails
-    
+    const oldItems = [...items];
+
     const updatedItems = items.map(item => ({
       ...item,
       checked: targetStatus
     }));
-    setItems(updatedItems); // UI updates instantly!
+    setItems(updatedItems);
 
-    console.log(`Sending ONE batch request to set all to ${targetStatus}...`);
-
-    // ONE Single API Call
     try {
-        const result = await batchToggleGroceryItem(listId, targetStatus, currentUserId);
-        
-        if (!result || !result.success) {
-            throw new Error("Batch update failed on server");
-        }
-        
-        console.log("Batch update success!");
-        
-        if (result.items) {
-             setItems(result.items); 
-        }
-
+      const result = await toggleGroceryItem(listId, targetStatus, currentUserId);
+      if (!result || !result.success) throw new Error("Batch update failed on server");
+      if (result.items) setItems(result.items);
     } catch (error) {
-        console.error("Failed:", error);
-        Alert.alert("Sync Error", "Could not update list. Reverting changes.");
-        // Revert the UI if the server failed
-        setItems(oldItems); 
+      Alert.alert("Sync Error", "Could not update list. Reverting changes.");
+      setItems(oldItems);
     }
   };
 
   const handleOpenModal = async () => {
     const uid = await getUserId();
-    // Use the new API to get emails
     const data = await fetchCollaborators(listId, uid);
 
     if (data.success) {
@@ -163,16 +121,12 @@ export default function ListingDetailScreen() {
     }
   };
 
-  // Handle invite collaborator
   const handleInvite = async (emailToInvite) => {
     const result = await shareList(listId, emailToInvite);
-
     if (result.success) {
       Alert.alert("Success", "User added!");
-
-      // Refresh both the main screen (for count) and the modal data
       loadItems(true);
-      handleOpenModal(); // Refetch modal data to show new email immediately
+      handleOpenModal();
       return true;
     } else {
       Alert.alert("Failed", result.message || "Could not find user.");
@@ -180,17 +134,14 @@ export default function ListingDetailScreen() {
     }
   };
 
-
-  // Handle remove collaborator
   const handleRemove = (idToRemove) => {
     const isLeaving = idToRemove === currentUserId;
-
-    const title = isLeaving ? "Leave List?" : "Remove User?";
+    const alertTitle = isLeaving ? "Leave List?" : "Remove User?";
     const message = isLeaving
       ? "Are you sure you want to leave this list?"
       : "This will remove the user from the list.";
 
-    Alert.alert(title, message, [
+    Alert.alert(alertTitle, message, [
       { text: "Cancel", style: "cancel" },
       {
         text: isLeaving ? "Leave" : "Remove",
@@ -199,10 +150,8 @@ export default function ListingDetailScreen() {
           const result = await removeCollaborator(listId, idToRemove, currentUserId);
           if (result.success) {
             if (isLeaving) {
-              // If I left, I should be navigated back to dashboard
               router.back();
             } else {
-              // If I removed someone else, refresh data
               loadItems(true);
               handleOpenModal();
             }
@@ -214,123 +163,163 @@ export default function ListingDetailScreen() {
     ]);
   };
 
-  // For each item in the list
+  // Group items by category for the SectionList
+  const groupedItems = useMemo(() => {
+    const grouped = {};
+    items.forEach((item) => {
+      // Use the category field if it exists, otherwise default to "Others"
+      const cat = item.category || 'Others';
+      if (!grouped[cat]) {
+        grouped[cat] = [];
+      }
+      grouped[cat].push(item);
+    });
+
+    console.log(grouped)
+
+    return Object.keys(grouped).map((key) => ({
+      title: key,
+      data: grouped[key],
+    }));
+  }, [items]);
+
+  const renderSectionHeader = ({ section: { title } }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionHeaderText}>{title}</Text>
+    </View>
+  );
+
   const renderItem = ({ item }) => {
     const isChecked = item.checked || false;
 
     return (
-      <TouchableOpacity onPress={() => handleToggle(item)} activeOpacity={0.7}>
-        <View style={[styles.itemRow, isChecked && { opacity: 0.6 }]}>
+      <TouchableOpacity onPress={() => handleToggle(item)} activeOpacity={0.7} style={styles.itemContainer}>
+        <View style={styles.mainRow}>
 
-          {/* Main Row Content */}
-          <View style={styles.mainRow}>
-            <View style={styles.leftSide}>
-              {/* Bullet turns Green when checked */}
-              <View style={[styles.bulletPoint, isChecked && { backgroundColor: '#718F64' }]} />
+          {/* Left Side: Bullet and Text */}
+          <View style={styles.leftSide}>
+            <View style={styles.pixelBullet} />
+            <Text style={[styles.itemText, isChecked && styles.itemTextMuted]}>
+              {item.name}
+            </Text>
+          </View>
 
-              <Text style={[styles.itemText, isChecked && styles.strikethrough]}>
-                {item.name}
-              </Text>
-            </View>
+          {/* Right Side: Quantity and Pixel Checkbox */}
+          <View style={styles.rightSide}>
+            <Text style={styles.quantityText}>x {item.quantity || 1}</Text>
 
-            <View style={styles.rightSide}>
-              <Text style={styles.quantityText}>{item.quantity}</Text>
+            <View style={styles.pixelCheckbox}>
+              {isChecked && <Ionicons name="checkmark-sharp" size={18} color="#3E2723" style={{ marginTop: -2 }} />}
             </View>
           </View>
 
-          {/* THE CROSS LINE (The "Gummy Bear" scratch-out effect) */}
-          {isChecked && <View style={styles.crossLine} />}
-
         </View>
+
+        {/* The scratch-out effect */}
+        {isChecked && <View style={styles.crossLine} />}
       </TouchableOpacity>
     );
   };
 
+  const allItemsChecked = items.length > 0 && items.every(i => i.checked);
+
   return (
-    <View style={styles.container}>
+    <View style={styles.screenContainer}>
+      <SafeAreaView style={{ flex: 1, width: '100%', justifyContent: 'center' }}>
+        
+        <View style={styles.modalContainer}>
+          
+          {/* Header Bar */}
+          <View style={styles.header}>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={32} color="black" />
-        </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>{title || "Unnamed List"}</Text>
-
-        <TouchableOpacity
-          style={styles.avatarStack}
-          onPress={handleOpenModal}
-        >
-          {/* Show count of team members */}
-          <View style={[styles.avatar, { backgroundColor: '#718F64', right: 0, zIndex: 2, alignItems: 'center', justifyContent: 'center' }]}>
-            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-              {collaborators.length + 1}
-            </Text>
-          </View>
-          <View style={[styles.avatar, { backgroundColor: '#A5D6A7', right: 12, zIndex: 1 }]} />
-        </TouchableOpacity>
-
-        {/* Mark All Button */}
-        {items.length > 0 && (
-          <View style={styles.actionBar}>
-            <TouchableOpacity onPress={handleMarkAll} style={styles.markAllButton}>
-              <Ionicons
-                name={items.every(i => i.checked) ? "remove-circle-outline" : "checkmark-done-circle-outline"}
-                size={20}
-                color="#555"
+            {/* Exit/Back Button */}
+            <TouchableOpacity onPress={() => router.back()} style={[styles.iconButton, { left: '5%' }]}>
+              <Image
+                source={require('@/components/images/ExitButton.png')}
+                style={styles.iconImage}
+                resizeMode="contain"
               />
-              <Text style={styles.markAllText}>
-                {items.every(i => i.checked) ? "Unmark All" : "Mark All"}
-              </Text>
             </TouchableOpacity>
+
+            {/* Title */}
+            <TouchableOpacity onPress={handleOpenModal} activeOpacity={0.8} style={styles.titleWrapper}>
+              <ImageBackground
+                source={require('@/assets/images/listing/WoodenPanel.png')}
+                style={styles.titlePlaque}
+                imageStyle={{ borderRadius: 6 }}
+              >
+                <Text style={styles.plaqueTitle} numberOfLines={2}>{title || "Unnamed List"}</Text>
+              </ImageBackground>
+            </TouchableOpacity>
+
+            {/* Mark All Button */}
+            <TouchableOpacity style={styles.toggleTrack} onPress={handleMarkAll} activeOpacity={0.8}>
+                    <View style={[styles.toggleThumb, allItemsChecked ? styles.toggleThumbRight : styles.toggleThumbLeft]} />
+            </TouchableOpacity>
+
           </View>
-        )}
 
-      </View>
-
-      {/* Content */}
-      {loading ? (
-        <ActivityIndicator size="large" color="#718F64" style={{ marginTop: 50 }} />
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item, index) => index.toString()} // Use unique ID if available later
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-
-          // Pull to refresh logic
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="white" // iOS Spinner Color
-              colors={['#718F64']} // Android Spinner Color
+          {/* Cork Board Container */}
+          <View style={styles.corkBoardContainer}>
+            <Image
+              source={require('@/assets/images/main_dashboard/Board.png')}
+              style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+              resizeMode="stretch"
             />
-          }
 
-          // The Empty State You Requested
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>List Empty!</Text>
-              <Text style={styles.emptySubtitle}>Please add some items to get started.</Text>
+            {/* Pin Image */}
+            <Image
+              source={require('@/assets/images/listing/Pin.png')} 
+              style={styles.pinImage}
+              resizeMode="contain"
+            />
+
+            {/* The Giant CSS Sticky Note */}
+            <View style={[styles.noteWrapper, { backgroundColor: `${color}` || '#FFF9C4' }]}>
+              <View style={styles.noteContent}>
+
+                {/* --- LIST CONTENT --- */}
+                {loading ? (
+                  <ActivityIndicator size="large" color="#3E2723" style={{ marginTop: 50 }} />
+                ) : (
+                  <SectionList
+                    sections={groupedItems}
+                    keyExtractor={(item, index) => item.itemId ? item.itemId.toString() : index.toString()}
+                    renderItem={renderItem}
+                    renderSectionHeader={renderSectionHeader}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                      <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3E2723" />
+                    }
+                    ListEmptyComponent={
+                      <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyTitle}>List Empty!</Text>
+                        <Text style={styles.emptySubtitle}>Jot down some groceries...</Text>
+                      </View>
+                    }
+                  />
+                )}
+
+              </View>
             </View>
-          }
-        />
-      )}
 
-      {/* --- Floating Action Button (+) --- */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push({
-          pathname: "./grocery_item",
-          params: {
-            listId: listId,
-            title: title
-          }
-        })}
-      >
-        <Ionicons name="add" size={30} color="#000" />
-      </TouchableOpacity>
+            {/* --- PIXEL WOODEN FAB --- */}
+            <TouchableOpacity
+              style={styles.pixelFab}
+              onPress={() => router.push({
+                pathname: "./grocery_item",
+                params: { listId: listId, title: title }
+              })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={36} color="#3E2723" />
+            </TouchableOpacity>
+
+          </View>
+        </View>
+
+      </SafeAreaView>
 
       {/* Collaborator Modal */}
       <CollaboratorModal
@@ -346,99 +335,204 @@ export default function ListingDetailScreen() {
   );
 }
 
+const { width, height } = Dimensions.get('window');
+const isTabletView = width > 600;
+
 const styles = StyleSheet.create({
-  // =================================================
-  // MAIN CONTAINER
-  // =================================================
-  container: {
+  // ==========================================
+  // MAIN SCREEN & WRAPPER LAYOUT
+  // ==========================================
+  screenContainer: {
     flex: 1,
-    backgroundColor: '#FFF9C4', // The Pale Sticky Note Yellow
-    paddingTop: 50, // Status bar spacing
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    height: '98%',
+    alignSelf: 'center',
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 20,
+    zIndex: 1,
   },
 
-  // =================================================
+  // ==========================================
   // HEADER
-  // =================================================
+  // ==========================================
   header: {
+    position: 'absolute',
+    width: '100%',
+    alignSelf: 'center',
+    height: '10%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    margin: '5%',
+    paddingHorizontal: '5%',
+    paddingTop: '5%',
+    zIndex: 2,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    fontFamily: 'System',
-    color: '#333',
-    flex: 1,
-    marginLeft: 10,
-    textAlign: 'center',
+  iconButton: {
+    height: '50%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    zIndex: 3,
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
   },
-  avatarStack: {
-    flexDirection: 'row',
-    width: 50,
-    height: 30,
+  iconImage: {
+    width: '100%',
+    height: '100%',
+
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
+    elevation: 20
+  },
+  titleWrapper: {
+    width: '55%',
+    height: '90%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  titlePlaque: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
   },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 2,
-    borderColor: '#FFF9C4', // Matches background for "cutout" effect
+  plaqueTitle: {
+    fontSize: isTabletView ? 18 : 12,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  pinImage: {
     position: 'absolute',
+    alignSelf: 'center',
+    zIndex: 5,
+    height: '5%',
+    aspectRatio: 1,
+    top: '2%',
+    
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 2,
+    elevation: 5,
   },
-  // =================================================
-  // MARK ALL BUTTON
-  // =================================================
-  actionBar: {
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    alignItems: 'flex-end', // Aligns button to the right
-  },
-  markAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.5)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  markAllText: {
-    marginLeft: 6,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
+
+  // ==========================================
+  // CORKBOARD CONTAINER
+  // ==========================================
+  corkBoardContainer: {
+    flex: 1,
+    width: '100%',
+    marginTop: -8,
+    zIndex: 1,
   },
 
   // =================================================
-  // LIST CONTENT
+  // CSS STICKY NOTE
+  // =================================================
+  noteWrapper: {
+    flex: 1,
+    marginTop: '9%',
+    marginHorizontal: '8%',
+    marginBottom: '15%',
+    
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 10,
+  },
+  noteContent: {
+    flex: 1,
+    paddingTop: isTabletView ? 100 : 70,
+    paddingBottom: 20, 
+    // Removed horizontal padding here so the category banner spans full width
+  },
+
+  // =================================================
+  // TOGGLE SWITCH (Pixel Style)
+  // =================================================
+  toggleTrack: {
+    width: 44,
+    height: 24,
+    backgroundColor: '#D7A86E',
+    borderWidth: 3,
+    borderColor: '#8B5A2B',
+    borderRadius: 12,
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  toggleThumb: {
+    width: 14,
+    height: 14,
+    backgroundColor: '#FFF8DC',
+    borderWidth: 2,
+    borderColor: '#3E2723',
+    borderRadius: 4, 
+  },
+  toggleThumbLeft: {
+    alignSelf: 'flex-start',
+  },
+  toggleThumbRight: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#718F64', 
+  },
+
+  // =================================================
+  // SECTION HEADERS (Categories)
+  // =================================================
+  sectionHeader: {
+    backgroundColor: 'rgba(158, 189, 126, 0.6)', // Greenish transparent banner
+    paddingVertical: 6,
+    borderTopWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: 'rgba(113, 143, 100, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  sectionHeaderText: {
+    fontSize: isTabletView ? 24 : 18,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    includeFontPadding: false,
+  },
+
+  // =================================================
+  // LIST CONTENT & ITEMS
   // =================================================
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100, // Extra padding at bottom for the FAB
+    paddingBottom: 80, // Space for FAB
   },
-
-  // =================================================
-  // ITEM ROWS
-  // =================================================
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    marginBottom: 10,
-    backgroundColor: 'rgba(255,255,255,0.4)', // Slight highlight for readability
-    borderRadius: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+  itemContainer: {
+    marginBottom: 15,
+    paddingVertical: 5,
+    paddingHorizontal: 15, // Added padding back here since we removed it from noteContent
+    position: 'relative',
   },
   mainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
     justifyContent: 'space-between'
   },
   leftSide: {
@@ -446,45 +540,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  bulletPoint: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#555',
+  pixelBullet: {
+    width: 8,
+    height: 8,
+    backgroundColor: '#3E2723',
     marginRight: 12,
   },
   itemText: {
-    fontSize: 20,
-    fontWeight: '400',
-    color: '#333',
+    fontSize: isTabletView ? 22 : 16,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    includeFontPadding: false,
+  },
+  itemTextMuted: {
+    opacity: 0.5,
   },
   rightSide: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   quantityText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#555',
+    fontSize: isTabletView ? 18 : 14,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    marginRight: 15,
+    includeFontPadding: false,
+  },
+  pixelCheckbox: {
+    width: 22,
+    height: 22,
+    backgroundColor: '#FFF8DC',
+    borderWidth: 3,
+    borderColor: '#3E2723',
+    borderRadius: 4, 
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // =================================================
-  // STRIKETHROUGH / CHECKED STATE
+  // STRIKETHROUGH EFFECT
   // =================================================
-  strikethrough: {
-    textDecorationLine: 'line-through',
-    textDecorationStyle: 'solid',
-    opacity: 0.5,
-  },
   crossLine: {
     position: 'absolute',
-    height: 1, // Thickness of the line
-    backgroundColor: 'black', // Color of the ink
-    width: '90%', // Length of the line
-    top: '50%', // Centers it vertically
-    left: 20, // Adjust start position
-    opacity: 0.6, // Makes it look like pen ink
-    transform: [{ rotate: '-1deg' }] // Slight tilt for realistic handwriting feel
+    height: 2,
+    backgroundColor: '#3E2723',
+    width: '95%',
+    top: '50%',
+    left: 20, // Adjusted due to itemContainer padding
+    opacity: 0.8,
+    transform: [{ rotate: '-1deg' }]
   },
 
   // =================================================
@@ -493,38 +597,40 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 100,
-    opacity: 0.6,
+    marginTop: 60,
+    opacity: 0.7,
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#555',
-    marginBottom: 8,
+    fontSize: 20,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    marginBottom: 10,
   },
   emptySubtitle: {
-    fontSize: 16,
-    color: '#777',
-    fontStyle: 'italic',
+    fontSize: 14,
+    fontFamily: 'PixelFont',
+    color: '#8B5A2B',
   },
 
   // =================================================
-  // FLOATING ACTION BUTTON (FAB)
+  // PIXEL WOODEN FAB (+)
   // =================================================
-  fab: {
+  pixelFab: {
     position: 'absolute',
-    bottom: 40,
-    right: 30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#DCE775', // Pop color (Green/Yellow)
+    bottom: '4%',
+    right: '6%',
+    width: 65,
+    height: 65,
+    backgroundColor: '#D7A86E', 
+    borderWidth: 4,
+    borderColor: '#8B5A2B',
+    borderRadius: 16, 
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
     elevation: 8,
   },
 });
