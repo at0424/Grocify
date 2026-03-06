@@ -363,7 +363,7 @@ export default function ListingDashboard() {
                     } else {
                       router.push({
                         pathname: "./detail_list",
-                        params: { listId: item.listId, title: item.listName, userRole: item.role }
+                        params: { listId: item.listId, title: item.listName, userRole: item.role, color: item.color }
                       });
                     }
                   }}
