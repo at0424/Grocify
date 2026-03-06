@@ -115,11 +115,11 @@ export default function SceneBackground() {
       </View>
       
       {/* Flowers */}
-      <Animated.Image 
+      {/* <Animated.Image 
         source={require('@/assets/images/sign_in/Flowers.png')} 
         style={[styles.flowers, isTablet && styles.flowersTablet, animatedFlowerStyle]} 
         resizeMode="repeat" 
-      />
+      /> */}
 
       {/* Left Tree */}
       <Image 

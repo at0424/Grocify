@@ -596,6 +596,9 @@ export default function HomeScreen() {
   );
 }
 
+
+const isTabletView = width >= 710;
+
 // --- STYLES ---
 const styles = StyleSheet.create({
   container: {
@@ -772,8 +775,8 @@ const styles = StyleSheet.create({
   },
   fireOverlayWrapper: {
     position: 'absolute',
-    top: '10%',    
-    left: '52%',  
+    top: '14%',    
+    left: '60%',  
     width: '10%', 
     height: '20%', 
     zIndex: 2,
@@ -868,12 +871,12 @@ const styles = StyleSheet.create({
 
   // --- Flower Pot Styles ---
   tallFlowerPotWrapper:{
-    width: width * 0.80,
+    width: width * 0.8,
     height: "60%",
     position: "absolute",
     left: - (width * 0.70) / 2,
     bottom: '9%',
-    zIndex: 1
+    zIndex: 1,
   },
   tallPotImage: {
     width: '100%',

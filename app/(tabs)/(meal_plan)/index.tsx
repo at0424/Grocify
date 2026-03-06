@@ -1,7 +1,7 @@
 import { getUserId } from '@/amplify/auth/authService';
-import { deleteUserPlan, fetchFridgeItems, fetchUserLists, fetchUserMealPlan } from '@/services/api';
+import { deleteUserPlan, fetchFridgeItems, fetchUserLists, fetchUserMealPlan, markMealAsConsumed } from '@/services/api';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertTriangle, ChevronLeft, MoreVertical, RefreshCw, Utensils } from 'lucide-react-native';
+import { AlertTriangle, Check, ChevronLeft, MoreVertical, RefreshCw, Utensils } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActionSheetIOS,
@@ -44,13 +44,52 @@ export default function MealPlanScreen() {
         setRefreshing(false);
     }, []);
 
-    // Fetch the Active Meal Plan
+    // Fetch the Active Meal Plan and Auto-Clean Past Dates
     const fetchPlan = async () => {
         const currentUserId = await getUserId();
         const data = await fetchUserMealPlan(currentUserId);
-        if (data) {
+        
+        if (data && data.planData) {
+            // Get today's date at exactly midnight
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Grab the official Start Date that we saved to AWS
+            const planStartDate = new Date(data.startDate);
+
+            // Filter out any days that are strictly BEFORE today
+            const activeDays = data.planData.filter((day, index) => {
+                
+                // Calculate this exact day's date based on its position in the array
+                // If index is 0 (Day 1), it adds 0 days. If index is 1 (Day 2), it adds 1 day.
+                const dateObj = new Date(planStartDate);
+                dateObj.setDate(planStartDate.getDate() + index);
+                dateObj.setHours(0, 0, 0, 0);
+                
+                // Keep the day if it is Today or in the Future
+                return dateObj >= today; 
+            });
+
+            // AUTO-DELETE: If all days are in the past, the plan is over!
+            if (activeDays.length === 0) {
+                console.log("Meal plan has expired. Auto-deleting...");
+                
+                await deleteUserPlan(currentUserId, data.planId);
+                
+                // Clear the screen
+                setPlan(null);
+                setGroupedMeals([]);
+                return;
+            }
+
+            // Update the local data to ONLY include active days
+            data.planData = activeDays;
+
             setPlan(data);
-            processPlanData(data.planData);
+            processPlanData(activeDays);
+        } else {
+            setPlan(null);
+            setGroupedMeals([]);
         }
     };
 
@@ -174,6 +213,65 @@ export default function MealPlanScreen() {
                             setGroupedMeals([]);
                         }
                         setLoading(false);
+                    }
+                }
+            ]
+        );
+    };
+
+    // Handle Consume Meal
+    const handleConsumeMeal = (date, mealType, recipe) => {
+        Alert.alert(
+            "Consume Meal?",
+            `This will mark ${recipe.mealName} as eaten and remove its ingredients from your associated fridge.`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Consume",
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const userId = await getUserId();
+                            const targetFridges = plan.targetFridges || ['ALL'];
+
+                            // Send request to backend
+                            const result = await markMealAsConsumed(
+                                userId, 
+                                plan.planId, 
+                                date, 
+                                mealType, 
+                                recipe.ingredients, 
+                                targetFridges
+                            );
+
+                            console.log("SERVER SAID:", result);
+
+                            if (result && result.success) {
+                                // Optimistic Update: Update the local plan state
+                                const updatedPlan = { ...plan };
+                                const dayIndex = updatedPlan.planData.findIndex(d => d.date === date);
+                                
+                                if (dayIndex !== -1) {
+                                    const mealIndex = updatedPlan.planData[dayIndex].meals.findIndex(m => m.type === mealType);
+                                    if (mealIndex !== -1) {
+                                        updatedPlan.planData[dayIndex].meals[mealIndex].consumed = true;
+                                    }
+                                }
+                                
+                                setPlan(updatedPlan);
+                                processPlanData(updatedPlan.planData);
+
+                                // Refetch inventory to clear the warning badges instantly
+                                await fetchInventory();
+                            } else {
+                                throw new Error("Backend failed to update");
+                            }
+                        } catch (e) {
+                            console.error("Consume Error:", e);
+                            Alert.alert("Error", "Failed to consume meal.");
+                        } finally {
+                            setLoading(false);
+                        }
                     }
                 }
             ]
@@ -312,7 +410,17 @@ export default function MealPlanScreen() {
                             </View>
 
                             {/* Right: Edit Button (Only for Future Days) */}
-                            {!section.isPastOrToday && (
+                            {section.isPastOrToday ? (
+                                <TouchableOpacity
+                                    style={[styles.editButton, item.consumed && styles.consumedButton]}
+                                    onPress={() => {
+                                        if (!item.consumed) handleConsumeMeal(section.date, item.type, item.recipe);
+                                    }}
+                                    disabled={item.consumed}
+                                >
+                                    <Check size={16} color={item.consumed ? "#FFFFFF" : "#7A9B6B"} />
+                                </TouchableOpacity>
+                            ) : (
                                 <TouchableOpacity
                                     style={styles.editButton}
                                     onPress={() => handleSwap(section.date, item.type)}
@@ -320,6 +428,7 @@ export default function MealPlanScreen() {
                                     <RefreshCw size={16} color="#7A9B6B" />
                                 </TouchableOpacity>
                             )}
+
                         </TouchableOpacity>
                     );
                 }}
@@ -410,19 +519,19 @@ const styles = StyleSheet.create({
     },
 
     // Warning Badge Logic
-    warningBadge: { 
-        position: 'absolute', 
-        top: -6, 
-        right: -6, 
-        backgroundColor: '#FEF3C7', 
-        borderWidth: 1, 
-        borderColor: '#FCD34D', 
-        width: 20, 
-        height: 20, 
-        borderRadius: 10, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        zIndex: 10 
+    warningBadge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        backgroundColor: '#FEF3C7',
+        borderWidth: 1,
+        borderColor: '#FCD34D',
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10
     },
 
     // Text Area
@@ -449,6 +558,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#DCFCE7', // Light green circle
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    consumedButton: {
+        backgroundColor: '#7A9B6B', // Turns dark green when consumed
+        opacity: 0.8,
     },
 
     // Empty State

@@ -230,16 +230,16 @@ export const batchAddListItems = async (listId, itemsArray) => {
 };
 
 // Toggle item to check or uncheck
-export const toggleGroceryItem = async (listId, status, currentUserId) => {
+export const toggleGroceryItem = async (listId, itemId, currentUserId) => {
   try {
     const operation = post({ 
       apiName: API_NAME,
       path: '/toggleItem',
       options: {
         body: { 
-          listId, 
-          status,
-          currentUserId,
+          listId: listId, 
+          itemId: itemId,
+          checkedBy: currentUserId,
         }
       }
     });
@@ -248,6 +248,28 @@ export const toggleGroceryItem = async (listId, status, currentUserId) => {
   } catch (error) {
     console.error("Error toggling item:", error);
     return null;
+  }
+};
+
+export const batchToggleGroceryItem = async (listId, status, currentUserId) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME, 
+      path: '/toggleItem', 
+      options: {
+        body: {
+            listId: listId,
+            status: status, 
+            checkedBy: currentUserId
+        }
+      }
+    });            
+    
+    const response = await operation.response;
+    return await response.body.json(); 
+  } catch (error) {
+    console.error("Batch update failed:", error);
+    return { success: false };
   }
 };
 
@@ -333,6 +355,30 @@ export const fetchUserMealPlan = async (userId) => {
   }
 };
 
+export const markMealAsConsumed = async (userId, planId, date, mealType, ingredients, targetFridges) => {
+  try {
+    const operation = post({
+      apiName: API_NAME, 
+      path: '/consumeMeal', 
+      options: {
+        body: {
+          userId,
+          planId,
+          date,
+          mealType,
+          ingredients,
+          targetFridges
+        }
+      }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error consuming meal:", error);
+    return { success: false };
+  }
+};
+
 // Fetch all or specific mealType of recipes
 export const fetchRecipes = async (mealType = null) => {
   try {
@@ -373,6 +419,24 @@ export const createUserPlan = async (planDetails) => {
   } catch (error) {
     console.error("Error creating plan:", error);
     throw error; 
+  }
+};
+
+// Append / Extend an existing meal plan
+export const updateUserPlan = async (payload) => {
+  try {
+    const operation = post({
+      apiName: API_NAME,
+      path: '/updateUserPlan', 
+      options: {
+        body: payload
+      }
+    });
+    const response = await operation.response;
+    return await response.body.json();
+  } catch (error) {
+    console.error("Error updating meal plan:", error);
+    throw error;
   }
 };
 
