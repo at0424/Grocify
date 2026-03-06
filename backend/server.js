@@ -12,8 +12,11 @@ app.use(express.json());
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-// const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite-preview-09-2025:generateContent';
+// Model Choosing
+// const GEMINI_MODEL = 'gemini-2.5-flash';
+// const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = 'gemini-3-flash-preview';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // ====================================
 // DEFINE THE TOOLS FOR GEMINI
@@ -115,7 +118,7 @@ const tools = [
 // CHAT ENDPOINT
 // ====================================
 app.post('/chat', async (req, res) => {
-  const { message, history, originalPart, functionResponse, recipes } = req.body;
+  const { message, history, intermediateSteps, recipes } = req.body;
 
   const recipeCatalogText = recipes && recipes.length > 0
     ? JSON.stringify(recipes, null, 2)
@@ -131,24 +134,35 @@ app.post('/chat', async (req, res) => {
         CRITICAL RULES & BEHAVIORS:
 
         1. MEAL PLAN VARIETY (NO SEQUENTIAL PICKING):
-        When generating a multi-day meal plan, DO NOT just pick the first items in the catalog in order (e.g., do not pick recipe 1, 2, and 3 for Day 1). You MUST randomly scatter and shuffle your selections across the entire catalog to provide a diverse, interesting menu. Do not repeat recipes unless asked.
+        When generating a multi-day meal plan, DO NOT just pick the first items in the catalog in order (e.g., do not pick recipe 1, 2, and 3 for Day 1). You MUST randomly scatter and shuffle your selections across the entire catalog to provide a diverse, interesting menu.
 
         2. ADDING STANDALONE GROCERIES:
-        If the user asks to add specific items (e.g., "add 3 apples" or "add milk"), you do not need a meal plan. 
-        - First, use 'get_user_lists' to find their lists.
-        - Ask which list to add to (or if they want a new one).
-        - Then use 'add_to_list'.
+        If the user asks to add specific items, use 'get_user_lists' to find their lists, ask which list to add to, then use 'add_to_list'.
 
         3. COOKING FROM THE FRIDGE:
         If the user asks for meal recommendations based on what is in their fridge:
         - First, use 'get_user_lists' to find their lists.
         - Ask the user which list represents their fridge/pantry.
         - Call 'get_fridge_items' using that listId.
-        - Suggest a meal using those ingredients. 
-        - Exception to the Catalog Rule: Prioritize catalog recipes that match their fridge. However, if no catalog recipes match well, you ARE ALLOWED to invent a custom, personalized recipe using their available fridge ingredients to prevent food waste.
+        - Suggest a meal using those ingredients. Prioritize catalog recipes that match.
 
-        4. CATALOG ENFORCEMENT (Unless Fridge Cooking):
-        For standard meal plans or recipe requests, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG. If they ask for something not in the catalog (and aren't doing a fridge challenge), apologize and offer catalog items.`
+        4. CATALOG ENFORCEMENT:
+        For standard meal plans or recipe requests, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG.
+
+        5. THE "AUTO-SAVE" FORM OVERRIDE (CRITICAL):
+        If the user sends a structured prompt containing "Name", "Meals included", and "Allergies" (which happens when they use the native app form), they have already given explicit permission to generate and save the plan. 
+        - You MUST immediately call the 'create_meal_plan' tool to save it. 
+        - Do NOT ask the user for confirmation first. Just build it, run the tool, and tell them it's done!
+        - You MUST strictly respect their requested "Meals included" (e.g., if they omit Breakfast, do not generate Breakfasts).
+
+        6. EXACT NAMING:
+        When calling 'create_meal_plan', you MUST use the exact Name the user provided in their structured prompt for the 'planName' parameter.
+
+        7. CHAT FORMATTING:
+        Never show the raw Recipe IDs (e.g., bf_001, ln_002) to the user in your conversational text. Only use the names of the dishes. The IDs should ONLY be used behind the scenes when calling tools.
+        
+        8. CONFIRMATION MESSAGE (CRITICAL):
+        After successfully calling ANY tool (especially 'create_meal_plan'), you MUST output a friendly, natural language response to the user confirming that the action was completed. Never stay silent or return an empty response after a tool call.`
     }]
   };
 
@@ -161,23 +175,17 @@ app.post('/chat', async (req, res) => {
     }));
   }
 
-  // Determine the payload structure based on whether this is a normal message or a tool follow-up
-  let contentsPayload = [];
+  // --- PAYLOAD LOGIC ---
+  let contentsPayload = [
+    ...geminiHistoryArray,
+    { role: "user", parts: [{ text: message }] }
+  ];
 
-  if (functionResponse && originalPart) {
-    // SCENARIO 2: The frontend just finished running a tool and is sending the data back
-    contentsPayload = [
-      ...geminiHistoryArray,
-      { role: "user", parts: [{ text: message }] },                         // 1. User's original request
-      { role: "model", parts: [originalPart] },                         // 2. AI's request to call the tool
-      { role: "function", parts: [{ functionResponse: functionResponse }] } // 3. The result from React Native
-    ];
-  } else {
-    // SCENARIO 1: A brand new message from the user
-    contentsPayload = [
-      ...geminiHistoryArray,
-      { role: "user", parts: [{ text: message }] }
-    ];
+  if (intermediateSteps && intermediateSteps.length > 0) {
+    intermediateSteps.forEach(step => {
+      contentsPayload.push({ role: "model", parts: [step.originalPart] });
+      contentsPayload.push({ role: "function", parts: [{ functionResponse: step.functionResponse }] });
+    });
   }
 
   try {
@@ -224,4 +232,8 @@ app.post('/chat', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`\nServer running on http://localhost:${PORT}`);
+  console.log(`Active Gemini Model: ${GEMINI_MODEL}\n`);
+});

@@ -50,13 +50,20 @@ export default function MealPlanScreen() {
         const data = await fetchUserMealPlan(currentUserId);
         
         if (data && data.planData) {
-            // Get today's date at exactly midnight for accurate comparison
+            // Get today's date at exactly midnight
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
+            // Grab the official Start Date that we saved to AWS
+            const planStartDate = new Date(data.startDate);
+
             // Filter out any days that are strictly BEFORE today
-            const activeDays = data.planData.filter(day => {
-                const dateObj = new Date(day.date);
+            const activeDays = data.planData.filter((day, index) => {
+                
+                // Calculate this exact day's date based on its position in the array
+                // If index is 0 (Day 1), it adds 0 days. If index is 1 (Day 2), it adds 1 day.
+                const dateObj = new Date(planStartDate);
+                dateObj.setDate(planStartDate.getDate() + index);
                 dateObj.setHours(0, 0, 0, 0);
                 
                 // Keep the day if it is Today or in the Future
