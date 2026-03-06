@@ -148,6 +148,11 @@ export default function SceneBackground() {
         style={[styles.rightStall, isTablet && styles.rightStallTablet]} 
         resizeMode="contain" 
       />
+      <Image 
+        source={require('@/assets/images/sign_in/Penguin.png')} 
+        style={[styles.penguin, isTablet && styles.penguinTablet]} 
+        resizeMode="contain" 
+      />
     </View>
   );
 }
@@ -248,6 +253,19 @@ const styles = StyleSheet.create({
       height: '35%', 
       aspectRatio: 0.9,
       zIndex: 3,      
+  },
+  penguin: {
+    position: 'absolute',
+    height: "10%",
+    right: '-45%',      
+    top: '48%',
+    aspectRatio: 1,
+    zIndex: 1
+  },
+  penguinTablet: {
+    right: '-30%',
+    top: '48%',
+    zIndex: 2
   },
   // --- Trees Styles ---
   singleTreeLeft: {

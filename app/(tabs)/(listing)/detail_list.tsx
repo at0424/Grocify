@@ -1,6 +1,6 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
-import { fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
+import { batchToggleGroceryItem, fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -81,27 +81,42 @@ export default function ListingDetailScreen() {
     await toggleGroceryItem(listId, targetItem.itemId, currentUserId);
   };
 
+  // Mark All Handler
   const handleMarkAll = async () => {
     if (items.length === 0) return;
 
+    // Determine Target Logic
     const allAreChecked = items.every(item => item.checked);
-    const targetStatus = !allAreChecked;
+    const targetStatus = !allAreChecked; // If all checked -> Unmark All. Else -> Mark All.
 
-    const oldItems = [...items];
-
+    // Optimistic Update (Instant UI Feedback)
+    const oldItems = [...items]; // Keep a backup in case the server fails
+    
     const updatedItems = items.map(item => ({
       ...item,
       checked: targetStatus
     }));
-    setItems(updatedItems);
+    setItems(updatedItems); // UI updates instantly!
+
+    console.log(`Sending ONE batch request to set all to ${targetStatus}...`);
 
     try {
-      const result = await toggleGroceryItem(listId, targetStatus, currentUserId);
-      if (!result || !result.success) throw new Error("Batch update failed on server");
-      if (result.items) setItems(result.items);
+        const result = await batchToggleGroceryItem(listId, targetStatus, currentUserId);
+        
+        if (!result || !result.success) {
+            throw new Error("Batch update failed on server");
+        }
+        
+        console.log("Batch update success!");
+        
+        if (result.items) {
+             setItems(result.items); 
+        }
+
     } catch (error) {
-      Alert.alert("Sync Error", "Could not update list. Reverting changes.");
-      setItems(oldItems);
+        console.error("Failed:", error);
+        Alert.alert("Sync Error", "Could not update list. Reverting changes.");
+        setItems(oldItems); 
     }
   };
 
@@ -175,8 +190,6 @@ export default function ListingDetailScreen() {
       grouped[cat].push(item);
     });
 
-    console.log(grouped)
-
     return Object.keys(grouped).map((key) => ({
       title: key,
       data: grouped[key],
@@ -184,8 +197,14 @@ export default function ListingDetailScreen() {
   }, [items]);
 
   const renderSectionHeader = ({ section: { title } }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionHeaderText}>{title}</Text>
+    <View style={styles.sectionHeaderContainer}>
+      <ImageBackground
+        source={require('@/assets/images/listing/SectionHeader.png')} 
+        style={styles.sectionHeaderBackground}
+        resizeMode="stretch" 
+      >
+        <Text style={styles.sectionHeaderText}>{title}</Text>
+      </ImageBackground>
     </View>
   );
 
@@ -196,18 +215,28 @@ export default function ListingDetailScreen() {
       <TouchableOpacity onPress={() => handleToggle(item)} activeOpacity={0.7} style={styles.itemContainer}>
         <View style={styles.mainRow}>
 
-          {/* Left Side: Bullet and Text */}
-          <View style={styles.leftSide}>
-            <View style={styles.pixelBullet} />
-            <Text style={[styles.itemText, isChecked && styles.itemTextMuted]}>
-              {item.name}
-            </Text>
+          {/* Left Side: Name and Quantity Column */}
+          <View style={styles.leftContent}>
+            
+            {/* Title Row: Bullet + Item Name */}
+            <View style={styles.nameRow}>
+              <View style={styles.pixelBullet} />
+              <Text style={[styles.itemText, isChecked && styles.itemTextMuted]}>
+                {item.name}
+              </Text>
+            </View>
+
+            {/* Child Row: Quantity */}
+            <View style={styles.quantityRow}>
+              <Text style={[styles.quantityText, isChecked && styles.itemTextMuted]}>
+                x {item.quantity || 1}
+              </Text>
+            </View>
+
           </View>
 
-          {/* Right Side: Quantity and Pixel Checkbox */}
+          {/* Right Side: Pixel Checkbox */}
           <View style={styles.rightSide}>
-            <Text style={styles.quantityText}>x {item.quantity || 1}</Text>
-
             <View style={styles.pixelCheckbox}>
               {isChecked && <Ionicons name="checkmark-sharp" size={18} color="#3E2723" style={{ marginTop: -2 }} />}
             </View>
@@ -235,7 +264,7 @@ export default function ListingDetailScreen() {
             {/* Exit/Back Button */}
             <TouchableOpacity onPress={() => router.back()} style={[styles.iconButton, { left: '5%' }]}>
               <Image
-                source={require('@/components/images/ExitButton.png')}
+                source={require('@/components/images/BackButton.png')}
                 style={styles.iconImage}
                 resizeMode="contain"
               />
@@ -243,18 +272,27 @@ export default function ListingDetailScreen() {
 
             {/* Title */}
             <TouchableOpacity onPress={handleOpenModal} activeOpacity={0.8} style={styles.titleWrapper}>
-              <ImageBackground
-                source={require('@/assets/images/listing/WoodenPanel.png')}
+              <Image
+                source={require('@/assets/images/listing/TitlePanel.png')}
                 style={styles.titlePlaque}
-                imageStyle={{ borderRadius: 6 }}
-              >
+                resizeMode="stretch"
+              />
                 <Text style={styles.plaqueTitle} numberOfLines={2}>{title || "Unnamed List"}</Text>
-              </ImageBackground>
             </TouchableOpacity>
 
             {/* Mark All Button */}
-            <TouchableOpacity style={styles.toggleTrack} onPress={handleMarkAll} activeOpacity={0.8}>
-                    <View style={[styles.toggleThumb, allItemsChecked ? styles.toggleThumbRight : styles.toggleThumbLeft]} />
+            <TouchableOpacity style={styles.markAllWrapper} onPress={handleMarkAll} activeOpacity={0.8}>
+              
+              <Image
+                source={
+                  allItemsChecked 
+                  ? require('@/components/images/Checkedbox.png') 
+                  : require('@/components/images/Checkbox.png') 
+                }
+                style={styles.titlePlaque}
+                resizeMode="contain"
+              />
+
             </TouchableOpacity>
 
           </View>
@@ -313,7 +351,11 @@ export default function ListingDetailScreen() {
               })}
               activeOpacity={0.8}
             >
-              <Ionicons name="add" size={36} color="#3E2723" />
+              <Image
+                source={require('@/components/images/AddButton.png')}
+                style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
 
           </View>
@@ -366,20 +408,20 @@ const styles = StyleSheet.create({
   // ==========================================
   header: {
     position: 'absolute',
-    width: '100%',
+    width: '85%',
     alignSelf: 'center',
     height: '10%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     margin: '5%',
-    paddingHorizontal: '5%',
     paddingTop: '5%',
+    gap: 10,
     zIndex: 2,
   },
   iconButton: {
-    height: '50%',
-    aspectRatio: 1,
+    height: '100%',
+    width: '15%',
     alignItems: 'center',
     zIndex: 3,
 
@@ -407,11 +449,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   titlePlaque: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
+    height: '100%',
+    maxWidth: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    position: 'absolute',
   },
   plaqueTitle: {
     fontSize: isTabletView ? 18 : 12,
@@ -435,6 +477,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 5,
   },
+  markAllWrapper: {
+    height: '80%',
+    aspectRatio: 1
+  },
+
 
   // ==========================================
   // CORKBOARD CONTAINER
@@ -447,13 +494,13 @@ const styles = StyleSheet.create({
   },
 
   // =================================================
-  // CSS STICKY NOTE
+  // STICKY NOTE
   // =================================================
   noteWrapper: {
     flex: 1,
     marginTop: '9%',
     marginHorizontal: '8%',
-    marginBottom: '15%',
+    marginBottom: '10%',
     
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 6 },
@@ -465,57 +512,36 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: isTabletView ? 100 : 70,
     paddingBottom: 20, 
-    // Removed horizontal padding here so the category banner spans full width
-  },
-
-  // =================================================
-  // TOGGLE SWITCH (Pixel Style)
-  // =================================================
-  toggleTrack: {
-    width: 44,
-    height: 24,
-    backgroundColor: '#D7A86E',
-    borderWidth: 3,
-    borderColor: '#8B5A2B',
-    borderRadius: 12,
-    justifyContent: 'center',
-    paddingHorizontal: 2,
-  },
-  toggleThumb: {
-    width: 14,
-    height: 14,
-    backgroundColor: '#FFF8DC',
-    borderWidth: 2,
-    borderColor: '#3E2723',
-    borderRadius: 4, 
-  },
-  toggleThumbLeft: {
-    alignSelf: 'flex-start',
-  },
-  toggleThumbRight: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#718F64', 
   },
 
   // =================================================
   // SECTION HEADERS (Categories)
   // =================================================
-  sectionHeader: {
-    backgroundColor: 'rgba(158, 189, 126, 0.6)', // Greenish transparent banner
-    paddingVertical: 6,
-    borderTopWidth: 2,
-    borderBottomWidth: 2,
-    borderColor: 'rgba(113, 143, 100, 0.5)',
+  sectionHeaderContainer: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-    marginTop: 5,
+    marginBottom: 15,
+    marginTop: 10,
+  },
+  sectionHeaderBackground: {
+    width: '100%', 
+    paddingVertical: 12, 
+    justifyContent: 'center',
+    alignItems: 'center',
+    
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
   sectionHeaderText: {
-    fontSize: isTabletView ? 24 : 18,
+    fontSize: isTabletView ? 24 : 12,
     fontFamily: 'PixelFont',
-    color: '#3E2723',
+    color: '#000000', 
     includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 
   // =================================================
@@ -527,44 +553,57 @@ const styles = StyleSheet.create({
   itemContainer: {
     marginBottom: 15,
     paddingVertical: 5,
-    paddingHorizontal: 15, // Added padding back here since we removed it from noteContent
+    paddingHorizontal: 15, 
     position: 'relative',
+    justifyContent: 'center',
   },
   mainRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center', // Vertically centers the checkbox with the two rows of text
     justifyContent: 'space-between'
   },
-  leftSide: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  leftContent: {
     flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingRight: 10,
   },
   pixelBullet: {
     width: 8,
     height: 8,
     backgroundColor: '#3E2723',
     marginRight: 12,
+    marginTop: isTabletView ? 6 : 4, // Pushes the bullet down slightly to align with the text
   },
   itemText: {
-    fontSize: isTabletView ? 22 : 16,
+    fontSize: isTabletView ? 16 : 12,
     fontFamily: 'PixelFont',
     color: '#3E2723',
     includeFontPadding: false,
+    lineHeight: isTabletView ? 20 : 16, // Added explicit line height for better wrapping
+  },
+  quantityRow: {
+    paddingLeft: 20, // Perfectly aligns with the text above (8 width bullet + 12 margin)
+    marginTop: 6,
+  },
+  quantityText: {
+    fontSize: isTabletView ? 14 : 11, // Slightly larger than before for readability
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    includeFontPadding: false,
+    opacity: 0.8, // Slightly muted natively to look like a sub-item
   },
   itemTextMuted: {
     opacity: 0.5,
   },
   rightSide: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-  },
-  quantityText: {
-    fontSize: isTabletView ? 18 : 14,
-    fontFamily: 'PixelFont',
-    color: '#3E2723',
-    marginRight: 15,
-    includeFontPadding: false,
+    paddingLeft: 10,
   },
   pixelCheckbox: {
     width: 22,
@@ -584,7 +623,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     height: 2,
     backgroundColor: '#3E2723',
-    width: '95%',
+    width: '90%',
     top: '50%',
     left: 20, // Adjusted due to itemContainer padding
     opacity: 0.8,
@@ -608,6 +647,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 14,
+    textAlign: 'center',
     fontFamily: 'PixelFont',
     color: '#8B5A2B',
   },
@@ -619,14 +659,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: '4%',
     right: '6%',
-    width: 65,
-    height: 65,
-    backgroundColor: '#D7A86E', 
-    borderWidth: 4,
-    borderColor: '#8B5A2B',
-    borderRadius: 16, 
+    height: '7%',
+    aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,

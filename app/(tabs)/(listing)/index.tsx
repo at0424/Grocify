@@ -320,7 +320,7 @@ export default function ListingDashboard() {
         <View style={styles.corkBoardContainer}>
           <Image
             source={require('@/assets/images/main_dashboard/Board.png')}
-            style={[StyleSheet.absoluteFillObject, { width: '100%', height: '90%' }]}
+            style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
             resizeMode="stretch"
           />
 
@@ -382,16 +382,16 @@ export default function ListingDashboard() {
           )}
         </View>
 
-        {/* "New List" Button */}
-        <View style={styles.buttonWrapper}>
-          {!isEditing && (
-            <TouchableOpacity style={styles.newListButton} onPress={() => openModal(null)}>
-              <Text style={styles.newListText}>NEW LIST</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
       </Animated.View>
+
+      {/* "New List" Button */}
+      <View style={styles.buttonWrapper}>
+        {!isEditing && (
+          <TouchableOpacity style={styles.newListButton} onPress={() => openModal(null)}>
+            <Text style={styles.newListText}>NEW LIST</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* New List Modal */}
       <Modal
@@ -522,14 +522,14 @@ const styles = StyleSheet.create({
   // CORKBOARD CONTAINER
   // ==========================================
   corkBoardContainer: {
-    flex: 1,
     width: '100%',
+    height: '85%',
     marginTop: -8,
     zIndex: 1,
   },
   listContent: {
-    padding: '7%',
     flexGrow: 1,
+    padding: '7%',
   },
   row: {
     justifyContent: 'space-between',
@@ -636,6 +636,7 @@ const styles = StyleSheet.create({
   buttonWrapper: {
     position: 'absolute',
     bottom: 0,
+    marginBottom: '3%',
     marginHorizontal: '20%',
     width: '60%',
     height: '7%',
