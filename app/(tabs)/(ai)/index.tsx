@@ -235,7 +235,12 @@ export default function ChatScreen() {
                         const cleanName = (ing.groceryName || ing.name || "Unknown Item").trim();
                         const lowerName = cleanName.toLowerCase();
                         if (!aggregator.has(lowerName)) {
-                            aggregator.set(lowerName, { name: cleanName, category: ing.category || "Uncategorized", shelfLife: ing.shelfLife || "7", measurements: [] });
+                            aggregator.set(lowerName, { 
+                                name: cleanName, 
+                                category: ing.groceryCategory || ing.category || "Uncategorized", 
+                                shelfLife: ing.shelfLife || "7", 
+                                measurements: [] 
+                            });
                         }
                         aggregator.get(lowerName).measurements.push({ amount: parseFloat(ing.amount) || 0, unit: (ing.unit || "").trim().toLowerCase() });
                     });
