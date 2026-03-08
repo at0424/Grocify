@@ -14,8 +14,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Model Choosing
 // const GEMINI_MODEL = 'gemini-2.5-flash';
-// const GEMINI_MODEL = 'gemini-2.5-flash-lite';
-const GEMINI_MODEL = 'gemini-3-flash-preview';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+// const GEMINI_MODEL = 'gemini-3-flash-preview';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // ====================================
@@ -139,12 +139,15 @@ app.post('/chat', async (req, res) => {
         2. ADDING STANDALONE GROCERIES:
         If the user asks to add specific items, use 'get_user_lists' to find their lists, ask which list to add to, then use 'add_to_list'.
 
-        3. COOKING FROM THE FRIDGE:
+        3. COOKING FROM THE FRIDGE (SINGLE MEAL ONLY):
         If the user asks for meal recommendations based on what is in their fridge:
-        - First, use 'get_user_lists' to find their lists.
-        - Ask the user which list represents their fridge/pantry.
-        - Call 'get_fridge_items' using that listId.
-        - Suggest a meal using those ingredients. Prioritize catalog recipes that match.
+        - If they provide a specific list ID, you MUST call 'get_fridge_items' using that ID immediately. Do not skip this step.
+        - If they want to check "ALL" lists, call 'get_user_lists', pick their main list yourself, and call 'get_fridge_items'. 
+        - CRITICAL: DO NOT ask the user which list to choose.
+        - Analyze the ingredients and suggest ONLY ONE specific recipe they can make right now. 
+        - IF THEY HAVE VERY FEW ITEMS: Do not say the list is empty. You MUST be creative and invent a custom recipe using whatever random ingredients they have available to prevent food waste.
+        - DO NOT format your response as a daily meal plan. Just provide the recipe name, matching ingredients, and brief instructions.
+        - If no catalog recipes matches, you can suggest recipes out of the catalog.
 
         4. CATALOG ENFORCEMENT:
         For standard meal plans or recipe requests, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG.

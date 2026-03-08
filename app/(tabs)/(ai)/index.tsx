@@ -45,9 +45,12 @@ export default function ChatScreen() {
     const [formAllergies, setFormAllergies] = useState('');
     const [formStartDate, setFormStartDate] = useState(new Date());
     const [formTargetFridge, setFormTargetFridge] = useState('ALL');
+    const [showFridgeForm, setShowFridgeForm] = useState(false);
+    const [cookTargetFridge, setCookTargetFridge] = useState('ALL');
 
     const planStartDateRef = useRef(new Date());
     const targetFridgeRef = useRef('ALL');
+
 
     // ==========================================
     // INITIALIZATION & EFFECTS
@@ -125,9 +128,11 @@ export default function ChatScreen() {
         planStartDateRef.current = formStartDate;
         targetFridgeRef.current = formTargetFridge;
 
+        // What the user SEES
+        const displayText = `Please create a ${formDays}-day meal plan named "${finalName}".`;
+        // What the AI SEES
         const engineeredPrompt = `Please create a ${formDays}-day meal plan for me starting on ${formStartDate.toDateString()}.\n• Name: "${finalName}"\n• Meals included per day: ${selectedMeals}\n• Allergies or restrictions: ${finalAllergies}\n\nPlease generate this using recipes from the catalog and save it!`;
-
-        sendMessage(engineeredPrompt, true); // Send skipping the interceptor
+        sendMessage(displayText, true, engineeredPrompt); // Send skipping the interceptor
 
         // Reset Form
         setFormName('');
@@ -136,6 +141,31 @@ export default function ChatScreen() {
         setFormAllergies('');
         setFormStartDate(new Date());
         setFormTargetFridge('ALL');
+    };
+
+    // ==========================================
+    // COOK FROM FRIDGE LOGIC
+    // ==========================================
+    const submitFridgeCookRequest = () => {
+        setShowFridgeForm(false);
+
+        const selectedList = cookTargetFridge !== 'ALL' ? userLists.find(list => (list.listId || list.id || list._id) === cookTargetFridge) : null;
+        const listName = selectedList ? (selectedList.listName || selectedList.name) : "All Lists";
+
+        // What the user SEES in the chat bubble
+        const displayText = cookTargetFridge === 'ALL'
+            ? "What can I make with the ingredients in my fridge?"
+            : `What can I make with the ingredients in "${listName}"?`;
+
+        // What the AI SEES in the backend
+        let hiddenPrompt = "I want to cook from my fridge. Please check ALL of my grocery lists. DO NOT ask me which list to choose. Use your tools to pick a list, check it silently, and immediately suggest exactly ONE recipe I can make right now. Do not format this as a daily meal plan.";
+        if (cookTargetFridge !== 'ALL') {
+            hiddenPrompt = `I want to cook from my fridge. You MUST immediately call the 'get_fridge_items' tool specifically for the list named "${listName}" (ID: ${cookTargetFridge}). Read the items carefully. Even if there are only 1 or 2 random ingredients, DO NOT say the list is empty. Invent exactly ONE creative recipe I can make with whatever is there. Do not format this as a daily meal plan.`;
+        }
+
+        // Pass both to the upgraded function!
+        sendMessage(displayText, true, hiddenPrompt);
+        setCookTargetFridge('ALL');
     };
 
 
@@ -235,11 +265,11 @@ export default function ChatScreen() {
                         const cleanName = (ing.groceryName || ing.name || "Unknown Item").trim();
                         const lowerName = cleanName.toLowerCase();
                         if (!aggregator.has(lowerName)) {
-                            aggregator.set(lowerName, { 
-                                name: cleanName, 
-                                category: ing.groceryCategory || ing.category || "Uncategorized", 
-                                shelfLife: ing.shelfLife || "7", 
-                                measurements: [] 
+                            aggregator.set(lowerName, {
+                                name: cleanName,
+                                category: ing.groceryCategory || ing.category || "Uncategorized",
+                                shelfLife: ing.shelfLife || "7",
+                                measurements: []
                             });
                         }
                         aggregator.get(lowerName).measurements.push({ amount: parseFloat(ing.amount) || 0, unit: (ing.unit || "").trim().toLowerCase() });
@@ -286,15 +316,15 @@ export default function ChatScreen() {
 
         if (isUpdating) {
             console.log(`[7] Found ongoing plan! Merging new days into it...`);
-            
+
             // Map by Date string to avoid duplicates and allow safe overwriting
             const daysMap = new Map();
-            
+
             // Add all the existing days first
             existingPlan.planData.forEach(d => {
                 daysMap.set(d.date, JSON.parse(JSON.stringify(d)));
             });
-            
+
             // Overwrite / Add the newly generated days
             populatedDays.forEach(newDay => {
                 if (daysMap.has(newDay.date)) {
@@ -310,7 +340,7 @@ export default function ChatScreen() {
             // Convert back to array and sort chronologically!
             finalDays = Array.from(daysMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
             const mealOrder = { 'Breakfast': 1, 'Lunch': 2, 'Dinner': 3 };
-            
+
             finalDays.forEach(day => {
                 if (day.meals && Array.isArray(day.meals)) {
                     day.meals.sort((a, b) => {
@@ -321,7 +351,7 @@ export default function ChatScreen() {
                     });
                 }
             });
-            
+
             // Stretch the Start and End boundaries to fit the combined plan
             const existingStartObj = new Date(existingPlan.startDate);
             const newStartObj = new Date(startStr);
@@ -350,7 +380,7 @@ export default function ChatScreen() {
             if (isUpdating) {
                 console.log(`Sending UPDATE to AWS UserPlans table...`);
                 planPayload.planId = existingPlan.planId;
-                
+
                 await updateUserPlan(planPayload);
                 console.log(`Meal plan updated successfully!`);
                 return { success: true, message: `Successfully added the new days to your ongoing meal plan and updated "${listName}".` };
@@ -380,7 +410,11 @@ export default function ChatScreen() {
             case 'get_recipes':
                 return { success: true, catalog: await fetchRecipes(args.mealType) };
             case 'get_fridge_items':
-                return { success: true, items: await fetchFridgeItems(args.listId) };
+                const fetchedItems = await fetchFridgeItems(args.listId);
+                console.log(`\n=== DEBUG: FRIDGE ITEMS FOR LIST ${args.listId} ===`);
+                console.log(JSON.stringify(fetchedItems, null, 2));
+                console.log(`========================================================\n`);
+                return { success: true, items: fetchedItems };
             case 'create_meal_plan':
                 return await processMealPlanTool(args);
             default:
@@ -392,29 +426,30 @@ export default function ChatScreen() {
     // ==========================================
     // MAIN CHAT LOGIC (API CALLS)
     // ==========================================
-    const sendMessage = async (presetText, isSystemPrompt = false) => {
+    const sendMessage = async (presetText, isSystemPrompt = false, hiddenApiText = null) => {
         const userMsgText = typeof presetText === 'string' ? presetText : inputText;
         if (userMsgText.trim().length === 0) return;
 
         // --- Interceptor Logic ---
         if (!isSystemPrompt) {
             const lowerText = userMsgText.toLowerCase();
-
-            // Looks for any combination of these action words near "meal plan"
             const isMealPlanRequest = /(create|make|generate|build|new|plan|want|need).*meal plan/i.test(lowerText) || lowerText.includes('meal plan for');
 
-            // If the user is asking to create a plan, pop up the form and STOP sending!
             if (isMealPlanRequest) {
                 setShowMealForm(true);
-                setInputText(''); // Clear the text box
+                setInputText('');
                 return;
             }
         }
 
+        // Put the CLEAN text into the UI chat history
         const currentHistory = [...messages, { id: Date.now().toString(), text: userMsgText, sender: 'user' }];
         setMessages(currentHistory);
         setInputText('');
         setIsLoading(true);
+
+        // Decide what to actually send to the AI
+        const textToSendToAI = hiddenApiText ? hiddenApiText : userMsgText;
 
         try {
             let isConversationDone = false;
@@ -423,7 +458,7 @@ export default function ChatScreen() {
             while (!isConversationDone) {
 
                 const requestBody = {
-                    message: userMsgText,
+                    message: textToSendToAI,
                     history: currentHistory,
                     recipes: availableRecipes,
                     intermediateSteps: currentIntermediateSteps
@@ -484,7 +519,7 @@ export default function ChatScreen() {
                     <Ionicons name="cart-outline" size={22} color="#7A9B6B" />
                     <Text style={styles.suggestionText}>Add to grocery list</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("What can I make with the ingredients in my fridge?")}>
+                <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowFridgeForm(true)}>
                     <Ionicons name="snow-outline" size={22} color="#7A9B6B" />
                     <Text style={styles.suggestionText}>Cook from my fridge</Text>
                 </TouchableOpacity>
@@ -626,6 +661,51 @@ export default function ChatScreen() {
         );
     };
 
+    const renderFridgeCookModal = () => {
+        return (
+            <Modal visible={showFridgeForm} transparent animationType="fade">
+                <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                    <View style={styles.modalCard}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Select Fridge</Text>
+                            <Ionicons name="close" size={26} color="#333" onPress={() => setShowFridgeForm(false)} />
+                        </View>
+
+                        <Text style={styles.inputLabel}>Which list should I look in?</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 10 }}>
+                            <TouchableOpacity
+                                style={[styles.pill, cookTargetFridge === 'ALL' && styles.pillActive]}
+                                onPress={() => setCookTargetFridge('ALL')}
+                            >
+                                <Text style={[styles.pillText, cookTargetFridge === 'ALL' && styles.pillTextActive]}>All Lists</Text>
+                            </TouchableOpacity>
+
+                            {/* Map out their existing fridges/lists */}
+                            {userLists.map(list => {
+                                const listId = list.listId || list.id || list._id;
+                                const listName = list.listName || list.name || "Unnamed List";
+                                const isActive = cookTargetFridge === listId;
+                                return (
+                                    <TouchableOpacity
+                                        key={listId}
+                                        style={[styles.pill, isActive && styles.pillActive]}
+                                        onPress={() => setCookTargetFridge(listId)}
+                                    >
+                                        <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{listName}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        <TouchableOpacity style={styles.submitFormButton} onPress={submitFridgeCookRequest}>
+                            <Text style={styles.submitFormText}>Find Recipes</Text>
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+        );
+    };
+
 
     // ==========================================
     // MAIN RENDER
@@ -674,6 +754,7 @@ export default function ChatScreen() {
 
             {/* Overlays */}
             {renderMealPlanModal()}
+            {renderFridgeCookModal()}
 
         </SafeAreaView>
     );
