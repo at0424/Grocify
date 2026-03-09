@@ -1,15 +1,16 @@
 import { addListItems } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ImageBackground } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Dimensions,
   Image, ScrollView, StyleSheet,
   Text, TouchableOpacity, View
 } from 'react-native';
 
-const THEME_GREEN = '#718F64'; 
+const THEME_GREEN = '#5E7A4A'; 
 const PLACEHOLDER_IMG = 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png'; 
 
 export default function ItemDetailScreen() {
@@ -24,22 +25,19 @@ export default function ItemDetailScreen() {
     name: params.name || 'Unknown Item',
     category: params.category || 'General',
     description: params.description || 'No description available.',
-    // If params.image is missing or empty, use the placeholder
-    image: params.image || PLACEHOLDER_IMG, 
+    imageUrl: params.imageUrl || PLACEHOLDER_IMG, 
   };
 
-  // Initialize state with the quantity the user ALREADY has (or 1 if they have none)
   const [quantity, setQuantity] = useState(initialQty > 0 ? initialQty : 1);
   const [saving, setSaving] = useState(false);
 
-  // Helper to add item to recent history
   const addToHistory = async () => {
     try {
       const stored = await AsyncStorage.getItem('@recent_items');
       const currentHistory = stored ? JSON.parse(stored) : [];
 
       const newHistory = [
-        item, // The current item object
+        item,
         ...currentHistory.filter(i => i.name !== item.name)
       ].slice(0, 10);
 
@@ -49,7 +47,6 @@ export default function ItemDetailScreen() {
     }
   };
 
-  // --- UI Handlers ---
   const handleQuantity = (type) => {
     if (type === 'minus') {
       if (quantity > 0) setQuantity(quantity - 1);
@@ -65,27 +62,19 @@ export default function ItemDetailScreen() {
     }
 
     setSaving(true);
-
-    // THE "DELTA" LOGIC 
-    // Your backend ADDS whatever we send. 
-    // If I have 2, and I want 5, I need to send +3.
-    // If I have 2, and I want 1, I need to send -1.
     const delta = quantity - initialQty;
 
     if (delta === 0) {
-      // No changes made
       router.back();
       return;
     }
 
-    // Pass the 'delta' as the quantity string
     const result = await addListItems(listId, item.name, String(delta), item.category);
     
     setSaving(false);
 
     if (result.success) {
       await addToHistory();
-      
       router.back();
     } else {
       Alert.alert("Error", "Could not update item.");
@@ -97,144 +86,170 @@ export default function ItemDetailScreen() {
       
       {/* --- Header --- */}
       <View style={styles.headerContainer}>
+        {/* Replaced generic icon with your custom wooden arrow */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="white" />
+          <Image 
+            source={require('@/components/images/BackButton.png')} 
+            style={{ width: '100%', height: '100%' }} 
+            resizeMode="contain" 
+          />
         </TouchableOpacity>
 
-        <Image source={{ uri: item.image }} style={styles.productImage} />
+        <ImageBackground 
+          source={require('@/assets/images/listing/DetailBorder.png')}
+          style={styles.borderBackground}
+          imageStyle={styles.borderImageStyle}
+        >
+          <Image source={{ uri: item.imageUrl }} style={styles.productImage} />
+        </ImageBackground>
       </View>
 
-      {/* --- Content --- */}
-      <ScrollView contentContainerStyle={styles.content}>
-        
-        <Text style={styles.title}>{item.name}</Text>
-        <Text style={styles.category}>{item.category}</Text>
-
-        <Text style={styles.sectionLabel}>Description</Text>
-        <Text style={styles.description}>
-          {item.description} 
-        </Text>
-
-        {/* --- Quantity Selector --- */}
-        <View style={styles.quantityRow}>
-          <Text style={styles.qtyLabel}>Quantity</Text>
+      {/* --- Cozy Content Card --- */}
+      <View style={styles.cardWrapper}>
+        <ScrollView contentContainerStyle={styles.content}>
           
-          <View style={styles.counterContainer}>
-             <TouchableOpacity onPress={() => handleQuantity('minus')}>
-               <Ionicons name="remove-circle" size={40} color={quantity === 0 ? "#ccc" : THEME_GREEN} />
-             </TouchableOpacity>
-             
-             <Text style={styles.qtyValue}>{quantity}</Text>
-             
-             <TouchableOpacity onPress={() => handleQuantity('plus')}>
-               <Ionicons name="add-circle" size={40} color={THEME_GREEN} />
-             </TouchableOpacity>
+          <Text style={styles.title}>{item.name}</Text>
+          <Text style={styles.category}>{item.category}</Text>
+
+          <Text style={styles.sectionLabel}>Description</Text>
+          <Text style={styles.description}>
+            {item.description} 
+          </Text>
+
+          {/* --- Quantity Selector --- */}
+          <View style={styles.quantityRow}>
+            <Text style={styles.qtyLabel}>Quantity</Text>
+            
+            <View style={styles.counterContainer}>
+               <TouchableOpacity onPress={() => handleQuantity('minus')} activeOpacity={0.7}>
+                 <Ionicons name="remove-circle" size={36} color={quantity === 0 ? "#C1A47A" : THEME_GREEN} />
+               </TouchableOpacity>
+               
+               <Text style={styles.qtyValue}>{quantity}</Text>
+               
+               <TouchableOpacity onPress={() => handleQuantity('plus')} activeOpacity={0.7}>
+                 <Ionicons name="add-circle" size={36} color={THEME_GREEN} />
+               </TouchableOpacity>
+            </View>
           </View>
+
+        </ScrollView>
+
+        {/* --- Footer Button --- */}
+        <View style={styles.footer}>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={handleSave}
+            disabled={saving}
+            activeOpacity={0.8}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFF9E6" />
+            ) : (
+              <Text style={styles.addButtonText}>
+                {initialQty > 0 ? "Update List" : "Add to List"}
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
-
-      </ScrollView>
-
-      {/* --- Footer Button --- */}
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.addButtonText}>
-              {initialQty > 0 ? "Update List" : "Add to List"}
-            </Text>
-          )}
-        </TouchableOpacity>
       </View>
 
     </View>
   );
 }
 
+const { width, height } = Dimensions.get('window');
+const isTabletView = width > 600;
+
 const styles = StyleSheet.create({
-  // ==========================================
-  // 1. LAYOUT & CONTAINERS
-  // ==========================================
   container: {
     flex: 1,
-    backgroundColor: 'white',
+    backgroundColor: '#F3E8D6', // Cozy parchment background
   },
-  content: {
-    paddingHorizontal: 25,
-    paddingBottom: 100, // Space for floating footer
-  },
-
+  
   // ==========================================
-  // 2. HEADER (Image & Back Button)
+  // HEADER (Image & Back Button)
   // ==========================================
   headerContainer: {
-    height: 300,
-    backgroundColor: '#F8F9FA',
+    height: 380, 
+    backgroundColor: '#F3E8D6', 
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomLeftRadius: 50,
-    borderBottomRightRadius: 50,
-    overflow: 'hidden',
-    marginBottom: 20,
-    // Shadow/Elevation
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    paddingTop: 20,
   },
   backButton: {
     position: 'absolute',
-    top: 50,
+    top: 60,
     left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME_GREEN,
+    height: isTabletView ? '20%' : '15%',
+    aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
+  borderBackground: {
+    width: 260,
+    height: 260,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  borderImageStyle: {
+    resizeMode: 'contain',
+  },
   productImage: {
-    width: 180,
-    height: 180,
+    width: 160, 
+    height: 160,
     resizeMode: 'contain',
   },
 
   // ==========================================
-  // 3. PRODUCT TEXT INFO
+  // CONTENT AREA (The Wood-Bordered Card)
   // ==========================================
+  cardWrapper: {
+    flex: 1,
+    backgroundColor: '#FDF7EB', // Light parchment card face
+    borderTopLeftRadius: 40, 
+    borderTopRightRadius: 40,
+    borderTopWidth: 4, 
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderColor: '#C1A47A', // Wooden edge
+    marginTop: -50, // Pulls the card up over the header
+    overflow: 'hidden', 
+  },
+  content: {
+    paddingHorizontal: 30,
+    paddingTop: 40,
+    paddingBottom: 20,
+  },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    fontSize: 26,
+    fontFamily: 'PixelFont',
+    color: '#3E2723', // Dark brown wood text
+    marginBottom: 6,
   },
   category: {
-    fontSize: 16,
-    color: '#888',
-    fontWeight: '600',
-    marginBottom: 25,
+    fontSize: 14,
+    fontFamily: 'PixelFont',
+    color: '#7A5B35', // Medium brown
+    marginBottom: 30,
   },
   sectionLabel: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
     marginBottom: 10,
   },
   description: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 22,
-    marginBottom: 30,
+    fontSize: 12,
+    fontFamily: 'PixelFont',
+    color: '#5C4033',
+    lineHeight: 20,
+    marginBottom: 35,
   },
 
   // ==========================================
-  // 4. QUANTITY CONTROLS
+  // QUANTITY CONTROLS
   // ==========================================
   quantityRow: {
     flexDirection: 'row',
@@ -243,44 +258,42 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   qtyLabel: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 16,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
   },
   counterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   qtyValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
     textAlign: 'center',
-    marginHorizontal: 20,
-    minWidth: 30,
+    minWidth: 45,
   },
 
   // ==========================================
-  // 5. FOOTER & ACTION BUTTON
+  // FOOTER & ACTION BUTTON
   // ==========================================
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    backgroundColor: '#FDF7EB',
+    paddingHorizontal: 30,
+    paddingBottom: 40,
+    paddingTop: 10,
   },
   addButton: {
     backgroundColor: THEME_GREEN,
-    paddingVertical: 15,
-    borderRadius: 15,
+    paddingVertical: 14,
+    borderRadius: 8, // Sharper corners for that game UI feel
+    borderWidth: 2,
+    borderColor: '#3E542F', // Dark outline for the button
     alignItems: 'center',
   },
   addButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: '#FFF9E6',
+    fontSize: 16,
+    fontFamily: 'PixelFont',
   },
 });

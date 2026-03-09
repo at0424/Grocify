@@ -1,23 +1,24 @@
 import { addListItems, fetchGroceryCatalog, fetchGroceryListDetails } from '@/services/api';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, ImageBackground, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const CATEGORIES = [
-    { id: '0', name: 'All', dbValue: 'All', icon: 'view-grid', color: '#F5F5F5' },
-    { id: '1', name: 'Fresh', dbValue: 'Fruits & Vegetables', icon: 'leaf', color: '#E8F5E9' },
-    { id: '2', name: 'Meat', dbValue: 'Meat & Fish', icon: 'food-steak', color: '#FFEBEE' },
-    { id: '3', name: 'Dairy', dbValue: 'Dairy', icon: 'cow', color: '#E3F2FD' },
-    { id: '4', name: 'Bakery', dbValue: 'Bread & Pastries', icon: 'bread-slice', color: '#FFF9C4' },
-    { id: '5', name: 'Grains', dbValue: 'Grain Products', icon: 'barley', color: '#FFF8E1' },
-    { id: '6', name: 'Frozen', dbValue: 'Frozen & Convenience', icon: 'snowflake', color: '#E0F7FA' },
-    { id: '7', name: 'Snacks', dbValue: 'Snacks & Sweets', icon: 'cookie', color: '#FCE4EC' },
-    { id: '8', name: 'Drinks', dbValue: 'Beverages', icon: 'glass-mug-variant', color: '#E1F5FE' },
-    { id: '9', name: 'Spices', dbValue: 'Ingredients & Spices', icon: 'shaker', color: '#FFF3E0' },
-    { id: '10', name: 'Health', dbValue: 'Care & Health', icon: 'medical-bag', color: '#F3E5F5' },
-    { id: '11', name: 'Home', dbValue: 'Household', icon: 'spray-bottle', color: '#ECEFF1' },
+    { id: '0', name: 'All', dbValue: 'All', iconSource: require('@/assets/images/listing/icons/AllIcon.png') },
+    { id: '1', name: 'Fresh', dbValue: 'Fruits & Vegetables', iconSource: require('@/assets/images/listing/icons/FreshIcon.png') },
+    { id: '2', name: 'Meat', dbValue: 'Meat & Fish', iconSource: require('@/assets/images/listing/icons/MeatIcon.png') },
+    { id: '3', name: 'Dairy', dbValue: 'Dairy', iconSource: require('@/assets/images/listing/icons/DairyIcon.png') },
+    { id: '4', name: 'Bakery', dbValue: 'Bread & Pastries', iconSource: require('@/assets/images/listing/icons/BakeryIcon.png') },
+    { id: '5', name: 'Grains', dbValue: 'Grain Products', iconSource: require('@/assets/images/listing/icons/GrainsIcon.png') },
+    { id: '6', name: 'Frozen', dbValue: 'Frozen & Convenience', iconSource: require('@/assets/images/listing/icons/FrozenIcon.png') },
+    { id: '7', name: 'Snacks', dbValue: 'Snacks & Sweets', iconSource: require('@/assets/images/listing/icons/SnackIcon.png') },
+    { id: '8', name: 'Drinks', dbValue: 'Beverages', iconSource: require('@/assets/images/listing/icons/DrinksIcon.png') },
+    { id: '9', name: 'Spices', dbValue: 'Ingredients & Spices', iconSource: require('@/assets/images/listing/icons/SpicesIcon.png') },
+    { id: '10', name: 'Health', dbValue: 'Care & Health', iconSource: require('@/assets/images/listing/icons/HealthIcon.png') },
+    { id: '11', name: 'Home', dbValue: 'Household', iconSource: require('@/assets/images/listing/icons/HomeIcon.png') },
 ];
 
 
@@ -61,47 +62,47 @@ export default function AddItemScreen() {
                 }
             };
             loadRecents();
-        }, []) 
+        }, [])
     );
 
     // Fetch catalog and current list quantities on load
     useFocusEffect(
         useCallback(() => {
-        const loadData = async () => {
-            try {
-                setLoading(true);
+            const loadData = async () => {
+                try {
+                    setLoading(true);
 
-                // Fetching 
-                const [catalogData, currentListData] = await Promise.all([
-                    fetchGroceryCatalog(),
-                    listId ? fetchGroceryListDetails(listId) : Promise.resolve([])
-                ]);
+                    // Fetching 
+                    const [catalogData, currentListData] = await Promise.all([
+                        fetchGroceryCatalog(),
+                        listId ? fetchGroceryListDetails(listId) : Promise.resolve([])
+                    ]);
 
-                // Set Catalog
-                setItems(catalogData);
+                    // Set Catalog
+                    setItems(catalogData);
 
-                // Process current list to get counts
-                const counts = {};
-                if (currentListData && Array.isArray(currentListData)) {
-                    currentListData.forEach(item => {
-                        // Parse quantity as integer (it might be a string "2")
-                        const qty = parseInt(item.quantity) || 0;
-                        if (qty > 0) {
-                            counts[item.name] = qty;
-                        }
-                    });
+                    // Process current list to get counts
+                    const counts = {};
+                    if (currentListData && Array.isArray(currentListData)) {
+                        currentListData.forEach(item => {
+                            // Parse quantity as integer (it might be a string "2")
+                            const qty = parseInt(item.quantity) || 0;
+                            if (qty > 0) {
+                                counts[item.name] = qty;
+                            }
+                        });
+                    }
+                    setCartCounts(counts);
+
+                } catch (e) {
+                    console.error("Failed to load data: ", e)
+                } finally {
+                    setLoading(false);
                 }
-                setCartCounts(counts);
+            };
 
-            } catch (e) {
-                console.error("Failed to load data: ", e)
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadData();
-    }, [listId]));
+            loadData();
+        }, [listId]));
 
     // Helper to save recent items
     const addToHistory = async (item) => {
@@ -111,7 +112,7 @@ export default function AddItemScreen() {
             const newHistory = [
                 item,
                 ...recentItems.filter(i => i.name !== item.name)
-            ].slice(0,10);
+            ].slice(0, 10);
 
             setRecentItems(newHistory);
             await AsyncStorage.setItem('@recent_items', JSON.stringify(newHistory));
@@ -125,7 +126,7 @@ export default function AddItemScreen() {
         const newHistory = recentItems.filter(i => i.name !== itemName);
         setRecentItems(newHistory);
         await AsyncStorage.setItem('@recent_items', JSON.stringify(newHistory));
-    } 
+    }
 
     // Handle add item to list
     const handleAddItem = async (item) => {
@@ -157,21 +158,33 @@ export default function AddItemScreen() {
     return (
         <View style={styles.container}>
 
-            {/* --- 1. Green Header Area --- */}
-            <View style={styles.greenHeader}>
+            {/* --- 1. Header Area --- */}
+            <View style={styles.header}>
                 <View style={styles.navBar}>
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Ionicons name="chevron-back" size={28} color="white" />
+
+                    {/* Back Button */}
+                    <TouchableOpacity style={styles.headerIconWrapper} onPress={() => router.back()}>
+                        <Image
+                            source={require('@/components/images/BackButton.png')}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="contain"
+                        />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>{listName}</Text>
-                    <View style={{ width: 28 }}>
-                        <Text style={{ opacity: 0 }}>Placeholder</Text>
-                    </View>
+
+                    {/* Header Title */}
+                    <Text style={styles.headerTitle} numberOfLines={2}>{listName}</Text>
+
+                    <View style={styles.headerIconWrapper} />
                 </View>
 
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
-                    <Ionicons name="search" size={20} color="#718F64" style={{ marginRight: 10 }} />
+                    <Image
+                            source={require('@/assets/images/listing/Magnifier.png')}
+                            style={styles.magnifierIcon}
+                            resizeMode="contain"
+                    />
+
                     <TextInput
                         placeholder="Search ingredients..."
                         style={styles.searchInput}
@@ -189,20 +202,20 @@ export default function AddItemScreen() {
                         <Text style={styles.sectionTitle}>Recently Added</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagScroll}>
                             {recentItems.map((recentItem, index) => (
-                                <TouchableOpacity 
-                                    key={index} 
+                                <TouchableOpacity
+                                    key={index}
                                     style={styles.tag}
                                     // Clicking the tag adds it to the list
                                     onPress={() => handleAddItem(recentItem)}
                                 >
                                     <Text style={styles.tagText}>{recentItem.name}</Text>
-                                    
+
                                     {/* Clicking X removes it from history */}
-                                    <TouchableOpacity 
-                                        style={{ padding: 4 }} 
+                                    <TouchableOpacity
+                                        style={{ padding: 4 }}
                                         onPress={(e) => {
                                             // Stop the tap from triggering the 'add'
-                                            e.stopPropagation(); 
+                                            e.stopPropagation();
                                             removeFromHistory(recentItem.name);
                                         }}
                                     >
@@ -228,20 +241,29 @@ export default function AddItemScreen() {
                                 key={cat.id}
                                 style={styles.categoryItem}
                                 onPress={() => setSelectedCategory(cat.dbValue)}
+                                activeOpacity={0.8}
                             >
-                                <View style={[
-                                    styles.iconCircle,
-                                    { backgroundColor: isActive ? '#718F64' : cat.color }
-                                ]}>
-                                    <MaterialCommunityIcons
-                                        name={cat.icon}
-                                        size={24}
-                                        color={isActive ? "white" : "#555"}
+                                <View style={styles.customIconWrapper}>
+                                    {/* The Background Border Image */}
+                                    <Image
+                                        source={
+                                            isActive
+                                                ? require('@/assets/images/listing/icons/SelectedBorder.png')
+                                                : require('@/assets/images/listing/icons/UnselectBorder.png')
+                                        }
+                                        style={styles.categoryBorderImg}
+                                    />
+
+                                    {/* The Foreground Item Icon (Leaves, Cow, etc.) */}
+                                    <Image
+                                        source={cat.iconSource}
+                                        style={styles.categoryInnerIcon}
                                     />
                                 </View>
+
                                 <Text style={[
                                     styles.categoryText,
-                                    isActive && { fontWeight: 'bold', color: '#718F64' }
+                                    isActive && { color: '#A67C52' }
                                 ]}>
                                     {cat.name}
                                 </Text>
@@ -263,50 +285,64 @@ export default function AddItemScreen() {
                             return (
                                 <TouchableOpacity
                                     key={index}
-                                    style={styles.productCard}
+                                    style={styles.productCardContainer}
                                     onPress={() => router.push({
                                         pathname: "./item_detail",
                                         params: {
-                                            ...item,
-                                            listId: listId, 
-                                            currentQuantity: count // Pass the badge number (0, 1, 5, etc.)
+                                            name: item.name,
+                                            category: item.category,
+                                            description: item.description,
+                                            imageUrl: item.imageUrl || 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png',
+                                            listId: listId,
+                                            currentQuantity: count,
                                         }
                                     })}
                                 >
-
-                                    {/* --- BADGE UI --- */}
-                                    {/* Only show this red/green circle if user added item */}
-                                    {count > 0 && (
-                                        <View style={styles.badge}>
-                                            <Text style={styles.badgeText}>{count}</Text>
-                                        </View>
-                                    )}
-
-                                    {/* Image Area */}
-                                    <View style={styles.iconContainer}>
-                                        <Image
-                                            source={{ uri: item.image || 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png' }}
-                                            style={styles.productImage}
-                                        />
-                                    </View>
-
-                                    <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
-                                    <Text style={styles.productDesc} numberOfLines={2}>{item.description}</Text>
-
-                                    {/* --- [UPDATED] ADD BUTTON --- */}
-                                    <TouchableOpacity
-                                        style={styles.addButton}
-                                        onPress={() => handleAddItem(item)}
-                                        // Disable button while this specific item is loading
-                                        disabled={addingId === item.name}
+                                    <ImageBackground
+                                        source={require('@/assets/images/listing/icons/ItemBorder.png')}
+                                        style={styles.productCardBackground}
+                                        resizeMode="stretch"
                                     >
-                                        {/* Show Spinner if loading, else show + */}
-                                        {addingId === item.name ? (
-                                            <ActivityIndicator size="small" color="white" />
-                                        ) : (
-                                            <Ionicons name="add" size={20} color="white" />
+                                        {/* --- BADGE UI --- */}
+                                        {/* Only show this red/green circle if user added item */}
+                                        {count > 0 && (
+                                            <View style={styles.badge}>
+                                                <Text style={styles.badgeText}>{count}</Text>
+                                            </View>
                                         )}
-                                    </TouchableOpacity>
+
+                                        {/* Image Area */}
+                                        <View style={styles.iconContainer}>
+                                            <Image
+                                                source={{ uri: item.imageUrl || 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png' }}
+                                                placeholder={'https://cdn-icons-png.flaticon.com/512/2674/2674486.png'}
+                                                placeholderContentFit='contain'
+                                                style={styles.productImage}
+                                                contentFit='contain'
+                                                transition={200}
+                                                cachePolicy={"disk"}
+                                            />
+                                        </View>
+
+                                        <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
+                                        <Text style={styles.productDesc} numberOfLines={2}>{item.description}</Text>
+
+                                        {/* --- ADD BUTTON --- */}
+                                        <TouchableOpacity
+                                            style={styles.addButton}
+                                            onPress={() => handleAddItem(item)}
+                                            // Disable button while this specific item is loading
+                                            disabled={addingId === item.name}
+                                        >
+                                            {/* Show Spinner if loading, else show + */}
+                                            {addingId === item.name ? (
+                                                <ActivityIndicator size="small" color="white" />
+                                            ) : (
+                                                <Ionicons name="add" size={20} color="white" />
+                                            )}
+                                        </TouchableOpacity>
+
+                                    </ImageBackground>
 
                                 </TouchableOpacity>
                             );
@@ -325,18 +361,24 @@ export default function AddItemScreen() {
     );
 }
 
+const { width, height } = Dimensions.get('window');
+const isTabletView = width > 600;
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8F9FA',
+        backgroundColor: '#F3E8D6', // Cozy parchment/aged paper background
     },
-    greenHeader: {
-        backgroundColor: '#718F64', // Matching your Moss Green
+    header: {
+        backgroundColor: '#A67C52', // Warm wood tone (replacing the bright green)
         paddingTop: 50,
         paddingBottom: 20,
         paddingHorizontal: 20,
-        borderBottomLeftRadius: 30,
-        borderBottomRightRadius: 30,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        borderBottomWidth: 4,
+        justifyContent: 'space-between',
+        borderColor: '#7A5B35', // Darker wood edge for depth
     },
     navBar: {
         flexDirection: 'row',
@@ -345,104 +387,144 @@ const styles = StyleSheet.create({
         marginBottom: 15,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: 'white',
+        fontSize: isTabletView ? 20 : 16,
+        maxWidth: '70%',
+        fontFamily: 'PixelFont',
+        textAlign: 'center',
+        color: '#FFF9E6',
+    },
+    headerIconWrapper: {
+        width: isTabletView ? 60 : 40,
+        height: isTabletView ? 60 : 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     searchContainer: {
         flexDirection: 'row',
-        backgroundColor: 'white',
-        borderRadius: 10,
+        backgroundColor: '#FFF9E6', // Creamy interior
+        borderRadius: 8, // Sharper corners for a game UI feel
+        borderWidth: 2,
+        borderColor: '#7A5B35', // Wood border
         padding: 10,
         alignItems: 'center',
     },
+    magnifierIcon: {
+        width: isTabletView ? 30 : 24,
+        height: isTabletView ? 30 : 24,
+        marginRight: 10
+    },
     searchInput: {
         flex: 1,
-        fontSize: 16,
-        color: '#333',
+        fontSize: isTabletView ? 16 : 12,
+        fontFamily: 'PixelFont',
+        color: '#4A3525', 
+        includeFontPadding: false,
+        textAlignVertical: 'center'
     },
     contentContainer: {
         flex: 1,
         padding: 20,
     },
     sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: isTabletView ? 20 : 16,
         marginBottom: 10,
-        color: '#000',
+        fontFamily: 'PixelFont',
+        color: '#4A3525',
     },
-    tagScroll: { 
-        marginBottom: 20, 
-        flexDirection: 'row' 
+    tagScroll: {
+        marginBottom: 20,
+        flexDirection: 'row'
     },
     tag: {
-        backgroundColor: '#DCE775', 
+        backgroundColor: '#C1A47A', // Wood/kraft paper tag color
+        borderWidth: 2,
+        borderColor: '#8C6D46',
         paddingVertical: 6,
         paddingLeft: 12,
-        paddingRight: 8, // slightly less padding on right for the close button
-        borderRadius: 15,
+        paddingRight: 8,
+        borderRadius: 8, // Sharper borders
         flexDirection: 'row',
         alignItems: 'center',
         marginRight: 10,
     },
-    tagText: { 
-        fontWeight: '600', 
-        color: '#333', 
-        marginRight: 4 
+    tagText: {
+        color: '#3E2723',
+        fontFamily: 'PixelFont',
+        marginRight: 4
     },
-    categoryGrid: {
+    categoryHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 25,
+        alignItems: 'center',
     },
     categoryScroll: {
         marginBottom: 20,
         flexDirection: 'row',
-        paddingHorizontal: 5, // Tiny padding so shadows don't get cut off
+        paddingHorizontal: 5,
     },
     categoryItem: {
         alignItems: 'center',
-        marginRight: 20, // Add spacing between items
+        marginRight: 20,
     },
-    iconCircle: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
+    customIconWrapper: {
+        width: isTabletView ? 81 : 64,
+        height: isTabletView ? 81 : 64,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 5,
     },
+    categoryBorderImg: {
+        position: 'absolute', // This pushes the border to the background
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        resizeMode: 'contain',
+    },
+    categoryInnerIcon: {
+        width: '60%', // Scales the icon down so it fits nicely inside the wood frame
+        height: '60%',
+        resizeMode: 'contain',
+        zIndex: 1, // Ensures the item sits on top of the background border
+    },
     categoryText: {
         fontSize: 12,
-        fontWeight: '600',
+        fontFamily: 'PixelFont',
+        color: '#5C4033', // Deep brown
     },
     itemsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
     },
-    productCard: {
-        width: '48%', // Forces 2 columns
-        backgroundColor: 'white',
-        borderRadius: 15,
-        padding: 12,
-        alignItems: 'center',
+    productCardContainer: {
+        width: isTabletView ? '30%' : '48%',
+        height: 180,
         marginBottom: 15,
-        // Shadow for depth
-        shadowColor: "#000",
+        justifyContent: 'center',
+
+        shadowColor: "#4A3525",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
+        shadowOpacity: 0.15,
+        shadowRadius: 0,
         elevation: 3,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    productCardBackground: {
+        flex: 1,
+        padding: 12,
+        alignItems: 'center'
     },
     iconContainer: {
         width: 60,
         height: 60,
-        borderRadius: 30,
-        backgroundColor: '#F1F8E9', // Light green circle background
+        borderRadius: 8,
+        backgroundColor: 'transparent',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 8,
+        marginTop: 15
     },
     productImage: {
         width: 80,
@@ -453,60 +535,46 @@ const styles = StyleSheet.create({
     productName: {
         fontWeight: 'bold',
         fontSize: 16,
+        color: '#3E2723',
         marginBottom: 5,
     },
     productDesc: {
         fontSize: 11,
-        color: '#888',
+        color: '#7A5B35', // Medium brown
         textAlign: 'center',
-        marginBottom: 15, // Space for the button
+        marginBottom: 15,
         lineHeight: 14,
     },
     addButton: {
         position: 'absolute',
-        bottom: 8,
-        right: 8,
-        backgroundColor: '#718F64',
-        width: 26,
-        height: 26,
-        borderRadius: 13,
+        bottom: 10,
+        right: 15,
+        backgroundColor: '#5E7A4A', // Earthy moss green
+        borderWidth: 2,
+        borderColor: '#3E542F', // Darker green border
+        width: 30, // Slightly larger to accommodate borders
+        height: 30,
+        borderRadius: 6, // Squarish button
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    floatingListBtn: {
-        position: 'absolute',
-        bottom: 40,
-        right: 30,
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: '#8FA37E', // Slightly different green for the FAB
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 8,
     },
     badge: {
         position: 'absolute',
-        top: 8,
-        right: 8,
+        top: 10,
+        left: 10,
         zIndex: 10,
-        backgroundColor: '#DCE775', // Light Green/Yellow pop color
+        backgroundColor: '#C85A5A', 
+        borderWidth: 2,
+        borderColor: '#3E2723', // Dark outline
         width: 24,
         height: 24,
         borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: "#000",
-        shadowOpacity: 0.2,
-        shadowOffset: { width: 0, height: 1 }
     },
     badgeText: {
         fontSize: 12,
-        fontWeight: 'bold',
-        color: '#333'
+        fontFamily: 'PixelFont',
+        color: '#FFF9E6'
     },
 });

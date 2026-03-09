@@ -47,6 +47,13 @@ export default function ChatScreen() {
     const [formTargetFridge, setFormTargetFridge] = useState('ALL');
     const [showFridgeForm, setShowFridgeForm] = useState(false);
     const [cookTargetFridge, setCookTargetFridge] = useState('ALL');
+    const COLORS = ['#FFF9C4', '#E1F5FE', '#FFEBEE', '#E8F5E9', '#F3E5F5'];
+    const [formColor, setFormColor] = useState(COLORS[3]); 
+    const [isAdvancedMeals, setIsAdvancedMeals] = useState(false);
+    const [advancedMeals, setAdvancedMeals] = useState(
+        // Pre-fill an array for up to 7 days to track individual daily selections
+        Array.from({ length: 7 }, () => ({ breakfast: true, lunch: true, dinner: true }))
+    );
 
     const planStartDateRef = useRef(new Date());
     const targetFridgeRef = useRef('ALL');
@@ -115,15 +122,40 @@ export default function ChatScreen() {
     // ==========================================
     // MEAL PLAN FORM LOGIC
     // ==========================================
+
+    // Helper to toggle specific meals on specific days
+    const toggleAdvancedMeal = (dayIndex, mealType) => {
+        setAdvancedMeals(prev => {
+            const newMeals = [...prev];
+            newMeals[dayIndex] = {
+                ...newMeals[dayIndex],
+                [mealType]: !newMeals[dayIndex][mealType]
+            };
+            return newMeals;
+        });
+    };
+
     const submitMealPlanForm = () => {
         setShowMealForm(false);
 
         const finalName = formName.trim() || 'My Meal Plan';
         const finalAllergies = formAllergies.trim() || 'None';
-        const selectedMeals = Object.entries(formMeals)
-            .filter(([_, isSelected]) => isSelected)
-            .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1))
-            .join(', ');
+        
+        let mealsPromptText = "";
+        if (isAdvancedMeals) {
+            mealsPromptText = Array.from({ length: formDays }).map((_, i) => {
+                const dayMeals = Object.entries(advancedMeals[i])
+                    .filter(([_, isSelected]) => isSelected)
+                    .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1))
+                    .join(', ');
+                return `Day ${i + 1}: ${dayMeals || 'None'}`;
+            }).join(' | ');
+        } else {
+            mealsPromptText = "Every day: " + Object.entries(formMeals)
+                .filter(([_, isSelected]) => isSelected)
+                .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1))
+                .join(', ');
+        }
 
         planStartDateRef.current = formStartDate;
         targetFridgeRef.current = formTargetFridge;
@@ -131,8 +163,9 @@ export default function ChatScreen() {
         // What the user SEES
         const displayText = `Please create a ${formDays}-day meal plan named "${finalName}".`;
         // What the AI SEES
-        const engineeredPrompt = `Please create a ${formDays}-day meal plan for me starting on ${formStartDate.toDateString()}.\n• Name: "${finalName}"\n• Meals included per day: ${selectedMeals}\n• Allergies or restrictions: ${finalAllergies}\n\nPlease generate this using recipes from the catalog and save it!`;
-        sendMessage(displayText, true, engineeredPrompt); // Send skipping the interceptor
+        const engineeredPrompt = `Please create a ${formDays}-day meal plan for me starting on ${formStartDate.toDateString()}.\n• Name: "${finalName}"\n• Meals included: ${mealsPromptText}\n• Allergies or restrictions: ${finalAllergies}\n\nPlease generate this using recipes from the catalog and save it!`;        
+        
+        sendMessage(displayText, true, engineeredPrompt); 
 
         // Reset Form
         setFormName('');
@@ -141,6 +174,7 @@ export default function ChatScreen() {
         setFormAllergies('');
         setFormStartDate(new Date());
         setFormTargetFridge('ALL');
+        setFormColor(COLORS[3]);
     };
 
     // ==========================================
@@ -189,7 +223,7 @@ export default function ChatScreen() {
         console.log(`[2] Formatting ${rawDays.length} days of meals...`);
         let populatedDays;
         try {
-            // FIX 2: Added 'index' so we can calculate the exact date for each day!
+            // Added 'index' so we can calculate the exact date for each day!
             populatedDays = rawDays.map((d, index) => {
 
                 // Calculate this specific day's date
@@ -204,7 +238,7 @@ export default function ChatScreen() {
 
                 return {
                     day: d.dayLabel || `Day ${index + 1}`,
-                    date: localDateString, // <--- FIX 3: INJECTED DATE FOR THE UI!
+                    date: localDateString, // INJECTED DATE FOR THE UI!
                     meals: (d.meals || []).map(m => {
                         const aiId = String(m.recipeId || "").replace(/\\/g, '').toLowerCase().replace('in_', 'ln_').trim();
                         const fullRecipe = availableRecipes.find(r => String(r.id || r._id || r.recipeId).toLowerCase() === aiId)
@@ -248,7 +282,7 @@ export default function ChatScreen() {
 
         console.log(`[3] Attempting to create new Grocery List named: "${listName}"`);
         try {
-            const listResponse = await createNewList(currentUserId, listName, '#7A9B6B');
+            const listResponse = await createNewList(currentUserId, listName, formColor);
             targetListId = listResponse?.data?.listId || listResponse?.data?.id || listResponse?.listId || "ALL";
             console.log(`List created successfully! ID: ${targetListId}`);
         } catch (error) {
@@ -562,99 +596,127 @@ export default function ChatScreen() {
         return (
             <Modal visible={showMealForm} transparent animationType="fade">
                 <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                    <View style={styles.modalCard}>
+                    <View style={[styles.modalCard, { maxHeight: '90%' }]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Plan Details</Text>
                             <Ionicons name="close" size={26} color="#333" onPress={() => setShowMealForm(false)} />
                         </View>
 
-                        <Text style={styles.inputLabel}>Plan Name (Optional)</Text>
-                        <TextInput style={styles.modalInput} placeholder="e.g., Gym Week, AI Trail" value={formName} onChangeText={setFormName} placeholderTextColor="#A0A0A0" />
+                        {/* ScrollView wrapper to prevent UI cutoff */}
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                            
+                            <Text style={styles.inputLabel}>Plan Name (Optional)</Text>
+                            <TextInput style={styles.modalInput} placeholder="e.g., Gym Week, AI Trail" value={formName} onChangeText={setFormName} placeholderTextColor="#A0A0A0" />
 
-                        {/* Start Date Scroller */}
-                        <Text style={styles.inputLabel}>Start Date</Text>
-                        <FlatList
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            data={dateOptions}
-                            keyExtractor={(item) => item.label}
-                            contentContainerStyle={{ gap: 10, paddingVertical: 5 }}
-                            renderItem={({ item }) => {
-                                const isActive = formStartDate.toDateString() === item.date.toDateString();
-                                return (
+                            {/* NEW: List Color Picker */}
+                            <Text style={styles.inputLabel}>List Color</Text>
+                            <View style={styles.colorContainer}>
+                                {COLORS.map(color => (
                                     <TouchableOpacity
-                                        style={[styles.pill, isActive && styles.pillActive]}
-                                        onPress={() => setFormStartDate(item.date)}
-                                    >
-                                        <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{item.label}</Text>
-                                    </TouchableOpacity>
-                                );
-                            }}
-                        />
+                                        key={color}
+                                        style={[styles.colorCircle, { backgroundColor: color }, formColor === color && styles.colorCircleActive]}
+                                        onPress={() => setFormColor(color)}
+                                    />
+                                ))}
+                            </View>
 
-                        {/* Existing Duration Pills */}
-                        <Text style={styles.inputLabel}>Duration (Days)</Text>
-                        <View style={styles.pillContainer}>
-                            {[1, 2, 3, 5, 7].map(day => (
-                                <TouchableOpacity key={day} style={[styles.pill, formDays === day && styles.pillActive]} onPress={() => setFormDays(day)}>
-                                    <Text style={[styles.pillText, formDays === day && styles.pillTextActive]}>{day}</Text>
+                            <Text style={styles.inputLabel}>Start Date</Text>
+                            <FlatList
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                data={dateOptions}
+                                keyExtractor={(item) => item.label}
+                                contentContainerStyle={{ gap: 10, paddingVertical: 5 }}
+                                renderItem={({ item }) => {
+                                    const isActive = formStartDate.toDateString() === item.date.toDateString();
+                                    return (
+                                        <TouchableOpacity
+                                            style={[styles.pill, isActive && styles.pillActive]}
+                                            onPress={() => setFormStartDate(item.date)}
+                                        >
+                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{item.label}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                }}
+                            />
+
+                            <Text style={styles.inputLabel}>Duration (Days)</Text>
+                            <View style={styles.pillContainer}>
+                                {[1, 2, 3, 5, 7].map(day => (
+                                    <TouchableOpacity key={day} style={[styles.pill, formDays === day && styles.pillActive]} onPress={() => setFormDays(day)}>
+                                        <Text style={[styles.pillText, formDays === day && styles.pillTextActive]}>{day}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <Text style={styles.inputLabel}>Add Groceries To</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 5 }}>
+                                <TouchableOpacity style={[styles.pill, formTargetFridge === 'ALL' && styles.pillActive]} onPress={() => setFormTargetFridge('ALL')}>
+                                    <Text style={[styles.pillText, formTargetFridge === 'ALL' && styles.pillTextActive]}>All (Default)</Text>
                                 </TouchableOpacity>
-                            ))}
-                        </View>
+                                <TouchableOpacity style={[styles.pill, formTargetFridge === 'CREATE_NEW' && styles.pillActive]} onPress={() => setFormTargetFridge('CREATE_NEW')}>
+                                    <Text style={[styles.pillText, formTargetFridge === 'CREATE_NEW' && styles.pillTextActive]}>+ Create New List</Text>
+                                </TouchableOpacity>
+                                {userLists.map(list => {
+                                    const listId = list.listId || list.id || list._id;
+                                    const listName = list.listName || list.name || "Unnamed List";
+                                    const isActive = formTargetFridge === listId;
+                                    return (
+                                        <TouchableOpacity key={listId} style={[styles.pill, isActive && styles.pillActive]} onPress={() => setFormTargetFridge(listId)}>
+                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{listName}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
 
-                        {/* Choose Target Fridge List */}
-                        <Text style={styles.inputLabel}>Add Groceries To</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 5 }}>
-                            <TouchableOpacity
-                                style={[styles.pill, formTargetFridge === 'ALL' && styles.pillActive]}
-                                onPress={() => setFormTargetFridge('ALL')}
-                            >
-                                <Text style={[styles.pillText, formTargetFridge === 'ALL' && styles.pillTextActive]}>All (Default)</Text>
+                            {/* Advanced Meals Header */}
+                            <View style={styles.mealsHeaderContainer}>
+                                <Text style={styles.inputLabel}>Meals Included</Text>
+                                <TouchableOpacity onPress={() => setIsAdvancedMeals(!isAdvancedMeals)}>
+                                    <Text style={styles.advancedText}>{isAdvancedMeals ? 'Basic' : 'Advanced'}</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Basic vs Advanced Meal Rendering */}
+                            {!isAdvancedMeals ? (
+                                <View style={styles.pillContainer}>
+                                    {['breakfast', 'lunch', 'dinner'].map(meal => {
+                                        const isActive = formMeals[meal];
+                                        return (
+                                            <TouchableOpacity key={meal} style={[styles.pill, isActive && styles.pillActive]} onPress={() => setFormMeals(prev => ({ ...prev, [meal]: !isActive }))}>
+                                                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{meal.charAt(0).toUpperCase() + meal.slice(1)}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            ) : (
+                                <View style={styles.advancedMealsContainer}>
+                                    {Array.from({ length: formDays }).map((_, dayIndex) => (
+                                        <View key={dayIndex} style={styles.advancedDayRow}>
+                                            <Text style={styles.advancedDayText}>Day {dayIndex + 1}</Text>
+                                            <View style={styles.pillContainerSmall}>
+                                                {['breakfast', 'lunch', 'dinner'].map(meal => {
+                                                    const isActive = advancedMeals[dayIndex][meal];
+                                                    return (
+                                                        <TouchableOpacity key={meal} style={[styles.pillSmall, isActive && styles.pillActive]} onPress={() => toggleAdvancedMeal(dayIndex, meal)}>
+                                                            <Text style={[styles.pillTextSmall, isActive && styles.pillTextActive]}>{meal.charAt(0).toUpperCase() + meal.slice(1)}</Text>
+                                                        </TouchableOpacity>
+                                                    );
+                                                })}
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            <Text style={styles.inputLabel}>Allergies / Restrictions</Text>
+                            <TextInput style={styles.modalInput} placeholder="e.g., Peanuts, Vegan, None" value={formAllergies} onChangeText={setFormAllergies} placeholderTextColor="#A0A0A0" />
+
+                            <TouchableOpacity style={styles.submitFormButton} onPress={submitMealPlanForm}>
+                                <Text style={styles.submitFormText}>Generate Plan</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[styles.pill, formTargetFridge === 'CREATE_NEW' && styles.pillActive]}
-                                onPress={() => setFormTargetFridge('CREATE_NEW')}
-                            >
-                                <Text style={[styles.pillText, formTargetFridge === 'CREATE_NEW' && styles.pillTextActive]}>Current List</Text>
-                            </TouchableOpacity>
-
-                            {/* Map out their existing fridges/lists */}
-                            {userLists.map(list => {
-                                const listId = list.listId || list.id || list._id;
-                                const listName = list.listName || list.name || "Unnamed List";
-                                const isActive = formTargetFridge === listId;
-                                return (
-                                    <TouchableOpacity
-                                        key={listId}
-                                        style={[styles.pill, isActive && styles.pillActive]}
-                                        onPress={() => setFormTargetFridge(listId)}
-                                    >
-                                        <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{listName}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
                         </ScrollView>
-
-                        {/* Meals Included (Breakfast, Lunch, Dinner) */}
-                        <Text style={styles.inputLabel}>Meals Included</Text>
-                        <View style={styles.pillContainer}>
-                            {['breakfast', 'lunch', 'dinner'].map(meal => {
-                                const isActive = formMeals[meal];
-                                return (
-                                    <TouchableOpacity key={meal} style={[styles.pill, isActive && styles.pillActive]} onPress={() => setFormMeals(prev => ({ ...prev, [meal]: !isActive }))}>
-                                        <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{meal.charAt(0).toUpperCase() + meal.slice(1)}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-
-                        <Text style={styles.inputLabel}>Allergies / Restrictions</Text>
-                        <TextInput style={styles.modalInput} placeholder="e.g., Peanuts, Vegan, None" value={formAllergies} onChangeText={setFormAllergies} placeholderTextColor="#A0A0A0" />
-
-                        <TouchableOpacity style={styles.submitFormButton} onPress={submitMealPlanForm}>
-                            <Text style={styles.submitFormText}>Generate Plan</Text>
-                        </TouchableOpacity>
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
@@ -797,6 +859,18 @@ const styles = StyleSheet.create({
     pillTextActive: { color: '#FFFFFF' },
     submitFormButton: { backgroundColor: '#007AFF', borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 30 },
     submitFormText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+    colorContainer: { flexDirection: 'row', gap: 12, marginTop: 5 },
+    colorCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'transparent' },
+    colorCircleActive: { borderColor: '#007AFF' },
+    
+    mealsHeaderContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+    advancedText: { color: '#007AFF', fontSize: 14, fontWeight: '600', marginBottom: 8 },
+    advancedMealsContainer: { gap: 8 },
+    advancedDayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9F9F9', padding: 8, paddingHorizontal: 12, borderRadius: 12 },
+    advancedDayText: { fontSize: 14, fontWeight: '600', color: '#444' },
+    pillContainerSmall: { flexDirection: 'row', gap: 6 },
+    pillSmall: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#E0E0E0', borderRadius: 16 },
+    pillTextSmall: { fontSize: 12, color: '#555', fontWeight: '600' },
 });
 
 const botMarkdownStyles = {
