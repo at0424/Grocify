@@ -1,5 +1,4 @@
 import { addListItems } from '@/services/api';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ImageBackground } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -111,26 +110,50 @@ export default function ItemDetailScreen() {
           <Text style={styles.title}>{item.name}</Text>
           <Text style={styles.category}>{item.category}</Text>
 
-          <Text style={styles.sectionLabel}>Description</Text>
-          <Text style={styles.description}>
-            {item.description} 
-          </Text>
+          <ImageBackground
+            source={require('@/assets/images/listing/DescriptionBG.png')}
+            style={styles.descBackground}
+            imageStyle={{resizeMode: 'stretch'}}
+          >
+            <Text style={styles.sectionLabel}>Description</Text>
+            <Text style={styles.description}>
+              {item.description}
+            </Text>
+
+          </ImageBackground>
 
           {/* --- Quantity Selector --- */}
           <View style={styles.quantityRow}>
             <Text style={styles.qtyLabel}>Quantity</Text>
             
-            <View style={styles.counterContainer}>
-               <TouchableOpacity onPress={() => handleQuantity('minus')} activeOpacity={0.7}>
-                 <Ionicons name="remove-circle" size={36} color={quantity === 0 ? "#C1A47A" : THEME_GREEN} />
+            <ImageBackground
+              source={require('@/assets/images/listing/WoodenPanel.png')}
+              style={styles.counterContainer}
+              imageStyle={{resizeMode: 'stretch'}}
+            >
+               <TouchableOpacity 
+                 onPress={() => handleQuantity('minus')} 
+                 activeOpacity={0.7}
+                 disabled={quantity === 0} 
+               >
+                <Image
+                  source={require('@/components/images/MinusIcon.png')}
+                  style={[styles.qtyIcon, quantity === 0 && { opacity: 0.5 }]} // Fades out when at 0
+                  resizeMode="contain"
+                />
                </TouchableOpacity>
                
                <Text style={styles.qtyValue}>{quantity}</Text>
                
                <TouchableOpacity onPress={() => handleQuantity('plus')} activeOpacity={0.7}>
-                 <Ionicons name="add-circle" size={36} color={THEME_GREEN} />
+                 <Image
+                  source={require('@/components/images/PlusIcon.png')}
+                  style={styles.qtyIcon}
+                  resizeMode="contain"
+                />
                </TouchableOpacity>
-            </View>
+            </ImageBackground>
+
           </View>
 
         </ScrollView>
@@ -223,29 +246,43 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   title: {
-    fontSize: 26,
+    fontSize: isTabletView ? 26 : 20,
     fontFamily: 'PixelFont',
     color: '#3E2723', // Dark brown wood text
     marginBottom: 6,
   },
   category: {
-    fontSize: 14,
+    fontSize: isTabletView ? 18 : 14,
     fontFamily: 'PixelFont',
     color: '#7A5B35', // Medium brown
     marginBottom: 30,
   },
+  descBackground: {
+    width: '100%',
+    minHeight: 120, 
+    paddingTop: 24, 
+    paddingBottom: 24, 
+    paddingHorizontal: 20, 
+    marginBottom: 30, 
+    justifyContent: 'flex-start',
+
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 20,
+  },
   sectionLabel: {
-    fontSize: 18,
+    fontSize: isTabletView ? 24 : 18,
     fontFamily: 'PixelFont',
     color: '#3E2723',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   description: {
-    fontSize: 12,
+    fontSize: isTabletView ? 16: 12,
     fontFamily: 'PixelFont',
     color: '#5C4033',
     lineHeight: 20,
-    marginBottom: 35,
   },
 
   // ==========================================
@@ -258,20 +295,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   qtyLabel: {
-    fontSize: 16,
+    fontSize: isTabletView ? 20 : 16,
     fontFamily: 'PixelFont',
     color: '#3E2723',
   },
   counterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: isTabletView ? 70 : 50,
+    paddingHorizontal: 10
   },
   qtyValue: {
     fontSize: 20,
     fontFamily: 'PixelFont',
-    color: '#3E2723',
+    color: 'black',
     textAlign: 'center',
     minWidth: 45,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
+  },
+  qtyIcon: {
+    width: isTabletView ? 50 : 36,
+    height: isTabletView ? 50 : 36,
   },
 
   // ==========================================
@@ -295,5 +341,7 @@ const styles = StyleSheet.create({
     color: '#FFF9E6',
     fontSize: 16,
     fontFamily: 'PixelFont',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
 });
