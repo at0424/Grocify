@@ -1,4 +1,14 @@
-import { addListItems, batchAddListItems, createNewList, createUserPlan, fetchFridgeItems, fetchRecipes, fetchUserLists, fetchUserMealPlan, updateUserPlan } from '@/services/api.js';
+import {
+    addListItems,
+    batchAddListItems,
+    createNewList,
+    createUserPlan,
+    fetchFridgeItems,
+    fetchRecipes,
+    fetchUserLists,
+    fetchUserMealPlan,
+    updateUserPlan
+} from '@/services/api.js';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUser } from 'aws-amplify/auth';
@@ -6,7 +16,10 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Dimensions,
     FlatList,
+    Image,
+    ImageBackground,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -47,8 +60,10 @@ export default function ChatScreen() {
     const [formTargetFridge, setFormTargetFridge] = useState('ALL');
     const [showFridgeForm, setShowFridgeForm] = useState(false);
     const [cookTargetFridge, setCookTargetFridge] = useState('ALL');
+    
     const COLORS = ['#FFF9C4', '#E1F5FE', '#FFEBEE', '#E8F5E9', '#F3E5F5'];
-    const [formColor, setFormColor] = useState(COLORS[3]); 
+    const [formColor, setFormColor] = useState(COLORS[3]);
+    
     const [isAdvancedMeals, setIsAdvancedMeals] = useState(false);
     const [advancedMeals, setAdvancedMeals] = useState(
         // Pre-fill an array for up to 7 days to track individual daily selections
@@ -57,7 +72,6 @@ export default function ChatScreen() {
 
     const planStartDateRef = useRef(new Date());
     const targetFridgeRef = useRef('ALL');
-
 
     // ==========================================
     // INITIALIZATION & EFFECTS
@@ -75,7 +89,6 @@ export default function ChatScreen() {
                 if (lists) {
                     setUserLists(Array.isArray(lists) ? lists : (lists.data || lists.lists || []));
                 }
-
             } catch (error) {
                 console.error('User is not signed in', error);
             }
@@ -87,7 +100,6 @@ export default function ChatScreen() {
     useEffect(() => {
         if (messages.length > 0) saveChatHistory(messages);
     }, [messages]);
-
 
     // ==========================================
     // CHAT HISTORY MANAGEMENT
@@ -118,7 +130,6 @@ export default function ChatScreen() {
         }
     };
 
-
     // ==========================================
     // MEAL PLAN FORM LOGIC
     // ==========================================
@@ -140,7 +151,7 @@ export default function ChatScreen() {
 
         const finalName = formName.trim() || 'My Meal Plan';
         const finalAllergies = formAllergies.trim() || 'None';
-        
+
         let mealsPromptText = "";
         if (isAdvancedMeals) {
             mealsPromptText = Array.from({ length: formDays }).map((_, i) => {
@@ -162,10 +173,11 @@ export default function ChatScreen() {
 
         // What the user SEES
         const displayText = `Please create a ${formDays}-day meal plan named "${finalName}".`;
-        // What the AI SEES
-        const engineeredPrompt = `Please create a ${formDays}-day meal plan for me starting on ${formStartDate.toDateString()}.\n• Name: "${finalName}"\n• Meals included: ${mealsPromptText}\n• Allergies or restrictions: ${finalAllergies}\n\nPlease generate this using recipes from the catalog and save it!`;        
         
-        sendMessage(displayText, true, engineeredPrompt); 
+        // What the AI SEES
+        const engineeredPrompt = `Please create a ${formDays}-day meal plan for me starting on ${formStartDate.toDateString()}.\n• Name: "${finalName}"\n• Meals included: ${mealsPromptText}\n• Allergies or restrictions: ${finalAllergies}\n\nPlease generate this using recipes from the catalog and save it!`;
+
+        sendMessage(displayText, true, engineeredPrompt);
 
         // Reset Form
         setFormName('');
@@ -183,7 +195,10 @@ export default function ChatScreen() {
     const submitFridgeCookRequest = () => {
         setShowFridgeForm(false);
 
-        const selectedList = cookTargetFridge !== 'ALL' ? userLists.find(list => (list.listId || list.id || list._id) === cookTargetFridge) : null;
+        const selectedList = cookTargetFridge !== 'ALL' 
+            ? userLists.find(list => (list.listId || list.id || list._id) === cookTargetFridge) 
+            : null;
+        
         const listName = selectedList ? (selectedList.listName || selectedList.name) : "All Lists";
 
         // What the user SEES in the chat bubble
@@ -193,27 +208,23 @@ export default function ChatScreen() {
 
         // What the AI SEES in the backend
         let hiddenPrompt = "I want to cook from my fridge. Please check ALL of my grocery lists. DO NOT ask me which list to choose. Use your tools to pick a list, check it silently, and immediately suggest exactly ONE recipe I can make right now. Do not format this as a daily meal plan.";
+        
         if (cookTargetFridge !== 'ALL') {
             hiddenPrompt = `I want to cook from my fridge. You MUST immediately call the 'get_fridge_items' tool specifically for the list named "${listName}" (ID: ${cookTargetFridge}). Read the items carefully. Even if there are only 1 or 2 random ingredients, DO NOT say the list is empty. Invent exactly ONE creative recipe I can make with whatever is there. Do not format this as a daily meal plan.`;
         }
 
-        // Pass both to the upgraded function!
         sendMessage(displayText, true, hiddenPrompt);
         setCookTargetFridge('ALL');
     };
-
 
     // ==========================================
     // TOOL EXECUTION HELPERS
     // ==========================================
 
-    // Extracted logic for the massive Create Meal Plan tool
     const processMealPlanTool = async (args) => {
         console.log(`\n=== STARTING MEAL PLAN CREATION ===`);
         console.log(`[1] AI provided arguments:`, JSON.stringify(args, null, 2));
 
-        // Format Days & Match IDs
-        // SAFETY CHECK: If the AI forgot to send 'days', don't crash!
         const rawDays = args.days || [];
         if (rawDays.length === 0) {
             console.error("ERROR: AI did not provide any days for the meal plan!");
@@ -223,14 +234,10 @@ export default function ChatScreen() {
         console.log(`[2] Formatting ${rawDays.length} days of meals...`);
         let populatedDays;
         try {
-            // Added 'index' so we can calculate the exact date for each day!
             populatedDays = rawDays.map((d, index) => {
-
-                // Calculate this specific day's date
                 const specificDateObj = new Date(planStartDateRef.current);
                 specificDateObj.setDate(specificDateObj.getDate() + index);
 
-                // Format safely to YYYY-MM-DD using local time
                 const year = specificDateObj.getFullYear();
                 const month = String(specificDateObj.getMonth() + 1).padStart(2, '0');
                 const day = String(specificDateObj.getDate()).padStart(2, '0');
@@ -238,7 +245,7 @@ export default function ChatScreen() {
 
                 return {
                     day: d.dayLabel || `Day ${index + 1}`,
-                    date: localDateString, // INJECTED DATE FOR THE UI!
+                    date: localDateString, 
                     meals: (d.meals || []).map(m => {
                         const aiId = String(m.recipeId || "").replace(/\\/g, '').toLowerCase().replace('in_', 'ln_').trim();
                         const fullRecipe = availableRecipes.find(r => String(r.id || r._id || r.recipeId).toLowerCase() === aiId)
@@ -252,7 +259,6 @@ export default function ChatScreen() {
                 };
             });
 
-            // Fix Floats for Python Lambda
             populatedDays = JSON.parse(JSON.stringify(populatedDays, (k, v) => typeof v === 'number' ? String(v) : v));
             console.log(`Formatting complete.`);
         } catch (formatErr) {
@@ -260,15 +266,13 @@ export default function ChatScreen() {
             return { success: false, error: "Failed parsing recipe IDs." };
         }
 
-        // Calculate Dates
         const startDateObj = new Date(planStartDateRef.current);
         const endDateObj = new Date(startDateObj);
 
         const daysToPlan = populatedDays.length > 0 ? populatedDays.length : formDays;
         endDateObj.setDate(startDateObj.getDate() + daysToPlan - 1);
-        endDateObj.setHours(23, 59, 59, 999); // Push to 11:59 PM to stop auto-delete
+        endDateObj.setHours(23, 59, 59, 999); 
 
-        // Use local formatting for the start ID, but full ISO timestamp for the end time
         const startYear = startDateObj.getFullYear();
         const startMonth = String(startDateObj.getMonth() + 1).padStart(2, '0');
         const startDay = String(startDateObj.getDate()).padStart(2, '0');
@@ -276,7 +280,6 @@ export default function ChatScreen() {
         const startStr = `${startYear}-${startMonth}-${startDay}`;
         const endStr = endDateObj.toISOString();
 
-        // Create List
         let targetListId = targetFridgeRef.current;
         const listName = args.planName ? `${args.planName} Groceries` : `AI Groceries`;
 
@@ -289,7 +292,6 @@ export default function ChatScreen() {
             console.error("List creation failed:", error);
         }
 
-        // Aggregate Ingredients
         console.log(`[4] Aggregating ingredients from recipes...`);
         if (targetListId !== "ALL") {
             const aggregator = new Map();
@@ -306,7 +308,10 @@ export default function ChatScreen() {
                                 measurements: []
                             });
                         }
-                        aggregator.get(lowerName).measurements.push({ amount: parseFloat(ing.amount) || 0, unit: (ing.unit || "").trim().toLowerCase() });
+                        aggregator.get(lowerName).measurements.push({ 
+                            amount: parseFloat(ing.amount) || 0, 
+                            unit: (ing.unit || "").trim().toLowerCase() 
+                        });
                     });
                 });
             });
@@ -322,7 +327,12 @@ export default function ChatScreen() {
                 const parts = [];
                 unitTotals.forEach((total, unit) => parts.push(`${Math.round(total * 100) / 100} ${unit}`.trim()));
                 [...new Set(textOnlyUnits)].forEach(u => parts.push(u));
-                finalIngredients.push({ name: data.name, quantity: parts.join(", "), category: data.category, shelfLife: data.shelfLife });
+                finalIngredients.push({ 
+                    name: data.name, 
+                    quantity: parts.join(", "), 
+                    category: data.category, 
+                    shelfLife: data.shelfLife 
+                });
             });
 
             console.log(`[5] Adding ${finalIngredients.length} unique ingredients to list ${targetListId}...`);
@@ -350,35 +360,28 @@ export default function ChatScreen() {
 
         if (isUpdating) {
             console.log(`[7] Found ongoing plan! Merging new days into it...`);
-
-            // Map by Date string to avoid duplicates and allow safe overwriting
             const daysMap = new Map();
 
-            // Add all the existing days first
             existingPlan.planData.forEach(d => {
                 daysMap.set(d.date, JSON.parse(JSON.stringify(d)));
             });
 
-            // Overwrite / Add the newly generated days
             populatedDays.forEach(newDay => {
                 if (daysMap.has(newDay.date)) {
                     const existingDay = daysMap.get(newDay.date);
                     existingDay.meals = [...(existingDay.meals || []), ...(newDay.meals || [])];
                     daysMap.set(newDay.date, existingDay);
                 } else {
-                    // Brand new day, add it to the map
                     daysMap.set(newDay.date, newDay);
                 }
             });
 
-            // Convert back to array and sort chronologically!
             finalDays = Array.from(daysMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
             const mealOrder = { 'Breakfast': 1, 'Lunch': 2, 'Dinner': 3 };
 
             finalDays.forEach(day => {
                 if (day.meals && Array.isArray(day.meals)) {
                     day.meals.sort((a, b) => {
-                        // Look up the order number, default to 99 if it's an unknown type (like 'Snack')
                         const orderA = mealOrder[a.type] || 99;
                         const orderB = mealOrder[b.type] || 99;
                         return orderA - orderB;
@@ -386,7 +389,6 @@ export default function ChatScreen() {
                 }
             });
 
-            // Stretch the Start and End boundaries to fit the combined plan
             const existingStartObj = new Date(existingPlan.startDate);
             const newStartObj = new Date(startStr);
             finalStartStr = existingStartObj < newStartObj ? existingPlan.startDate : startStr;
@@ -395,12 +397,10 @@ export default function ChatScreen() {
             const newEndObj = new Date(endStr);
             finalEndStr = existingEndObj > newEndObj ? existingPlan.endDate : endStr;
 
-            // MERGE FRIDGES: Combine old fridges with the new fridge target
             const mergedFridges = new Set([...(existingPlan.targetFridges || []), ...finalFridges]);
             finalFridges = Array.from(mergedFridges);
         }
 
-        // Create Plan
         const planPayload = {
             userId: currentUserId,
             startDate: startStr,
@@ -414,7 +414,6 @@ export default function ChatScreen() {
             if (isUpdating) {
                 console.log(`Sending UPDATE to AWS UserPlans table...`);
                 planPayload.planId = existingPlan.planId;
-
                 await updateUserPlan(planPayload);
                 console.log(`Meal plan updated successfully!`);
                 return { success: true, message: `Successfully added the new days to your ongoing meal plan and updated "${listName}".` };
@@ -430,7 +429,6 @@ export default function ChatScreen() {
         }
     };
 
-    // Main Tool Router
     const executeLocalTool = async (fnName, args) => {
         console.log(`Executing tool locally: ${fnName}`);
 
@@ -456,7 +454,6 @@ export default function ChatScreen() {
         }
     };
 
-
     // ==========================================
     // MAIN CHAT LOGIC (API CALLS)
     // ==========================================
@@ -464,7 +461,6 @@ export default function ChatScreen() {
         const userMsgText = typeof presetText === 'string' ? presetText : inputText;
         if (userMsgText.trim().length === 0) return;
 
-        // --- Interceptor Logic ---
         if (!isSystemPrompt) {
             const lowerText = userMsgText.toLowerCase();
             const isMealPlanRequest = /(create|make|generate|build|new|plan|want|need).*meal plan/i.test(lowerText) || lowerText.includes('meal plan for');
@@ -476,13 +472,11 @@ export default function ChatScreen() {
             }
         }
 
-        // Put the CLEAN text into the UI chat history
         const currentHistory = [...messages, { id: Date.now().toString(), text: userMsgText, sender: 'user' }];
         setMessages(currentHistory);
         setInputText('');
         setIsLoading(true);
 
-        // Decide what to actually send to the AI
         const textToSendToAI = hiddenApiText ? hiddenApiText : userMsgText;
 
         try {
@@ -490,7 +484,6 @@ export default function ChatScreen() {
             let currentIntermediateSteps = [];
 
             while (!isConversationDone) {
-
                 const requestBody = {
                     message: textToSendToAI,
                     history: currentHistory,
@@ -509,11 +502,8 @@ export default function ChatScreen() {
                 if (data.action === 'tool_call') {
                     const originalPart = data.originalPart;
                     const fn = originalPart.functionCall;
-
-                    // Execute the tool locally
                     const toolResultData = await executeLocalTool(fn.name, fn.args || {});
 
-                    // NEW: Add this execution to the scratchpad so the AI remembers it!
                     currentIntermediateSteps.push({
                         originalPart: originalPart,
                         functionResponse: { name: fn.name, response: toolResultData }
@@ -522,7 +512,6 @@ export default function ChatScreen() {
                 } else if (data.action === 'reply') {
                     const cleanReply = data.reply ? data.reply.replace(/\\/g, '') : "";
                     setMessages(prev => [...prev, { id: Date.now().toString(), text: cleanReply, sender: 'bot' }]);
-
                     isConversationDone = true;
                 } else {
                     isConversationDone = true;
@@ -537,30 +526,62 @@ export default function ChatScreen() {
         }
     };
 
-
     // ==========================================
     // UI SUB-COMPONENTS
     // ==========================================
     const renderWelcomeScreen = () => (
         <View style={styles.welcomeContainer}>
-            <Text style={styles.welcomeTitle}>How can I help you?</Text>
+            <Text style={styles.welcomeTitle}>How can I help you today?</Text>
             <View style={styles.suggestionsGrid}>
-                <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowMealForm(true)}>
-                    <Ionicons name="calendar-outline" size={22} color="#7A9B6B" />
+                
+                {/* Box 1: Create a meal plan */}
+                <View style={styles.suggestionWrapper}>
+                    <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowMealForm(true)}>
+                        <Image 
+                            source={require('@/assets/images/ai/MealPlanBox.png')} 
+                            style={styles.suggestionImage} 
+                            resizeMode="contain" 
+                        />
+                    </TouchableOpacity>
                     <Text style={styles.suggestionText}>Create a meal plan</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("I need to add some items to my grocery list.")}>
-                    <Ionicons name="cart-outline" size={22} color="#7A9B6B" />
+                </View>
+                
+                {/* Box 2: Add to grocery list */}
+                <View style={styles.suggestionWrapper}>
+                    <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("I need to add some items to my grocery list.")}>
+                        <Image 
+                            source={require('@/assets/images/ai/GroceryItemBox.png')} 
+                            style={styles.suggestionImage} 
+                            resizeMode="contain" 
+                        />
+                    </TouchableOpacity>
                     <Text style={styles.suggestionText}>Add to grocery list</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowFridgeForm(true)}>
-                    <Ionicons name="snow-outline" size={22} color="#7A9B6B" />
+                </View>
+                
+                {/* Box 3: Cook from my fridge */}
+                <View style={styles.suggestionWrapper}>
+                    <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowFridgeForm(true)}>
+                        <Image 
+                            source={require('@/assets/images/ai/CookFromFridgeBox.png')} 
+                            style={styles.suggestionImage} 
+                            resizeMode="contain" 
+                        />
+                    </TouchableOpacity>
                     <Text style={styles.suggestionText}>Cook from my fridge</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("Can you suggest a healthy dinner recipe?")}>
-                    <Ionicons name="restaurant-outline" size={22} color="#7A9B6B" />
+                </View>
+                
+                {/* Box 4: Suggest a recipe */}
+                <View style={styles.suggestionWrapper}>
+                    <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("Can you suggest a healthy dinner recipe?")}>
+                        <Image 
+                            source={require('@/assets/images/ai/RecipeBox.png')}
+                            style={styles.suggestionImage} 
+                            resizeMode="contain" 
+                        />
+                    </TouchableOpacity>
                     <Text style={styles.suggestionText}>Suggest a recipe</Text>
-                </TouchableOpacity>
+                </View>
+
             </View>
         </View>
     );
@@ -575,7 +596,6 @@ export default function ChatScreen() {
         </View>
     );
 
-    // Helper to generate the next 7 days dynamically
     const generateDateOptions = () => {
         const options = [];
         for (let i = 0; i < 7; i++) {
@@ -602,19 +622,26 @@ export default function ChatScreen() {
                             <Ionicons name="close" size={26} color="#333" onPress={() => setShowMealForm(false)} />
                         </View>
 
-                        {/* ScrollView wrapper to prevent UI cutoff */}
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                            
                             <Text style={styles.inputLabel}>Plan Name (Optional)</Text>
-                            <TextInput style={styles.modalInput} placeholder="e.g., Gym Week, AI Trail" value={formName} onChangeText={setFormName} placeholderTextColor="#A0A0A0" />
+                            <TextInput 
+                                style={styles.modalInput} 
+                                placeholder="e.g., Gym Week, AI Trail" 
+                                value={formName} 
+                                onChangeText={setFormName} 
+                                placeholderTextColor="#A0A0A0" 
+                            />
 
-                            {/* NEW: List Color Picker */}
                             <Text style={styles.inputLabel}>List Color</Text>
                             <View style={styles.colorContainer}>
                                 {COLORS.map(color => (
                                     <TouchableOpacity
                                         key={color}
-                                        style={[styles.colorCircle, { backgroundColor: color }, formColor === color && styles.colorCircleActive]}
+                                        style={[
+                                            styles.colorCircle, 
+                                            { backgroundColor: color }, 
+                                            formColor === color && styles.colorCircleActive
+                                        ]}
                                         onPress={() => setFormColor(color)}
                                     />
                                 ))}
@@ -643,7 +670,11 @@ export default function ChatScreen() {
                             <Text style={styles.inputLabel}>Duration (Days)</Text>
                             <View style={styles.pillContainer}>
                                 {[1, 2, 3, 5, 7].map(day => (
-                                    <TouchableOpacity key={day} style={[styles.pill, formDays === day && styles.pillActive]} onPress={() => setFormDays(day)}>
+                                    <TouchableOpacity 
+                                        key={day} 
+                                        style={[styles.pill, formDays === day && styles.pillActive]} 
+                                        onPress={() => setFormDays(day)}
+                                    >
                                         <Text style={[styles.pillText, formDays === day && styles.pillTextActive]}>{day}</Text>
                                     </TouchableOpacity>
                                 ))}
@@ -651,10 +682,16 @@ export default function ChatScreen() {
 
                             <Text style={styles.inputLabel}>Add Groceries To</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 5 }}>
-                                <TouchableOpacity style={[styles.pill, formTargetFridge === 'ALL' && styles.pillActive]} onPress={() => setFormTargetFridge('ALL')}>
+                                <TouchableOpacity 
+                                    style={[styles.pill, formTargetFridge === 'ALL' && styles.pillActive]} 
+                                    onPress={() => setFormTargetFridge('ALL')}
+                                >
                                     <Text style={[styles.pillText, formTargetFridge === 'ALL' && styles.pillTextActive]}>All (Default)</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={[styles.pill, formTargetFridge === 'CREATE_NEW' && styles.pillActive]} onPress={() => setFormTargetFridge('CREATE_NEW')}>
+                                <TouchableOpacity 
+                                    style={[styles.pill, formTargetFridge === 'CREATE_NEW' && styles.pillActive]} 
+                                    onPress={() => setFormTargetFridge('CREATE_NEW')}
+                                >
                                     <Text style={[styles.pillText, formTargetFridge === 'CREATE_NEW' && styles.pillTextActive]}>+ Create New List</Text>
                                 </TouchableOpacity>
                                 {userLists.map(list => {
@@ -662,14 +699,17 @@ export default function ChatScreen() {
                                     const listName = list.listName || list.name || "Unnamed List";
                                     const isActive = formTargetFridge === listId;
                                     return (
-                                        <TouchableOpacity key={listId} style={[styles.pill, isActive && styles.pillActive]} onPress={() => setFormTargetFridge(listId)}>
+                                        <TouchableOpacity 
+                                            key={listId} 
+                                            style={[styles.pill, isActive && styles.pillActive]} 
+                                            onPress={() => setFormTargetFridge(listId)}
+                                        >
                                             <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{listName}</Text>
                                         </TouchableOpacity>
                                     );
                                 })}
                             </ScrollView>
 
-                            {/* Advanced Meals Header */}
                             <View style={styles.mealsHeaderContainer}>
                                 <Text style={styles.inputLabel}>Meals Included</Text>
                                 <TouchableOpacity onPress={() => setIsAdvancedMeals(!isAdvancedMeals)}>
@@ -677,14 +717,19 @@ export default function ChatScreen() {
                                 </TouchableOpacity>
                             </View>
 
-                            {/* Basic vs Advanced Meal Rendering */}
                             {!isAdvancedMeals ? (
                                 <View style={styles.pillContainer}>
                                     {['breakfast', 'lunch', 'dinner'].map(meal => {
                                         const isActive = formMeals[meal];
                                         return (
-                                            <TouchableOpacity key={meal} style={[styles.pill, isActive && styles.pillActive]} onPress={() => setFormMeals(prev => ({ ...prev, [meal]: !isActive }))}>
-                                                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{meal.charAt(0).toUpperCase() + meal.slice(1)}</Text>
+                                            <TouchableOpacity 
+                                                key={meal} 
+                                                style={[styles.pill, isActive && styles.pillActive]} 
+                                                onPress={() => setFormMeals(prev => ({ ...prev, [meal]: !isActive }))}
+                                            >
+                                                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                                                    {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                                                </Text>
                                             </TouchableOpacity>
                                         );
                                     })}
@@ -698,8 +743,14 @@ export default function ChatScreen() {
                                                 {['breakfast', 'lunch', 'dinner'].map(meal => {
                                                     const isActive = advancedMeals[dayIndex][meal];
                                                     return (
-                                                        <TouchableOpacity key={meal} style={[styles.pillSmall, isActive && styles.pillActive]} onPress={() => toggleAdvancedMeal(dayIndex, meal)}>
-                                                            <Text style={[styles.pillTextSmall, isActive && styles.pillTextActive]}>{meal.charAt(0).toUpperCase() + meal.slice(1)}</Text>
+                                                        <TouchableOpacity 
+                                                            key={meal} 
+                                                            style={[styles.pillSmall, isActive && styles.pillActive]} 
+                                                            onPress={() => toggleAdvancedMeal(dayIndex, meal)}
+                                                        >
+                                                            <Text style={[styles.pillTextSmall, isActive && styles.pillTextActive]}>
+                                                                {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                                                            </Text>
                                                         </TouchableOpacity>
                                                     );
                                                 })}
@@ -710,7 +761,13 @@ export default function ChatScreen() {
                             )}
 
                             <Text style={styles.inputLabel}>Allergies / Restrictions</Text>
-                            <TextInput style={styles.modalInput} placeholder="e.g., Peanuts, Vegan, None" value={formAllergies} onChangeText={setFormAllergies} placeholderTextColor="#A0A0A0" />
+                            <TextInput 
+                                style={styles.modalInput} 
+                                placeholder="e.g., Peanuts, Vegan, None" 
+                                value={formAllergies} 
+                                onChangeText={setFormAllergies} 
+                                placeholderTextColor="#A0A0A0" 
+                            />
 
                             <TouchableOpacity style={styles.submitFormButton} onPress={submitMealPlanForm}>
                                 <Text style={styles.submitFormText}>Generate Plan</Text>
@@ -742,7 +799,6 @@ export default function ChatScreen() {
                                 <Text style={[styles.pillText, cookTargetFridge === 'ALL' && styles.pillTextActive]}>All Lists</Text>
                             </TouchableOpacity>
 
-                            {/* Map out their existing fridges/lists */}
                             {userLists.map(list => {
                                 const listId = list.listId || list.id || list._id;
                                 const listName = list.listName || list.name || "Unnamed List";
@@ -768,118 +824,463 @@ export default function ChatScreen() {
         );
     };
 
-
     // ==========================================
     // MAIN RENDER
     // ==========================================
     return (
-        <SafeAreaView style={styles.container}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Ionicons name="arrow-back" size={24} color="#333" onPress={() => router.back()} />
-                <Text style={styles.headerTitle}>AI Assistant</Text>
-                <View style={{ flexDirection: 'row', gap: 15 }}>
-                    <Ionicons name="trash-outline" size={24} color="#FF3B30" onPress={clearHistory} />
-                    <Ionicons name="menu" size={24} color="#333" />
-                </View>
-            </View>
-
-            {/* Chat Content */}
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}>
-                {messages.length === 0 ? renderWelcomeScreen() : (
-                    <FlatList
-                        ref={flatListRef}
-                        data={messages}
-                        renderItem={renderItem}
-                        keyExtractor={(item) => item.id}
-                        contentContainerStyle={styles.listContent}
-                        style={{ flex: 1 }}
-                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                        keyboardShouldPersistTaps="handled"
-                        keyboardDismissMode="on-drag"
-                    />
-                )}
-
-                {/* Text Input */}
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.input} value={inputText} onChangeText={setInputText} placeholder="Type a message..."
-                        multiline={true} placeholderTextColor="#888"
-                        onFocus={() => { setTimeout(() => { flatListRef.current?.scrollToEnd({ animated: true }); }, 200); }}
-                    />
-                    <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={isLoading}>
-                        {isLoading ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.sendButtonText}>Send</Text>}
+        <ImageBackground
+            source={require('@/assets/images/ai/AI_BG.png')}
+            style={styles.background} 
+            resizeMode="stretch"
+        >
+            <SafeAreaView style={styles.container}>
+                {/* Header */}
+                <ImageBackground
+                    source={require('@/assets/images/freshness/SelectorPanel.png')}
+                    style={styles.header}
+                    resizeMode="stretch"
+                >
+                    <View style={styles.headerWrapper}>
+                        <Image
+                            source={require('@/assets/images/ai/Paper.png')}
+                            style={styles.headerPaper}
+                            resizeMode='stretch'
+                        />
+                    </View>
+                    
+                    <TouchableOpacity
+                        style={styles.headerIcon}
+                        onPress={() => router.back()}
+                    >
+                        <Image
+                            source={require('@/components/images/BackButton.png')}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode='contain'
+                        />
                     </TouchableOpacity>
-                </View>
-            </KeyboardAvoidingView>
+                    
+                    <Text style={styles.headerTitle}>AI Assistant</Text>
+                    
+                    <TouchableOpacity style={styles.headerIcon} onPress={clearHistory}>
+                        <Image
+                            source={require('@/components/images/RefreshButton.png')}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode='contain'
+                        />
+                    </TouchableOpacity>
+                </ImageBackground>
 
-            {/* Overlays */}
-            {renderMealPlanModal()}
-            {renderFridgeCookModal()}
+                {/* Chat Content */}
+                <KeyboardAvoidingView 
+                    style={{ flex: 1 }} 
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+                >
+                    {messages.length === 0 ? renderWelcomeScreen() : (
+                        <FlatList
+                            ref={flatListRef}
+                            data={messages}
+                            renderItem={renderItem}
+                            keyExtractor={(item) => item.id}
+                            contentContainerStyle={styles.listContent}
+                            style={{ flex: 1 }}
+                            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                            keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                        />
+                    )}
 
-        </SafeAreaView>
+                    {/* Text Input */}
+                    <View style={styles.inputWrapper}>
+                        <ImageBackground
+                            source={require('@/assets/images/ai/TextInput.png')}
+                            style={styles.inputContainer}
+                            resizeMode="stretch"
+                        >
+                            <TextInput
+                                style={styles.input}
+                                value={inputText}
+                                onChangeText={setInputText}
+                                placeholder="Ask AI for Help!"
+                                multiline={true}
+                                placeholderTextColor="#888"
+                                onFocus={() => {
+                                    setTimeout(() => {
+                                        flatListRef.current?.scrollToEnd({ animated: true });
+                                    }, 200);
+                                }}
+                            />
+                        </ImageBackground>
+
+                        <TouchableOpacity onPress={sendMessage} disabled={isLoading}>
+                            <ImageBackground
+                                source={require('@/components/images/GeneralRedButton.png')}
+                                style={styles.sendButton}
+                                resizeMode='stretch' 
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                ) : (
+                                    <Text style={styles.sendButtonText}>Send</Text>
+                                )}
+                            </ImageBackground>
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+
+                {/* Overlays */}
+                {renderMealPlanModal()}
+                {renderFridgeCookModal()}
+
+            </SafeAreaView>
+        </ImageBackground>
     );
 }
 
 // ==========================================
 // STYLES
 // ==========================================
+const { width, height } = Dimensions.get('window');
+const isTabletView = width > 710;
+
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F5F5' },
-    header: { padding: 16, flexDirection: 'row', backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E0E0E0', alignItems: 'center', justifyContent: 'space-between' },
-    headerTitle: { fontSize: 18, fontWeight: '600', color: '#333' },
-    welcomeContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
-    welcomeTitle: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 30, textAlign: 'center' },
-    suggestionsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%', gap: 12 },
-    suggestionButton: { width: '48%', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 16, alignItems: 'flex-start', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: '#EFEFEF' },
-    suggestionText: { marginTop: 10, fontSize: 14, fontWeight: '500', color: '#444', lineHeight: 20 },
-    listContent: { padding: 16, paddingBottom: 20 },
-    messageBubble: { maxWidth: '80%', padding: 12, borderRadius: 20, marginBottom: 10 },
-    userBubble: { alignSelf: 'flex-end', backgroundColor: '#007AFF', borderBottomRightRadius: 4 },
-    botBubble: { alignSelf: 'flex-start', backgroundColor: '#E5E5EA', borderBottomLeftRadius: 4 },
-    messageText: { fontSize: 16 },
-    userText: { color: '#FFFFFF' },
-    inputContainer: { flexDirection: 'row', padding: 10, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E0E0E0', alignItems: 'center' },
-    input: { flex: 1, backgroundColor: '#F0F0F0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, marginRight: 10, fontSize: 16, maxHeight: 100 },
-    sendButton: { backgroundColor: '#007AFF', borderRadius: 20, paddingVertical: 10, paddingHorizontal: 20 },
-    sendButtonText: { color: '#FFFFFF', fontWeight: '600', fontSize: 16 },
+    background: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+    },
+    container: {
+        flex: 1,
+    },
+    header: {
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    headerWrapper: {
+        position: 'absolute',
+        top: 8,    
+        bottom: 8, 
+        left: 12,
+        right: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerPaper: {
+        width: '100%',
+        height: '100%'
+    },
+    headerIcon: {
+        height: isTabletView ? 60 : 40,
+        aspectRatio: 1,
+
+        shadowColor: "#4A3525",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 0,
+        elevation: 3,
+    },
+    headerTitle: {
+        fontSize: isTabletView ? 24 : 18,
+        fontFamily: 'PixelFont',
+        color: '#333',
+        includeFontPadding: false,
+        textAlignVertical: 'center'
+    },
+    welcomeContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    welcomeTitle: {
+        fontSize: isTabletView ? 28 : 24,
+        fontFamily: 'PixelFont',
+        color: '#333',
+        marginBottom: 30,
+        textAlign: 'center',
+    },
+    suggestionsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        width: '80%',
+    },
+    suggestionWrapper: {
+        width: '46%', 
+        alignItems: 'center', 
+        marginBottom: 20,
+    },
+    suggestionButton: {
+        width: '100%',
+        aspectRatio: 1, 
+
+        shadowColor: "#4A3525",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    suggestionImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 12,
+    },
+    suggestionText: {
+        marginTop: 8,
+        fontSize: isTabletView ? 18 : 15,
+        fontFamily: "PixelFont",
+        color: '#444',
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    listContent: {
+        padding: 16,
+        paddingBottom: 20,
+    },
+    messageBubble: {
+        maxWidth: '80%',
+        padding: 12,
+        borderRadius: 20,
+        marginBottom: 10,
+    },
+    userBubble: {
+        alignSelf: 'flex-end',
+        backgroundColor: '#007AFF',
+        borderBottomRightRadius: 4,
+    },
+    botBubble: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#E5E5EA',
+        borderBottomLeftRadius: 4,
+    },
+    messageText: {
+        fontSize: 16,
+    },
+    userText: {
+        color: '#FFFFFF',
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        width: '100%',
+    },
+    inputContainer: {
+        flex: 1,
+        minHeight: 60, 
+        justifyContent: 'center',
+        marginRight: 10, 
+        paddingLeft: '5%',   
+        paddingRight: '4%',  
+        paddingTop: 14,   
+        paddingBottom: 14,
+    },
+    input: {
+        paddingHorizontal: 16,
+        fontSize: isTabletView ? 16 : 12,
+        fontFamily: 'PixelFont',
+        color: '#5C4033',   
+        minHeight: 24,           
+        maxHeight: 100,   
+        includeFontPadding: false,
+        textAlignVertical: 'center'         
+    },
+    sendButton: {
+        width: isTabletView ? 100 : 80,  
+        height: isTabletView ? 60 : 45, 
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 10,
+        paddingHorizontal: 5
+    },
+    sendButtonText: {
+        color: '#FFFFFF',
+        fontFamily: 'PixelFont',
+        fontSize: isTabletView ? 16 : 14,
+        includeFontPadding: false,
+        textAlignVertical: 'center'
+    },
 
     // Modal Styles
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    modalCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    modalTitle: { fontSize: 22, fontWeight: 'bold', color: '#333' },
-    inputLabel: { fontSize: 14, fontWeight: '600', color: '#555', marginBottom: 8, marginTop: 20 },
-    modalInput: { backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, fontSize: 16, borderWidth: 1, borderColor: '#E0E0E0' },
-    pillContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    pill: { paddingVertical: 10, paddingHorizontal: 16, backgroundColor: '#F0F0F0', borderRadius: 20, borderWidth: 1, borderColor: '#E0E0E0' },
-    pillActive: { backgroundColor: '#007AFF', borderColor: '#007AFF' },
-    pillText: { fontSize: 14, color: '#555', fontWeight: '600' },
-    pillTextActive: { color: '#FFFFFF' },
-    submitFormButton: { backgroundColor: '#007AFF', borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 30 },
-    submitFormText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-    colorContainer: { flexDirection: 'row', gap: 12, marginTop: 5 },
-    colorCircle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'transparent' },
-    colorCircleActive: { borderColor: '#007AFF' },
-    
-    mealsHeaderContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
-    advancedText: { color: '#007AFF', fontSize: 14, fontWeight: '600', marginBottom: 8 },
-    advancedMealsContainer: { gap: 8 },
-    advancedDayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9F9F9', padding: 8, paddingHorizontal: 12, borderRadius: 12 },
-    advancedDayText: { fontSize: 14, fontWeight: '600', color: '#444' },
-    pillContainerSmall: { flexDirection: 'row', gap: 6 },
-    pillSmall: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#E0E0E0', borderRadius: 16 },
-    pillTextSmall: { fontSize: 12, color: '#555', fontWeight: '600' },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    modalCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 5,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#555',
+        marginBottom: 8,
+        marginTop: 20,
+    },
+    modalInput: {
+        backgroundColor: '#F5F5F5',
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    pillContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+    },
+    pill: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: '#F0F0F0',
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    pillActive: {
+        backgroundColor: '#007AFF',
+        borderColor: '#007AFF',
+    },
+    pillText: {
+        fontSize: 14,
+        color: '#555',
+        fontWeight: '600',
+    },
+    pillTextActive: {
+        color: '#FFFFFF',
+    },
+    submitFormButton: {
+        backgroundColor: '#007AFF',
+        borderRadius: 16,
+        padding: 16,
+        alignItems: 'center',
+        marginTop: 30,
+    },
+    submitFormText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    colorContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 5,
+    },
+    colorCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 2,
+        borderColor: 'transparent',
+    },
+    colorCircleActive: {
+        borderColor: '#007AFF',
+    },
+
+    mealsHeaderContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 10,
+    },
+    advancedText: {
+        color: '#007AFF',
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    advancedMealsContainer: {
+        gap: 8,
+    },
+    advancedDayRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F9F9F9',
+        padding: 8,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+    },
+    advancedDayText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#444',
+    },
+    pillContainerSmall: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    pillSmall: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        backgroundColor: '#E0E0E0',
+        borderRadius: 16,
+    },
+    pillTextSmall: {
+        fontSize: 12,
+        color: '#555',
+        fontWeight: '600',
+    },
 });
 
 const botMarkdownStyles = {
-    body: { fontSize: 16, color: '#000000' },
-    paragraph: { marginTop: 0, marginBottom: 10 },
-    strong: { fontWeight: 'bold' },
-    bullet_list: { marginBottom: 10 },
-    table: { borderWidth: 1, borderColor: '#BDBDBD', borderRadius: 8, marginTop: 5, marginBottom: 10 },
-    th: { backgroundColor: '#D1D1D6', padding: 8, fontWeight: 'bold', textAlign: 'left' },
-    tr: { borderBottomWidth: 1, borderColor: '#E0E0E0' },
-    td: { padding: 8 }
+    body: {
+        fontSize: 16,
+        color: '#000000',
+    },
+    paragraph: {
+        marginTop: 0,
+        marginBottom: 10,
+    },
+    strong: {
+        fontWeight: 'bold',
+    },
+    bullet_list: {
+        marginBottom: 10,
+    },
+    table: {
+        borderWidth: 1,
+        borderColor: '#BDBDBD',
+        borderRadius: 8,
+        marginTop: 5,
+        marginBottom: 10,
+    },
+    th: {
+        backgroundColor: '#D1D1D6',
+        padding: 8,
+        fontWeight: 'bold',
+        textAlign: 'left',
+    },
+    tr: {
+        borderBottomWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    td: {
+        padding: 8,
+    },
 };

@@ -362,7 +362,7 @@ export default function AddItemScreen() {
 }
 
 const { width, height } = Dimensions.get('window');
-const isTabletView = width > 600;
+const isTabletView = width > 710;
 
 const styles = StyleSheet.create({
     container: {
