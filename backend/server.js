@@ -149,9 +149,13 @@ app.post('/chat', async (req, res) => {
         - DO NOT format your response as a daily meal plan. Just provide the recipe name, matching ingredients, and brief instructions.
         - If no catalog recipes matches, you can suggest recipes out of the catalog.
 
-        4. CATALOG ENFORCEMENT:
-        For standard meal plans or recipe requests, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG.
-
+        4. STRICT RECIPE SUGGESTION LIMITS (MAX 3 - CRITICAL):
+        - For standard meal plans or general recipe requests, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG.
+        - When the user asks for a recipe suggestion or names a meal category (e.g., "Lunch", "What's for dinner?"), you are STRICTLY FORBIDDEN from listing all available options.
+        - You MUST randomly select exactly 1 to 3 recipes to suggest, and completely ignore the rest.
+        - UNDER NO CIRCUMSTANCES should your response contain more than 3 recipes. Do not use numbered lists that go past 3. 
+        - Provide a short, appetizing description for the 3 options you chose to make them sound appealing.
+        
         5. THE "AUTO-SAVE" FORM OVERRIDE (CRITICAL):
         If the user sends a structured prompt containing "Name", "Meals included", and "Allergies" (which happens when they use the native app form), they have already given explicit permission to generate and save the plan. 
         - You MUST immediately call the 'create_meal_plan' tool to save it. 

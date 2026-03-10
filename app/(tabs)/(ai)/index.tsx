@@ -572,7 +572,7 @@ export default function ChatScreen() {
                 
                 {/* Box 4: Suggest a recipe */}
                 <View style={styles.suggestionWrapper}>
-                    <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("Can you suggest a healthy dinner recipe?")}>
+                    <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("Can you suggest me a recipe?")}>
                         <Image 
                             source={require('@/assets/images/ai/RecipeBox.png')}
                             style={styles.suggestionImage} 
@@ -680,19 +680,19 @@ export default function ChatScreen() {
                                 ))}
                             </View>
 
-                            <Text style={styles.inputLabel}>Add Groceries To</Text>
+                            <Text style={styles.inputLabel}>Add Groceries To Which Fridge</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 5 }}>
                                 <TouchableOpacity 
                                     style={[styles.pill, formTargetFridge === 'ALL' && styles.pillActive]} 
                                     onPress={() => setFormTargetFridge('ALL')}
                                 >
-                                    <Text style={[styles.pillText, formTargetFridge === 'ALL' && styles.pillTextActive]}>All (Default)</Text>
+                                    <Text style={[styles.pillText, formTargetFridge === 'ALL' && styles.pillTextActive]}>All</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity 
                                     style={[styles.pill, formTargetFridge === 'CREATE_NEW' && styles.pillActive]} 
                                     onPress={() => setFormTargetFridge('CREATE_NEW')}
                                 >
-                                    <Text style={[styles.pillText, formTargetFridge === 'CREATE_NEW' && styles.pillTextActive]}>+ Create New List</Text>
+                                    <Text style={[styles.pillText, formTargetFridge === 'CREATE_NEW' && styles.pillTextActive]}>Current List</Text>
                                 </TouchableOpacity>
                                 {userLists.map(list => {
                                     const listId = list.listId || list.id || list._id;
@@ -1039,26 +1039,46 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: 16,
-        paddingBottom: 20,
+        paddingBottom: 30,
     },
     messageBubble: {
-        maxWidth: '80%',
+        maxWidth: '90%',
         padding: 12,
         borderRadius: 20,
         marginBottom: 10,
     },
     userBubble: {
         alignSelf: 'flex-end',
-        backgroundColor: '#007AFF',
-        borderBottomRightRadius: 4,
+        backgroundColor: '#C86842',
+        borderRadius: 8,
+        borderBottomRightRadius: 0, 
+        borderWidth: 2,
+        borderColor: '#A0492B',
+        
+        shadowColor: "#000000",
+        shadowOffset: { width: 2, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 0, 
+        elevation: 3,
     },
     botBubble: {
         alignSelf: 'flex-start',
-        backgroundColor: '#E5E5EA',
-        borderBottomLeftRadius: 4,
+        backgroundColor: '#E6D5B3', 
+        borderRadius: 8,
+        borderBottomLeftRadius: 0,
+        borderWidth: 4,
+        borderColor: '#6D4C3D', 
+
+        shadowColor: "#4A3525",
+        shadowOffset: { width: 4, height: 4 },
+        shadowOpacity: 1,
+        shadowRadius: 0, 
+        elevation: 10,
     },
     messageText: {
-        fontSize: 16,
+        fontSize: 12,
+        fontFamily: 'PixelFont',
+        lineHeight: 16
     },
     userText: {
         color: '#FFFFFF',
@@ -1250,35 +1270,43 @@ const styles = StyleSheet.create({
 
 const botMarkdownStyles = {
     body: {
-        fontSize: 16,
-        color: '#000000',
+        fontSize: 12,
+        fontFamily: 'PixelFont',
+        color: '#623d23ff',
+        lineHeight: 24,
+    },
+    text: {
+        fontFamily: 'PixelFont'
     },
     paragraph: {
         marginTop: 0,
         marginBottom: 10,
     },
     strong: {
-        fontWeight: 'bold',
+        fontFamily: 'PixelFont', 
+        fontSize: 13,
+        fontWeight: 'normal',
+        color: 'black', // Slightly darker for emphasis
     },
     bullet_list: {
         marginBottom: 10,
     },
     table: {
-        borderWidth: 1,
-        borderColor: '#BDBDBD',
-        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: '#8B6A4F',
+        borderRadius: 4,
         marginTop: 5,
         marginBottom: 10,
     },
     th: {
-        backgroundColor: '#D1D1D6',
+        backgroundColor: '#D4BA8C', // Darker parchment for headers
         padding: 8,
         fontWeight: 'bold',
         textAlign: 'left',
     },
     tr: {
-        borderBottomWidth: 1,
-        borderColor: '#E0E0E0',
+        borderBottomWidth: 2,
+        borderColor: '#C7A87A',
     },
     td: {
         padding: 8,
