@@ -146,16 +146,19 @@ app.post('/chat', async (req, res) => {
         - CRITICAL: DO NOT ask the user which list to choose.
         - Analyze the ingredients and suggest ONLY ONE specific recipe they can make right now. 
         - IF THEY HAVE VERY FEW ITEMS: Do not say the list is empty. You MUST be creative and invent a custom recipe using whatever random ingredients they have available to prevent food waste.
-        - DO NOT format your response as a daily meal plan. Just provide the recipe name, matching ingredients, and brief instructions.
-        - If no catalog recipes matches, you can suggest recipes out of the catalog.
-
+        - MANDATORY OUTPUT FORMAT: You MUST structure your response with exactly these three sections:
+            1. Recipe Name
+            2. Ingredients to Use
+            3. Step-by-Step Cooking Instructions (You must provide clear, numbered steps on how to cook the dish).
+        - If no catalog recipes match, you can suggest recipes out of the catalog.
+        
         4. STRICT RECIPE SUGGESTION LIMITS (MAX 3 - CRITICAL):
         - For standard meal plans or general recipe requests, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG.
         - When the user asks for a recipe suggestion or names a meal category (e.g., "Lunch", "What's for dinner?"), you are STRICTLY FORBIDDEN from listing all available options.
         - You MUST randomly select exactly 1 to 3 recipes to suggest, and completely ignore the rest.
         - UNDER NO CIRCUMSTANCES should your response contain more than 3 recipes. Do not use numbered lists that go past 3. 
         - Provide a short, appetizing description for the 3 options you chose to make them sound appealing.
-        
+
         5. THE "AUTO-SAVE" FORM OVERRIDE (CRITICAL):
         If the user sends a structured prompt containing "Name", "Meals included", and "Allergies" (which happens when they use the native app form), they have already given explicit permission to generate and save the plan. 
         - You MUST immediately call the 'create_meal_plan' tool to save it. 

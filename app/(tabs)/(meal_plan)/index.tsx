@@ -1,13 +1,15 @@
 import { getUserId } from '@/amplify/auth/authService';
 import { deleteUserPlan, fetchFridgeItems, fetchUserLists, fetchUserMealPlan, markMealAsConsumed } from '@/services/api';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertTriangle, Check, ChevronLeft, MoreVertical, RefreshCw, Utensils } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AlertTriangle, Check, MoreVertical, RefreshCw, Utensils } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActionSheetIOS,
     ActivityIndicator,
     Alert,
+    Dimensions,
     Image,
+    ImageBackground,
     Platform,
     RefreshControl,
     SafeAreaView,
@@ -48,7 +50,7 @@ export default function MealPlanScreen() {
     const fetchPlan = async () => {
         const currentUserId = await getUserId();
         const data = await fetchUserMealPlan(currentUserId);
-        
+
         if (data && data.planData) {
             // Get today's date at exactly midnight
             const today = new Date();
@@ -59,23 +61,23 @@ export default function MealPlanScreen() {
 
             // Filter out any days that are strictly BEFORE today
             const activeDays = data.planData.filter((day, index) => {
-                
+
                 // Calculate this exact day's date based on its position in the array
                 // If index is 0 (Day 1), it adds 0 days. If index is 1 (Day 2), it adds 1 day.
                 const dateObj = new Date(planStartDate);
                 dateObj.setDate(planStartDate.getDate() + index);
                 dateObj.setHours(0, 0, 0, 0);
-                
+
                 // Keep the day if it is Today or in the Future
-                return dateObj >= today; 
+                return dateObj >= today;
             });
 
             // AUTO-DELETE: If all days are in the past, the plan is over!
             if (activeDays.length === 0) {
                 console.log("Meal plan has expired. Auto-deleting...");
-                
+
                 await deleteUserPlan(currentUserId, data.planId);
-                
+
                 // Clear the screen
                 setPlan(null);
                 setGroupedMeals([]);
@@ -236,11 +238,11 @@ export default function MealPlanScreen() {
 
                             // Send request to backend
                             const result = await markMealAsConsumed(
-                                userId, 
-                                plan.planId, 
-                                date, 
-                                mealType, 
-                                recipe.ingredients, 
+                                userId,
+                                plan.planId,
+                                date,
+                                mealType,
+                                recipe.ingredients,
                                 targetFridges
                             );
 
@@ -250,14 +252,14 @@ export default function MealPlanScreen() {
                                 // Optimistic Update: Update the local plan state
                                 const updatedPlan = { ...plan };
                                 const dayIndex = updatedPlan.planData.findIndex(d => d.date === date);
-                                
+
                                 if (dayIndex !== -1) {
                                     const mealIndex = updatedPlan.planData[dayIndex].meals.findIndex(m => m.type === mealType);
                                     if (mealIndex !== -1) {
                                         updatedPlan.planData[dayIndex].meals[mealIndex].consumed = true;
                                     }
                                 }
-                                
+
                                 setPlan(updatedPlan);
                                 processPlanData(updatedPlan.planData);
 
@@ -321,17 +323,41 @@ export default function MealPlanScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Stack.Screen options={{ headerShown: false }} />
+
+            {/* --- CUSTOM BACKGROUND --- */}
+            <View style={styles.backgroundContainer}>
+                {[1, 2, 3, 4, 5].map((_, index) => (
+                    <Image
+                        key={index}
+                        source={require('@/assets/images/listing/WoodenPanel.png')}
+                        style={styles.panelImage}
+                        resizeMode='stretch'
+                    />
+                ))}
+            </View>
+            
+            {/* Darken Effect */}
+            <View style={styles.darkOverlay} />
+
 
             {/* Header */}
-            <View style={styles.header}>
+            <ImageBackground
+                source={require('@/assets/images/meal_plan/MealPlanHeader.png')}
+                style={styles.header}
+                resizeMode='stretch'
+            >
                 <TouchableOpacity
                     onPress={() => {
                         router.push('../');
                     }}
                     style={styles.backButton}
                 >
-                    <ChevronLeft size={24} color="#FFFFFF" />
+                    <Image
+                        source={require('@/components/images/BackButton.png')}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode='contain'
+                    />
+
                 </TouchableOpacity>
 
                 <Text style={styles.headerTitle}>Meal Plan</Text>
@@ -344,13 +370,14 @@ export default function MealPlanScreen() {
                 ) : (
                     <View style={{ width: 28 }} />
                 )}
-            </View>
+            </ImageBackground>
 
             {/* List */}
             <SectionList
                 sections={groupedMeals}
                 keyExtractor={(item, index) => item.type + index}
-                contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+                style={{ width: '100%', height: '100%' }}
+                contentContainerStyle={{ padding: 20, paddingBottom: 100, height: '100%' }}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7A9B6B" />
                 }
@@ -434,54 +461,139 @@ export default function MealPlanScreen() {
                 }}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>No meal plan active.</Text>
+
+                        <ImageBackground
+                            source={require('@/assets/images/meal_plan/EmptyStateDeco.png')}
+                            style={styles.emptyDecoStyle}
+                            resizeMode='contain'
+                        >
+                            <Text style={styles.emptyText}>No meal plan active.</Text>
+                        </ImageBackground>
+
                         <TouchableOpacity onPress={() => router.push('/dates')} style={styles.createButton}>
-                            <Text style={styles.createButtonText}>Create Plan</Text>
+                            <ImageBackground
+                                source={require('@/assets/images/freshness/GreenButton.png')}
+                                style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+                                resizeMode='stretch'
+                            >
+                                <Text style={styles.createButtonText}>Create Plan</Text>
+                            </ImageBackground>
+
                         </TouchableOpacity>
                     </View>
                 }
             />
+
         </SafeAreaView>
     );
 }
 
+const { width, height } = Dimensions.get('window');
+const isTabletView = width > 710;
+
 const styles = StyleSheet.create({
+    
+    // ==============================
+    // CONTAINER 
+    // ==============================
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF', // Matches grey/white background
+        backgroundColor: '#603c24ff',
+        zIndex: -2
     },
     centerContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    // Header Matches Screenshot
+    backgroundContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: -1,
+    },
+    panelImage: {
+        width: "100%",
+        height: '20%',
+    },
+    darkOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+
+    // ==============================
+    // HEADER
+    // ==============================
     header: {
-        backgroundColor: '#6A8E58', // Muted Sage Green
-        height: 60,
+        height: isTabletView ? 100 : 70,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-        // Shadow for depth
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 4,
     },
     headerTitle: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: isTabletView ? 20 : 18,
+        fontFamily: 'PixelFont',
+        includeFontPadding: false,
+        textAlignVertical: 'center'
     },
     backButton: {
-        padding: 4,
+        height: isTabletView ? 50 : 35,
+        aspectRatio: 1
     },
 
-    // List Styles
+    // ==============================
+    // EMPTY STATE
+    // ==============================
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 60,
+        height: '100%',
+        width: '100%',
+        paddingBottom: '20%'
+    },
+    emptyDecoStyle: {
+        width: isTabletView ? 600 : 320,  
+        height: isTabletView ? 400 : 220, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    emptyText:{
+        color: '#4A3424',
+        fontFamily: 'PixelFont',
+        fontSize: isTabletView ? 14 : 10,
+        textAlign: 'center',
+        paddingHorizontal: '20%',
+        top: '15%'
+    },
+    createButton: {
+        height: '10%',
+        width: '50%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    createButtonText: {
+        color: '#FFFFFF',
+        textAlign: 'center',
+        paddingHorizontal: 5,
+        fontSize: isTabletView ? 20 : 16,
+        fontFamily: 'PixelFont',
+        includeFontPadding: false,
+        textAlignVertical: 'center'
+    },
+
+    // ==============================
+    // LIST 
+    // ==============================
     sectionHeader: {
         fontSize: 15,
         color: '#666666',
@@ -496,7 +608,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent', // Cards look transparent in screenshot or white
     },
 
-    // Icon / Image Area
+    // ==============================
+    // ICON / IMAGE
+    // ==============================
     iconContainer: {
         position: 'relative',
         marginRight: 16,
@@ -550,7 +664,9 @@ const styles = StyleSheet.create({
         color: '#6B7280', // Lighter Grey
     },
 
-    // Edit Button
+    // ==============================
+    // EDIT BUTTON
+    // ==============================
     editButton: {
         width: 36,
         height: 36,
@@ -562,26 +678,5 @@ const styles = StyleSheet.create({
     consumedButton: {
         backgroundColor: '#7A9B6B', // Turns dark green when consumed
         opacity: 0.8,
-    },
-
-    // Empty State
-    emptyContainer: {
-        alignItems: 'center',
-        marginTop: 60,
-    },
-    emptyText: {
-        fontSize: 16,
-        color: '#8E8E8E',
-        marginBottom: 20,
-    },
-    createButton: {
-        backgroundColor: '#6A8E58',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-    },
-    createButtonText: {
-        color: '#FFFFFF',
-        fontWeight: 'bold',
     },
 });

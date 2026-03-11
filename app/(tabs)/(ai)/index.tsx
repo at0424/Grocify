@@ -9,7 +9,6 @@ import {
     fetchUserMealPlan,
     updateUserPlan
 } from '@/services/api.js';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useRouter } from 'expo-router';
@@ -60,10 +59,10 @@ export default function ChatScreen() {
     const [formTargetFridge, setFormTargetFridge] = useState('ALL');
     const [showFridgeForm, setShowFridgeForm] = useState(false);
     const [cookTargetFridge, setCookTargetFridge] = useState('ALL');
-    
+
     const COLORS = ['#FFF9C4', '#E1F5FE', '#FFEBEE', '#E8F5E9', '#F3E5F5'];
     const [formColor, setFormColor] = useState(COLORS[3]);
-    
+
     const [isAdvancedMeals, setIsAdvancedMeals] = useState(false);
     const [advancedMeals, setAdvancedMeals] = useState(
         // Pre-fill an array for up to 7 days to track individual daily selections
@@ -131,7 +130,7 @@ export default function ChatScreen() {
     };
 
     // ==========================================
-    // MEAL PLAN FORM LOGIC
+    //  LOGIC
     // ==========================================
 
     // Helper to toggle specific meals on specific days
@@ -173,7 +172,7 @@ export default function ChatScreen() {
 
         // What the user SEES
         const displayText = `Please create a ${formDays}-day meal plan named "${finalName}".`;
-        
+
         // What the AI SEES
         const engineeredPrompt = `Please create a ${formDays}-day meal plan for me starting on ${formStartDate.toDateString()}.\n• Name: "${finalName}"\n• Meals included: ${mealsPromptText}\n• Allergies or restrictions: ${finalAllergies}\n\nPlease generate this using recipes from the catalog and save it!`;
 
@@ -195,10 +194,10 @@ export default function ChatScreen() {
     const submitFridgeCookRequest = () => {
         setShowFridgeForm(false);
 
-        const selectedList = cookTargetFridge !== 'ALL' 
-            ? userLists.find(list => (list.listId || list.id || list._id) === cookTargetFridge) 
+        const selectedList = cookTargetFridge !== 'ALL'
+            ? userLists.find(list => (list.listId || list.id || list._id) === cookTargetFridge)
             : null;
-        
+
         const listName = selectedList ? (selectedList.listName || selectedList.name) : "All Lists";
 
         // What the user SEES in the chat bubble
@@ -208,7 +207,7 @@ export default function ChatScreen() {
 
         // What the AI SEES in the backend
         let hiddenPrompt = "I want to cook from my fridge. Please check ALL of my grocery lists. DO NOT ask me which list to choose. Use your tools to pick a list, check it silently, and immediately suggest exactly ONE recipe I can make right now. Do not format this as a daily meal plan.";
-        
+
         if (cookTargetFridge !== 'ALL') {
             hiddenPrompt = `I want to cook from my fridge. You MUST immediately call the 'get_fridge_items' tool specifically for the list named "${listName}" (ID: ${cookTargetFridge}). Read the items carefully. Even if there are only 1 or 2 random ingredients, DO NOT say the list is empty. Invent exactly ONE creative recipe I can make with whatever is there. Do not format this as a daily meal plan.`;
         }
@@ -245,7 +244,7 @@ export default function ChatScreen() {
 
                 return {
                     day: d.dayLabel || `Day ${index + 1}`,
-                    date: localDateString, 
+                    date: localDateString,
                     meals: (d.meals || []).map(m => {
                         const aiId = String(m.recipeId || "").replace(/\\/g, '').toLowerCase().replace('in_', 'ln_').trim();
                         const fullRecipe = availableRecipes.find(r => String(r.id || r._id || r.recipeId).toLowerCase() === aiId)
@@ -271,7 +270,7 @@ export default function ChatScreen() {
 
         const daysToPlan = populatedDays.length > 0 ? populatedDays.length : formDays;
         endDateObj.setDate(startDateObj.getDate() + daysToPlan - 1);
-        endDateObj.setHours(23, 59, 59, 999); 
+        endDateObj.setHours(23, 59, 59, 999);
 
         const startYear = startDateObj.getFullYear();
         const startMonth = String(startDateObj.getMonth() + 1).padStart(2, '0');
@@ -308,9 +307,9 @@ export default function ChatScreen() {
                                 measurements: []
                             });
                         }
-                        aggregator.get(lowerName).measurements.push({ 
-                            amount: parseFloat(ing.amount) || 0, 
-                            unit: (ing.unit || "").trim().toLowerCase() 
+                        aggregator.get(lowerName).measurements.push({
+                            amount: parseFloat(ing.amount) || 0,
+                            unit: (ing.unit || "").trim().toLowerCase()
                         });
                     });
                 });
@@ -327,11 +326,11 @@ export default function ChatScreen() {
                 const parts = [];
                 unitTotals.forEach((total, unit) => parts.push(`${Math.round(total * 100) / 100} ${unit}`.trim()));
                 [...new Set(textOnlyUnits)].forEach(u => parts.push(u));
-                finalIngredients.push({ 
-                    name: data.name, 
-                    quantity: parts.join(", "), 
-                    category: data.category, 
-                    shelfLife: data.shelfLife 
+                finalIngredients.push({
+                    name: data.name,
+                    quantity: parts.join(", "),
+                    category: data.category,
+                    shelfLife: data.shelfLife
                 });
             });
 
@@ -533,50 +532,50 @@ export default function ChatScreen() {
         <View style={styles.welcomeContainer}>
             <Text style={styles.welcomeTitle}>How can I help you today?</Text>
             <View style={styles.suggestionsGrid}>
-                
+
                 {/* Box 1: Create a meal plan */}
                 <View style={styles.suggestionWrapper}>
                     <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowMealForm(true)}>
-                        <Image 
-                            source={require('@/assets/images/ai/MealPlanBox.png')} 
-                            style={styles.suggestionImage} 
-                            resizeMode="contain" 
+                        <Image
+                            source={require('@/assets/images/ai/MealPlanBox.png')}
+                            style={styles.suggestionImage}
+                            resizeMode="contain"
                         />
                     </TouchableOpacity>
                     <Text style={styles.suggestionText}>Create a meal plan</Text>
                 </View>
-                
+
                 {/* Box 2: Add to grocery list */}
                 <View style={styles.suggestionWrapper}>
                     <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("I need to add some items to my grocery list.")}>
-                        <Image 
-                            source={require('@/assets/images/ai/GroceryItemBox.png')} 
-                            style={styles.suggestionImage} 
-                            resizeMode="contain" 
+                        <Image
+                            source={require('@/assets/images/ai/GroceryItemBox.png')}
+                            style={styles.suggestionImage}
+                            resizeMode="contain"
                         />
                     </TouchableOpacity>
                     <Text style={styles.suggestionText}>Add to grocery list</Text>
                 </View>
-                
+
                 {/* Box 3: Cook from my fridge */}
                 <View style={styles.suggestionWrapper}>
                     <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowFridgeForm(true)}>
-                        <Image 
-                            source={require('@/assets/images/ai/CookFromFridgeBox.png')} 
-                            style={styles.suggestionImage} 
-                            resizeMode="contain" 
+                        <Image
+                            source={require('@/assets/images/ai/CookFromFridgeBox.png')}
+                            style={styles.suggestionImage}
+                            resizeMode="contain"
                         />
                     </TouchableOpacity>
                     <Text style={styles.suggestionText}>Cook from my fridge</Text>
                 </View>
-                
+
                 {/* Box 4: Suggest a recipe */}
                 <View style={styles.suggestionWrapper}>
                     <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("Can you suggest me a recipe?")}>
-                        <Image 
+                        <Image
                             source={require('@/assets/images/ai/RecipeBox.png')}
-                            style={styles.suggestionImage} 
-                            resizeMode="contain" 
+                            style={styles.suggestionImage}
+                            resizeMode="contain"
                         />
                     </TouchableOpacity>
                     <Text style={styles.suggestionText}>Suggest a recipe</Text>
@@ -616,21 +615,52 @@ export default function ChatScreen() {
         return (
             <Modal visible={showMealForm} transparent animationType="fade">
                 <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                    <View style={[styles.modalCard, { maxHeight: '90%' }]}>
+                    <ImageBackground
+                        source={require('@/assets/images/listing/icons/ItemBorder.png')}
+                        style={[styles.modalCard]}
+                        resizeMode='stretch'
+                    >
                         <View style={styles.modalHeader}>
+
                             <Text style={styles.modalTitle}>Plan Details</Text>
-                            <Ionicons name="close" size={26} color="#333" onPress={() => setShowMealForm(false)} />
+
+                            <TouchableOpacity
+                                style={[styles.headerIcon, { alignContent: 'center', justifyContent: 'center' }]}
+                                onPress={() => setShowMealForm(false)}
+                            >
+                                <Image
+                                    source={require('@/components/images/ExitButton.png')}
+                                    style={{ height: '80%', aspectRatio: 1 }}
+                                    resizeMode='contain'
+                                />
+                            </TouchableOpacity>
+
                         </View>
+
+                        <Image
+                            source={require('@/components/images/Separator.png')}
+                            style={{
+                                width: '100%'
+                            }}
+                            resizeMode='stretch'
+                        />
 
                         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                             <Text style={styles.inputLabel}>Plan Name (Optional)</Text>
-                            <TextInput 
-                                style={styles.modalInput} 
-                                placeholder="e.g., Gym Week, AI Trail" 
-                                value={formName} 
-                                onChangeText={setFormName} 
-                                placeholderTextColor="#A0A0A0" 
-                            />
+
+                            <ImageBackground
+                                source={require('@/assets/images/listing/DescriptionBG.png')}
+                                style={[styles.modalInputContainer]}
+                                resizeMode="stretch"
+                            >
+                                <TextInput
+                                    style={styles.modalInput}
+                                    placeholder="e.g., Gym Week, Family Dinner"
+                                    value={formName}
+                                    onChangeText={setFormName}
+                                    placeholderTextColor="#A0A0A0"
+                                />
+                            </ImageBackground>
 
                             <Text style={styles.inputLabel}>List Color</Text>
                             <View style={styles.colorContainer}>
@@ -638,8 +668,8 @@ export default function ChatScreen() {
                                     <TouchableOpacity
                                         key={color}
                                         style={[
-                                            styles.colorCircle, 
-                                            { backgroundColor: color }, 
+                                            styles.colorCircle,
+                                            { backgroundColor: color },
                                             formColor === color && styles.colorCircleActive
                                         ]}
                                         onPress={() => setFormColor(color)}
@@ -653,15 +683,27 @@ export default function ChatScreen() {
                                 showsHorizontalScrollIndicator={false}
                                 data={dateOptions}
                                 keyExtractor={(item) => item.label}
-                                contentContainerStyle={{ gap: 10, paddingVertical: 5 }}
+                                style={{ height: isTabletView ? 100 : 70, flexGrow: 0 }}
+                                contentContainerStyle={{ gap: 10, marginBottom: 25 }}
                                 renderItem={({ item }) => {
                                     const isActive = formStartDate.toDateString() === item.date.toDateString();
                                     return (
                                         <TouchableOpacity
-                                            style={[styles.pill, isActive && styles.pillActive]}
+                                            style={[styles.pillWrapper, { width: isTabletView ? 150 : 110, height: isTabletView ? 60 : 40 }]}
                                             onPress={() => setFormStartDate(item.date)}
                                         >
-                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{item.label}</Text>
+                                            <ImageBackground
+                                                source={
+                                                    isActive
+                                                        ? require('@/components/images/GeneralBlueButton.png')
+                                                        : require('@/components/images/GeneralWoodenButton.png')
+                                                }
+                                                style={[styles.pillImageBackground]}
+                                                resizeMode="stretch"
+                                            >
+                                                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{item.label}</Text>
+                                            </ImageBackground>
+
                                         </TouchableOpacity>
                                     );
                                 }}
@@ -669,42 +711,100 @@ export default function ChatScreen() {
 
                             <Text style={styles.inputLabel}>Duration (Days)</Text>
                             <View style={styles.pillContainer}>
-                                {[1, 2, 3, 5, 7].map(day => (
-                                    <TouchableOpacity 
-                                        key={day} 
-                                        style={[styles.pill, formDays === day && styles.pillActive]} 
-                                        onPress={() => setFormDays(day)}
-                                    >
-                                        <Text style={[styles.pillText, formDays === day && styles.pillTextActive]}>{day}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                                {[1, 2, 3, 5, 7].map(day => {
+                                    const isActive = formDays === day;
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={day}
+                                            style={styles.pillWrapper}
+                                            onPress={() => setFormDays(day)}
+                                        >
+                                            <ImageBackground
+                                                source={
+                                                    isActive
+                                                        ? require('@/components/images/GeneralBlueButton.png')
+                                                        : require('@/components/images/GeneralWoodenButton.png')
+                                                }
+                                                style={[styles.pillImageBackground]}
+                                                resizeMode="stretch"
+                                            >
+                                                <Text style={[styles.pillText, formDays === day && styles.pillTextActive]}>{day}</Text>
+                                            </ImageBackground>
+
+                                        </TouchableOpacity>
+                                    )
+                                })}
                             </View>
 
                             <Text style={styles.inputLabel}>Add Groceries To Which Fridge</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 5 }}>
-                                <TouchableOpacity 
-                                    style={[styles.pill, formTargetFridge === 'ALL' && styles.pillActive]} 
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                style={{ height: isTabletView ? 100 : 80, flexGrow: 0 }}
+                                contentContainerStyle={{ gap: 10, paddingVertical: 5, alignItems: 'center' }}>
+                                {/* All */}
+                                <TouchableOpacity
+                                    style={[styles.pillWrapper, { width: isTabletView ? 150 : 85, height: isTabletView ? 60 : 50 }]}
                                     onPress={() => setFormTargetFridge('ALL')}
                                 >
-                                    <Text style={[styles.pillText, formTargetFridge === 'ALL' && styles.pillTextActive]}>All</Text>
+                                    <ImageBackground
+                                        source={
+                                            formTargetFridge === 'ALL'
+                                                ? require('@/components/images/GeneralBlueButton.png')
+                                                : require('@/components/images/GeneralWoodenButton.png')
+                                        }
+                                        style={[styles.pillImageBackground]}
+                                        resizeMode="stretch"
+                                    >
+                                        <Text style={[styles.pillText, formTargetFridge === 'ALL' && styles.pillTextActive]}>All</Text>
+                                    </ImageBackground>
+
                                 </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[styles.pill, formTargetFridge === 'CREATE_NEW' && styles.pillActive]} 
+
+                                {/* Current List */}
+                                <TouchableOpacity
+                                    style={[styles.pillWrapper, { width: isTabletView ? 150 : 100, height: isTabletView ? 60 : 50 }]}
                                     onPress={() => setFormTargetFridge('CREATE_NEW')}
                                 >
-                                    <Text style={[styles.pillText, formTargetFridge === 'CREATE_NEW' && styles.pillTextActive]}>Current List</Text>
+                                    <ImageBackground
+                                        source={
+                                            formTargetFridge === 'CREATE_NEW'
+                                                ? require('@/components/images/GeneralBlueButton.png')
+                                                : require('@/components/images/GeneralWoodenButton.png')
+                                        }
+                                        style={[styles.pillImageBackground]}
+                                        resizeMode="stretch"
+                                    >
+                                        <Text style={[styles.pillText, formTargetFridge === 'CREATE_NEW' && styles.pillTextActive]}>Current List</Text>
+                                    </ImageBackground>
+
                                 </TouchableOpacity>
+
+                                {/* Mapped User Lists */}
                                 {userLists.map(list => {
                                     const listId = list.listId || list.id || list._id;
                                     const listName = list.listName || list.name || "Unnamed List";
                                     const isActive = formTargetFridge === listId;
+
                                     return (
-                                        <TouchableOpacity 
-                                            key={listId} 
-                                            style={[styles.pill, isActive && styles.pillActive]} 
+                                        <TouchableOpacity
+                                            key={listId}
+                                            style={[styles.pillWrapper, { width: isTabletView ? 150 : 100, height: isTabletView ? 60 : 50 }]}
                                             onPress={() => setFormTargetFridge(listId)}
                                         >
-                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{listName}</Text>
+                                            <ImageBackground
+                                                source={
+                                                    isActive
+                                                        ? require('@/components/images/GeneralBlueButton.png')
+                                                        : require('@/components/images/GeneralWoodenButton.png')
+                                                }
+                                                style={[styles.pillImageBackground]}
+                                                resizeMode="stretch"
+                                            >
+                                                <Text style={[styles.pillText, isActive && styles.pillTextActive, { fontSize: isTabletView ? 10 : 8 }]}>{listName}</Text>
+                                            </ImageBackground>
+
                                         </TouchableOpacity>
                                     );
                                 })}
@@ -712,6 +812,7 @@ export default function ChatScreen() {
 
                             <View style={styles.mealsHeaderContainer}>
                                 <Text style={styles.inputLabel}>Meals Included</Text>
+
                                 <TouchableOpacity onPress={() => setIsAdvancedMeals(!isAdvancedMeals)}>
                                     <Text style={styles.advancedText}>{isAdvancedMeals ? 'Basic' : 'Advanced'}</Text>
                                 </TouchableOpacity>
@@ -722,14 +823,25 @@ export default function ChatScreen() {
                                     {['breakfast', 'lunch', 'dinner'].map(meal => {
                                         const isActive = formMeals[meal];
                                         return (
-                                            <TouchableOpacity 
-                                                key={meal} 
-                                                style={[styles.pill, isActive && styles.pillActive]} 
+                                            <TouchableOpacity
+                                                key={meal}
+                                                style={[styles.pillWrapper, { width: isTabletView ? 150 : 85, height: isTabletView ? 50 : 40 }]}
                                                 onPress={() => setFormMeals(prev => ({ ...prev, [meal]: !isActive }))}
                                             >
-                                                <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
-                                                    {meal.charAt(0).toUpperCase() + meal.slice(1)}
-                                                </Text>
+                                                <ImageBackground
+                                                    source={
+                                                        isActive
+                                                            ? require('@/components/images/GeneralBlueButton.png')
+                                                            : require('@/components/images/GeneralWoodenButton.png')
+                                                    }
+                                                    style={[styles.pillImageBackground]}
+                                                    resizeMode="stretch"
+                                                >
+                                                    <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                                                        {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                                                    </Text>
+                                                </ImageBackground>
+
                                             </TouchableOpacity>
                                         );
                                     })}
@@ -743,14 +855,25 @@ export default function ChatScreen() {
                                                 {['breakfast', 'lunch', 'dinner'].map(meal => {
                                                     const isActive = advancedMeals[dayIndex][meal];
                                                     return (
-                                                        <TouchableOpacity 
-                                                            key={meal} 
-                                                            style={[styles.pillSmall, isActive && styles.pillActive]} 
+                                                        <TouchableOpacity
+                                                            key={meal}
+                                                            style={[styles.pillWrapper, { width: isTabletView ? 130 : 60, height: isTabletView ? 50 : 40 }]}
                                                             onPress={() => toggleAdvancedMeal(dayIndex, meal)}
                                                         >
-                                                            <Text style={[styles.pillTextSmall, isActive && styles.pillTextActive]}>
-                                                                {meal.charAt(0).toUpperCase() + meal.slice(1)}
-                                                            </Text>
+                                                            <ImageBackground
+                                                                source={
+                                                                    isActive
+                                                                        ? require('@/components/images/GeneralBlueButton.png')
+                                                                        : require('@/components/images/GeneralWoodenButton.png')
+                                                                }
+                                                                style={[styles.pillImageBackground]}
+                                                                resizeMode="stretch"
+                                                            >
+                                                                <Text style={[styles.pillTextSmall, isActive && styles.pillTextActive]}>
+                                                                    {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                                                                </Text>
+                                                            </ImageBackground>
+
                                                         </TouchableOpacity>
                                                     );
                                                 })}
@@ -761,20 +884,35 @@ export default function ChatScreen() {
                             )}
 
                             <Text style={styles.inputLabel}>Allergies / Restrictions</Text>
-                            <TextInput 
-                                style={styles.modalInput} 
-                                placeholder="e.g., Peanuts, Vegan, None" 
-                                value={formAllergies} 
-                                onChangeText={setFormAllergies} 
-                                placeholderTextColor="#A0A0A0" 
-                            />
 
-                            <TouchableOpacity style={styles.submitFormButton} onPress={submitMealPlanForm}>
-                                <Text style={styles.submitFormText}>Generate Plan</Text>
+                            <ImageBackground
+                                source={require('@/assets/images/listing/DescriptionBG.png')}
+                                style={[styles.modalInputContainer]}
+                                resizeMode="stretch"
+                            >
+                                <TextInput
+                                    style={styles.modalInput}
+                                    placeholder="e.g., Peanuts, Vegan, None"
+                                    value={formAllergies}
+                                    onChangeText={setFormAllergies}
+                                    placeholderTextColor="#A0A0A0"
+                                />
+                            </ImageBackground>
+
+
+                            <TouchableOpacity style={styles.submitFormButtonWrapper} onPress={submitMealPlanForm}>
+                                <ImageBackground
+                                    source={require("@/assets/images/listing/TitlePanel.png")}
+                                    style={styles.submitFormButton}
+                                    resizeMode='contain'
+                                >
+                                    <Text style={styles.submitFormText}>Generate Plan</Text>
+                                </ImageBackground>
+
                             </TouchableOpacity>
 
                         </ScrollView>
-                    </View>
+                    </ImageBackground>
                 </KeyboardAvoidingView>
             </Modal>
         );
@@ -784,19 +922,70 @@ export default function ChatScreen() {
         return (
             <Modal visible={showFridgeForm} transparent animationType="fade">
                 <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-                    <View style={styles.modalCard}>
+                    <ImageBackground
+                        source={require('@/assets/images/listing/icons/ItemBorder.png')}
+                        style={[styles.modalCard]}
+                        resizeMode='stretch'
+                    >
+
+                        {/* Header */}
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select Fridge</Text>
-                            <Ionicons name="close" size={26} color="#333" onPress={() => setShowFridgeForm(false)} />
+
+                            <TouchableOpacity
+                                onPress={() => setShowFridgeForm(false)}
+                                style={styles.headerIcon}
+                            >
+                                <Image
+                                    source={require("@/components/images/ExitButton.png")}
+                                    style={{ width: '100%', height: '100%' }}
+                                    resizeMode='contain'
+                                />
+                            </TouchableOpacity>
+
                         </View>
 
+                        {/* Separator */}
+                        <Image
+                            source={require('@/components/images/Separator.png')}
+                            style={{
+                                width: '100%'
+                            }}
+                            resizeMode='stretch'
+                        />
+
+                        {/* Fridge Selector */}
                         <Text style={styles.inputLabel}>Which list should I look in?</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 10 }}>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false} 
+                            style={{}}
+                            contentContainerStyle={{ gap: 10, paddingVertical: 10, alignItems: 'center' }}
+                        >
                             <TouchableOpacity
-                                style={[styles.pill, cookTargetFridge === 'ALL' && styles.pillActive]}
+                                style={[
+                                    styles.pillWrapper,
+                                    {
+                                        width: '40%',
+                                        height: '40%',
+                                        justifyContent: 'center',
+                                        alignItems: 'center'
+                                    }
+                                ]}
                                 onPress={() => setCookTargetFridge('ALL')}
                             >
-                                <Text style={[styles.pillText, cookTargetFridge === 'ALL' && styles.pillTextActive]}>All Lists</Text>
+                                <ImageBackground
+                                    source={
+                                        cookTargetFridge === 'ALL'
+                                            ? require('@/components/images/GeneralBlueButton.png')
+                                            : require('@/components/images/GeneralWoodenButton.png')
+                                    }
+                                    style={[styles.pillImageBackground]}
+                                    resizeMode="stretch"
+                                >
+                                    <Text style={[styles.pillText, cookTargetFridge === 'ALL' && styles.pillTextActive]}>All Lists</Text>
+                                </ImageBackground>
+
                             </TouchableOpacity>
 
                             {userLists.map(list => {
@@ -806,19 +995,55 @@ export default function ChatScreen() {
                                 return (
                                     <TouchableOpacity
                                         key={listId}
-                                        style={[styles.pill, isActive && styles.pillActive]}
+                                        style={[
+                                            styles.pillWrapper,
+                                            {
+                                                width: '40%',
+                                                height: '40%',
+                                                justifyContent: 'center',
+                                                alignItems: 'center'
+                                            }
+                                        ]}
                                         onPress={() => setCookTargetFridge(listId)}
                                     >
-                                        <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{listName}</Text>
+                                        <ImageBackground
+                                            source={
+                                                isActive
+                                                    ? require('@/components/images/GeneralBlueButton.png')
+                                                    : require('@/components/images/GeneralWoodenButton.png')
+                                            }
+                                            style={[styles.pillImageBackground]}
+                                            resizeMode="stretch"
+                                        >
+                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{listName}</Text>
+                                        </ImageBackground>
+
                                     </TouchableOpacity>
                                 );
                             })}
                         </ScrollView>
 
-                        <TouchableOpacity style={styles.submitFormButton} onPress={submitFridgeCookRequest}>
-                            <Text style={styles.submitFormText}>Find Recipes</Text>
+                        <TouchableOpacity
+                            style={[
+                                styles.submitFormButtonWrapper,
+                                {
+                                    width: '60%',
+                                    height: isTabletView ? 80 : 50
+                                }
+                            ]}
+                            onPress={submitFridgeCookRequest}
+                        >
+                            <ImageBackground
+                                source={require('@/assets/images/listing/TitlePanel.png')}
+                                style={styles.submitFormButton}
+                                resizeMode='stretch'
+                            >
+                                <Text style={styles.submitFormText}>Find Recipes</Text>
+                            </ImageBackground>
                         </TouchableOpacity>
-                    </View>
+
+                    </ImageBackground>
+
                 </KeyboardAvoidingView>
             </Modal>
         );
@@ -830,7 +1055,7 @@ export default function ChatScreen() {
     return (
         <ImageBackground
             source={require('@/assets/images/ai/AI_BG.png')}
-            style={styles.background} 
+            style={styles.background}
             resizeMode="stretch"
         >
             <SafeAreaView style={styles.container}>
@@ -847,7 +1072,7 @@ export default function ChatScreen() {
                             resizeMode='stretch'
                         />
                     </View>
-                    
+
                     <TouchableOpacity
                         style={styles.headerIcon}
                         onPress={() => router.back()}
@@ -858,9 +1083,9 @@ export default function ChatScreen() {
                             resizeMode='contain'
                         />
                     </TouchableOpacity>
-                    
+
                     <Text style={styles.headerTitle}>AI Assistant</Text>
-                    
+
                     <TouchableOpacity style={styles.headerIcon} onPress={clearHistory}>
                         <Image
                             source={require('@/components/images/RefreshButton.png')}
@@ -871,9 +1096,9 @@ export default function ChatScreen() {
                 </ImageBackground>
 
                 {/* Chat Content */}
-                <KeyboardAvoidingView 
-                    style={{ flex: 1 }} 
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
                 >
                     {messages.length === 0 ? renderWelcomeScreen() : (
@@ -917,7 +1142,7 @@ export default function ChatScreen() {
                             <ImageBackground
                                 source={require('@/components/images/GeneralRedButton.png')}
                                 style={styles.sendButton}
-                                resizeMode='stretch' 
+                                resizeMode='stretch'
                             >
                                 {isLoading ? (
                                     <ActivityIndicator color="#FFFFFF" size="small" />
@@ -962,8 +1187,8 @@ const styles = StyleSheet.create({
     },
     headerWrapper: {
         position: 'absolute',
-        top: 8,    
-        bottom: 8, 
+        top: 8,
+        bottom: 8,
         left: 12,
         right: 12,
         justifyContent: 'center',
@@ -981,7 +1206,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 0,
-        elevation: 3,
     },
     headerTitle: {
         fontSize: isTabletView ? 24 : 18,
@@ -1010,13 +1234,13 @@ const styles = StyleSheet.create({
         width: '80%',
     },
     suggestionWrapper: {
-        width: '46%', 
-        alignItems: 'center', 
+        width: '46%',
+        alignItems: 'center',
         marginBottom: 20,
     },
     suggestionButton: {
         width: '100%',
-        aspectRatio: 1, 
+        aspectRatio: 1,
 
         shadowColor: "#4A3525",
         shadowOffset: { width: 0, height: 4 },
@@ -1051,28 +1275,28 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-end',
         backgroundColor: '#C86842',
         borderRadius: 8,
-        borderBottomRightRadius: 0, 
+        borderBottomRightRadius: 0,
         borderWidth: 2,
         borderColor: '#A0492B',
-        
+
         shadowColor: "#000000",
         shadowOffset: { width: 2, height: 2 },
         shadowOpacity: 0.2,
-        shadowRadius: 0, 
+        shadowRadius: 0,
         elevation: 3,
     },
     botBubble: {
         alignSelf: 'flex-start',
-        backgroundColor: '#E6D5B3', 
+        backgroundColor: '#E6D5B3',
         borderRadius: 8,
         borderBottomLeftRadius: 0,
         borderWidth: 4,
-        borderColor: '#6D4C3D', 
+        borderColor: '#6D4C3D',
 
         shadowColor: "#4A3525",
         shadowOffset: { width: 4, height: 4 },
         shadowOpacity: 1,
-        shadowRadius: 0, 
+        shadowRadius: 0,
         elevation: 10,
     },
     messageText: {
@@ -1092,27 +1316,27 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         flex: 1,
-        minHeight: 60, 
+        minHeight: 60,
         justifyContent: 'center',
-        marginRight: 10, 
-        paddingLeft: '5%',   
-        paddingRight: '4%',  
-        paddingTop: 14,   
+        marginRight: 10,
+        paddingLeft: '5%',
+        paddingRight: '4%',
+        paddingTop: 14,
         paddingBottom: 14,
     },
     input: {
         paddingHorizontal: 16,
         fontSize: isTabletView ? 16 : 12,
         fontFamily: 'PixelFont',
-        color: '#5C4033',   
-        minHeight: 24,           
-        maxHeight: 100,   
+        color: '#5C4033',
+        minHeight: 24,
+        maxHeight: 100,
         includeFontPadding: false,
-        textAlignVertical: 'center'         
+        textAlignVertical: 'center'
     },
     sendButton: {
-        width: isTabletView ? 100 : 80,  
-        height: isTabletView ? 60 : 45, 
+        width: isTabletView ? 100 : 80,
+        height: isTabletView ? 60 : 45,
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: 10,
@@ -1134,9 +1358,12 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalCard: {
-        backgroundColor: '#FFFFFF',
         borderRadius: 20,
-        padding: 24,
+        paddingVertical: isTabletView ? "10%" : '14%',
+        paddingHorizontal: '10%',
+        maxHeight: "90%",
+        minHeight: "40%",
+
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
@@ -1150,29 +1377,47 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     modalTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
+        fontSize: isTabletView ? 22 : 18,
+        fontFamily: 'PixelFont',
         color: '#333',
     },
     inputLabel: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: isTabletView ? 14 : 12,
+        fontFamily: 'PixelFont',
         color: '#555',
         marginBottom: 8,
         marginTop: 20,
     },
+    modalInputContainer: {
+        flex: 1,
+        minHeight: isTabletView ? 70 : 60,
+        justifyContent: 'center',
+        marginRight: 10,
+    },
     modalInput: {
-        backgroundColor: '#F5F5F5',
         borderRadius: 12,
         padding: 14,
-        fontSize: 16,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
+        fontSize: isTabletView ? 12 : 10,
+        fontFamily: 'PixelFont',
+        includeFontPadding: false,
+        textAlignVertical: 'center'
     },
     pillContainer: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 10,
+        justifyContent: 'space-between',
+        width: '100%',
+        marginBottom: 0
+    },
+    pillWrapper: {
+        width: '18%',
+        height: isTabletView ? 50 : 40,
+    },
+    pillImageBackground: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 4
     },
     pill: {
         paddingVertical: 10,
@@ -1187,39 +1432,54 @@ const styles = StyleSheet.create({
         borderColor: '#007AFF',
     },
     pillText: {
-        fontSize: 14,
+        fontSize: isTabletView ? 14 : 10,
+        fontFamily: 'PixelFont',
         color: '#555',
-        fontWeight: '600',
+        textAlign: 'center',
+        paddingHorizontal: 5,
+        includeFontPadding: false,
+        textAlignVertical: 'center'
     },
     pillTextActive: {
         color: '#FFFFFF',
     },
-    submitFormButton: {
-        backgroundColor: '#007AFF',
-        borderRadius: 16,
-        padding: 16,
+    submitFormButtonWrapper: {
         alignItems: 'center',
-        marginTop: 30,
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginTop: 28,
+        width: '60%',
+        height: '10%',
+    },
+    submitFormButton: {
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     submitFormText: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontFamily: 'PixelFont',
+        textAlign: 'center',
+        paddingHorizontal: '10%',
+        fontSize: isTabletView ? 18 : 12,
     },
     colorContainer: {
         flexDirection: 'row',
-        gap: 12,
-        marginTop: 5,
+        justifyContent: 'space-between',
+        marginBottom: 15,
+        width: '100%'
     },
     colorCircle: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        borderWidth: 2,
-        borderColor: 'transparent',
+        width: "15%",
+        aspectRatio: 1,
+        borderRadius: isTabletView ? 10 : 8,
+        borderWidth: isTabletView ? 5 : 3,
+        borderColor: '#8B5A2B'
     },
     colorCircleActive: {
-        borderColor: '#007AFF',
+        borderColor: '#3E2723',
+        transform: [{ scale: 1.1 }]
     },
 
     mealsHeaderContainer: {
@@ -1231,8 +1491,8 @@ const styles = StyleSheet.create({
     advancedText: {
         color: '#007AFF',
         fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 8,
+        fontFamily: 'PixelFont',
+        top: 5
     },
     advancedMealsContainer: {
         gap: 8,
@@ -1248,8 +1508,10 @@ const styles = StyleSheet.create({
     },
     advancedDayText: {
         fontSize: 14,
-        fontWeight: '600',
+        fontFamily: 'PixelFont',
         color: '#444',
+        includeFontPadding: false,
+        textAlignVertical: 'center'
     },
     pillContainerSmall: {
         flexDirection: 'row',
@@ -1262,9 +1524,11 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     pillTextSmall: {
-        fontSize: 12,
+        fontSize: isTabletView ? 8 : 6,
         color: '#555',
-        fontWeight: '600',
+        fontFamily: 'PixelFont',
+        includeFontPadding: false,
+        textAlignVertical: 'center'
     },
 });
 
@@ -1283,7 +1547,7 @@ const botMarkdownStyles = {
         marginBottom: 10,
     },
     strong: {
-        fontFamily: 'PixelFont', 
+        fontFamily: 'PixelFont',
         fontSize: 13,
         fontWeight: 'normal',
         color: 'black', // Slightly darker for emphasis

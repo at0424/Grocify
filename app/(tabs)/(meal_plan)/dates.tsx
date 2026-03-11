@@ -1,8 +1,9 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Stack, useRouter } from 'expo-router';
-import { ChevronDown, ChevronLeft } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  Dimensions,
+  Image,
+  ImageBackground,
   Modal,
   Platform,
   SafeAreaView,
@@ -11,102 +12,117 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 
-// Data Input Component
-  const DateInput = ({ label, date, minDate, onChange }) => {
-  const [showPicker, setShowPicker] = useState(false);
+LocaleConfig.locales['en'] = {
+  monthNames: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  monthNamesShort: ['Jan.','Feb.','Mar','Apr','May','Jun','Jul.','Aug','Sep.','Oct.','Nov.','Dec.'],
+  dayNames: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+  dayNamesShort: ['S','M','T','W','T','F','S'], // This is the fix
+  today: 'Today'
+};
+LocaleConfig.defaultLocale = 'en';
 
-  const getDayName = (d) => {
-    const today = new Date();
-    if (d.toDateString() === today.toDateString()) return "Today";
-    return d.toLocaleDateString('en-US', { weekday: 'long' });
+const CustomPixelDatePicker = ({ visible, onClose, selectedDate, minDate, onDateSelect, title }) => {
+  // Format dates to 'YYYY-MM-DD' for the calendar library
+  const getFormattedDate = (d) => {
+    if (!d) return undefined;
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().split('T')[0];
   };
 
+  const formattedSelected = getFormattedDate(selectedDate);
+  const formattedMin = getFormattedDate(minDate);
+
+  return (
+    <Modal
+      transparent={true}
+      animationType="fade"
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.popupBackground}>
+          <Text style={styles.popupTitle}>{title}</Text>
+
+          <Calendar
+            current={formattedSelected}
+            minDate={formattedMin}
+            onDayPress={(day) => {
+              const newDate = new Date(`${day.dateString}T12:00:00`);
+              onDateSelect(newDate);
+              onClose();
+            }}
+            markedDates={{
+              [formattedSelected]: { selected: true, disableTouchEvent: true }
+            }}
+            theme={{
+              backgroundColor: 'transparent',
+              calendarBackground: 'transparent',
+              textSectionTitleColor: '#4A2F1D', 
+              selectedDayBackgroundColor: '#7A9B6B', 
+              selectedDayTextColor: '#FFFFFF',
+              todayTextColor: '#8C5A35', 
+              dayTextColor: '#333333',
+              textDisabledColor: '#A9A9A9',
+              monthTextColor: '#4A2F1D',
+              arrowColor: '#4A2F1D',
+              textDayFontFamily: 'PixelFont',
+              textMonthFontFamily: 'PixelFont',
+              textDayHeaderFontFamily: 'PixelFont',
+              textDayFontSize: 12,
+              textMonthFontSize: 16,
+              textDayHeaderFontSize: 18,
+            }}
+          />
+
+          <TouchableOpacity style={styles.closeModalButton} onPress={onClose}>
+            <Text style={styles.closeModalButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+// --- Date Input Component ---
+const DateInput = ({ label, date, onPress }) => {
   const formatDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-  // Android Handler
-  const handleAndroidChange = (event, selectedDate) => {
-    setShowPicker(false);
-    if (selectedDate) onChange(selectedDate);
-  };
-
-  // iOS Handler
-  const handleIOSChange = (event, selectedDate) => {
-    if (selectedDate) onChange(selectedDate);
-  };
 
   return (
     <View style={styles.dateInputWrapper}>
       <Text style={styles.inputLabel}>{label}</Text>
 
-      <TouchableOpacity 
-        style={styles.dateBox} 
-        onPress={() => setShowPicker(true)}
-      >
-        <View>
-          <Text style={styles.dateDayText}>{getDayName(date)}</Text>
-          <Text style={styles.dateValueText}>{formatDate(date)}</Text>
-        </View>
-        <ChevronDown color="#7A9B6B" size={20} />
-      </TouchableOpacity>
-
-      {/* Android Picker */}
-      {Platform.OS === 'android' && showPicker && (
-        <DateTimePicker
-          value={date}
-          mode="date"
-          minimumDate={minDate}
-          display="default"
-          onChange={handleAndroidChange}
+      <TouchableOpacity style={styles.woodButton} onPress={onPress}>
+        <Image
+          source={require('@/assets/images/freshness/OrangeButton.png')} 
+          style={styles.woodButtonImage}
+          resizeMode="stretch"
         />
-      )}
 
-      {/* iOS Picker */}
-      {Platform.OS === 'ios' && (
-        <Modal
-          transparent={true}
-          animationType="slide"
-          visible={showPicker}
-          onRequestClose={() => setShowPicker(false)}
-        >
-          <View style={styles.iosModalOverlay}>
-            <View style={styles.iosModalContent}>
-              {/* Toolbar with "Done" button */}
-              <View style={styles.iosModalHeader}>
-                <TouchableOpacity onPress={() => setShowPicker(false)}>
-                  <Text style={styles.iosDoneText}>Done</Text>
-                </TouchableOpacity>
-              </View>
+        <View style={styles.buttonContentLayer}>
+          <Text style={styles.dateValueText}>{formatDate(date)}</Text>
+          <View style={styles.triangleDown} />
+        </View>
 
-              {/* The Spinner Picker */}
-              <DateTimePicker
-                value={date}
-                mode="date"
-                minimumDate={minDate}
-                display="spinner" // Use 'spinner' or 'inline' for immediate view
-                onChange={handleIOSChange}
-                textColor="#000000"
-                style={styles.iosPicker}
-              />
-            </View>
-          </View>
-        </Modal>
-      )}
+      </TouchableOpacity>
     </View>
   );
 };
 
+// --- Main Screen ---
 export default function MealPlanCreateDateScreen() {
   const router = useRouter();
 
   const [startDate, setStartDate] = useState(new Date()); 
-  const [endDate, setEndDate] = useState(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)); // Default 6 days ahead (one week)
+  const [endDate, setEndDate] = useState(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)); 
 
+  // Modal visibility states
+  const [isStartVisible, setStartVisible] = useState(false);
+  const [isEndVisible, setEndVisible] = useState(false);
 
-  // Handle selection on start date
   const handleStartChange = (newDate) => {
     setStartDate(newDate);
-    // Auto-adjust end date if needed
     if (newDate > endDate) {
       const nextWeek = new Date(newDate);
       nextWeek.setDate(newDate.getDate() + 6);
@@ -114,7 +130,6 @@ export default function MealPlanCreateDateScreen() {
     }
   };
 
-  // Passing the selected dates to the next screen
   const handleConfirm = () => {
     router.push({
       pathname: './meals_selection',
@@ -125,75 +140,90 @@ export default function MealPlanCreateDateScreen() {
     });
   };
 
-  // Helper to format date like "Nov, 10"
-  const formatDate = (date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  // Helper to get day name like "Today" or "Sunday"
-  const getDayName = (date) => {
-    const today = new Date();
-    // Compare dates without time
-    if (date.toDateString() === today.toDateString()) return "Today";
-    return date.toLocaleDateString('en-US', { weekday: 'long' });
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
       
-      {/* Header */}
-      <View style={styles.header}>
+      <ImageBackground
+        source={require('@/assets/images/meal_plan/MealPlanHeader.png')}
+        style={styles.header}
+        resizeMode='stretch'
+      >
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ChevronLeft color="#FFFFFF" size={28} />
+          <Image
+            source={require('@/components/images/BackButton.png')}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode='contain'
+          />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Meal Plan Dates</Text>
-        <View style={{ width: 28 }} />
-      </View>
 
-      {/* Content */}
+        <Text style={styles.headerTitle}>Meal Plan Dates</Text>
+        <View style={styles.backButton} />
+      </ImageBackground>
+
       <View style={styles.content}>
         <Text style={styles.instructionText}>
-          Please choose the start date and end date for the meal plan. 
-          We'll help you in creating your personalized meal plan!
+          Please choose the start{'\n'}and end date...
         </Text>
 
-        <View style={styles.dateRow}>
-          {/* Start Date */}
+        <View style={styles.datesContainer}>
           <DateInput 
             label="Start" 
             date={startDate} 
-            onChange={handleStartChange} 
+            onPress={() => setStartVisible(true)} 
           />
-
-          {/* End Date */}
           <DateInput 
             label="End" 
             date={endDate} 
-            minDate={startDate} 
-            onChange={setEndDate} 
+            onPress={() => setEndVisible(true)} 
           />
         </View>
       </View>
 
-      {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Text style={styles.confirmButtonText}>Confirm</Text>
+        <TouchableOpacity style={styles.confirmWoodButton} onPress={handleConfirm} activeOpacity={0.8}>
+          <ImageBackground
+            source={require('@/assets/images/freshness/GreenButton.png')}
+            style={styles.confirmButtonBackgroundImage} 
+            resizeMode='stretch'
+          >
+            <Text style={styles.confirmButtonText}>Confirm</Text>
+          </ImageBackground>
         </TouchableOpacity>
       </View>
+
+      {/* Popups */}
+      <CustomPixelDatePicker
+        visible={isStartVisible}
+        title="Select Start Date"
+        selectedDate={startDate}
+        minDate={new Date()}
+        onClose={() => setStartVisible(false)}
+        onDateSelect={handleStartChange}
+      />
+
+      <CustomPixelDatePicker
+        visible={isEndVisible}
+        title="Select End Date"
+        selectedDate={endDate}
+        minDate={startDate} 
+        onClose={() => setEndVisible(false)}
+        onDateSelect={setEndDate}
+      />
+      
     </SafeAreaView>
   );
 }
 
+const { width } = Dimensions.get('window');
+const isTabletView = width > 710;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E4D5B7',
   },
   header: {
-    backgroundColor: '#7A9B6B',
-    height: 60,
+    height: isTabletView ? 100 : 70,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -201,52 +231,89 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: isTabletView ? 22 : 18,
+    fontFamily: 'PixelFont',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
+  },
+  backButton: {
+    height: isTabletView ? 50 : 35,
+    aspectRatio: 1,
   },
   content: {
+    flex: 1,
     padding: 24,
+    alignItems: 'center', 
+    marginTop: '20%'
   },
   instructionText: {
-    fontSize: 15,
-    color: '#666666',
-    lineHeight: 22,
+    fontSize: isTabletView ? 18 : 16,
+    color: '#333333',
+    lineHeight: 24,
+    textAlign: 'center',
     marginBottom: 32,
-    fontWeight: '500',
+    fontFamily: 'PixelFont',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
-  dateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
+  datesContainer: {
+    width: '100%',
+    maxWidth: 400, 
+    gap: 24, 
   },
   dateInputWrapper: {
-    flex: 1,
+    width: '100%',
   },
   inputLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: isTabletView ? 20 : 18,
+    fontFamily: 'PixelFont',
     color: '#333333',
     marginBottom: 8,
+    marginLeft: 4,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
-  dateBox: {
-    backgroundColor: '#E8EDE6',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+  woodButton: {
+    width: '100%',
+    height: 65, 
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  woodButtonImage: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  buttonContentLayer: {
+    width: '100%',
+    height: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 70,
-  },
-  dateDayText: {
-    fontSize: 14,
-    color: '#555555',
-    marginBottom: 4,
+    paddingHorizontal: 20, 
   },
   dateValueText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2C3A26',
+    fontFamily: 'PixelFont',
+    color: '#FFFFFF',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
+  },
+  triangleDown: {
+    backgroundColor: 'transparent',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#FFFFFF', 
   },
   footer: {
     position: 'absolute',
@@ -254,55 +321,74 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 24,
-    paddingBottom: 40,
-    backgroundColor: '#FFFFFF',
-  },
-  confirmButton: {
-    backgroundColor: '#7A9B6B',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     alignItems: 'center',
-    shadowColor: '#7A9B6B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+  },
+  confirmWoodButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    height: isTabletView ? 100 : 80,
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmButtonBackgroundImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   confirmButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontFamily: 'PixelFont',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
 
-  // --- iOS Modal Specific Styles ---
-  iosModalOverlay: {
+  // --- Custom Modal Styles ---
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.3)', // Dim background
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', 
   },
-  iosModalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 20,
+  popupBackground: {
+    width: '90%',
+    maxWidth: 550,
+    padding: 20,
+    backgroundColor: '#E4D5B7', 
+    borderWidth: 4,
+    borderColor: '#4A2F1D',
+    borderRadius: 8,
   },
-  iosModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
-    backgroundColor: '#F8F8F8',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDEDED',
+  popupTitle: {
+    fontFamily: 'PixelFont',
+    fontSize: 22,
+    color: '#4A2F1D',
+    textAlign: 'center',
+    marginBottom: 10,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
-  iosDoneText: {
-    color: '#007AFF', // Standard iOS Blue
+  closeModalButton: {
+    marginTop: 20,
+    backgroundColor: '#8C5A35',
+    borderWidth: 2,
+    borderColor: '#4A2F1D',
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  closeModalButtonText: {
+    fontFamily: 'PixelFont',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  iosPicker: {
-    height: 200, // Fixed height for spinner
-    width: '100%',
-  },
+    includeFontPadding: false,
+    textAlignVertical: 'center'
+  }
 });
