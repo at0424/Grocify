@@ -1,7 +1,8 @@
 import { getCurrentUser, signOut } from 'aws-amplify/auth';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, Image, ImageBackground, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Dimensions, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -117,7 +118,14 @@ export default function HomeScreen() {
   const sceneWidth = isTabletView ? width * 0.75 : width;
 
   // For horizontal scrolling
-  const scrollX = useRef(new Animated.Value(0)).current;
+  const scrollViewRef = useRef(null);
+  const scrollToRoom = (roomIndex) => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ x: roomIndex * sceneWidth, y: 0, animated: true });
+    }
+  };
+
+  const scrollX = useRef(new Animated.Value(0)).current; 
   const wallTranslateX = scrollX.interpolate({
     inputRange: [0, sceneWidth * 4], 
     outputRange: [0, -(sceneWidth * 4) * 0.5], 
@@ -187,6 +195,7 @@ export default function HomeScreen() {
 
         {/* THE SWIPEABLE FOREGROUND */}
         <Animated.ScrollView
+          ref={scrollViewRef}
           horizontal
           pagingEnabled={false}
           snapToInterval={sceneWidth}
@@ -223,8 +232,17 @@ export default function HomeScreen() {
                 />
               </View>
 
+              {/* Logout Light */}
+              <View style={styles.logoutWrapper}>
+                <Image
+                  source={require('@/assets/images/main_dashboard/LogoutLight.png')} 
+                  style={styles.hangingLightImage} 
+                  resizeMode="contain"
+                />
+              </View>
+
               {/* Tall Flower Pot */}
-              <View style={styles.tallFlowerPotWrapper}>
+              <View style={styles.tallFlowerPotWrapper} pointerEvents='none'>
                 <Image
                   source={require('@/assets/images/main_dashboard/TallFlowerPot.png')} 
                   style={styles.tallPotImage} 
@@ -592,6 +610,72 @@ export default function HomeScreen() {
         </Animated.ScrollView>
 
       </View>
+
+      {/* --- FLOATING BOTTOM NAVIGATION BAR --- */}
+      <BlurView intensity={30} tint="dark" style={styles.bottomNavBar}>
+        
+        <Pressable 
+          onPress={() => scrollToRoom(0)} 
+          style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}
+        >
+          <Image
+            source={(require('@/assets/images/main_dashboard/navigation_icon/LogoutIcon.png'))}
+            style={styles.navIcon}
+            resizeMode='contain'
+          />
+          <Text style={styles.navText}>Logout</Text>
+        </Pressable>
+
+        <Pressable 
+          onPress={() => scrollToRoom(1)} 
+          style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}
+        >
+          <Image
+            source={(require('@/assets/images/main_dashboard/navigation_icon/FreshnessIcon.png'))}
+            style={styles.navIcon}
+            resizeMode='contain'
+          />
+          <Text style={styles.navText}>Freshness</Text>
+        </Pressable>
+
+        <Pressable 
+          onPress={() => scrollToRoom(2)} 
+          style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}
+        >
+          <Image
+            source={(require('@/assets/images/main_dashboard/navigation_icon/ListingIcon.png'))}
+            style={styles.navIcon}
+            resizeMode='contain'
+          />
+          <Text style={styles.navText}>Listing</Text>
+        </Pressable>
+
+        <Pressable 
+          onPress={() => scrollToRoom(3)} 
+          style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}
+        >
+          <Image
+            source={(require('@/assets/images/main_dashboard/navigation_icon/MealPlanIcon.png'))}
+            style={styles.navIcon}
+            resizeMode='contain'
+          />
+          <Text style={styles.navText}>Meal Plan</Text>
+        </Pressable>
+
+        <Pressable 
+          onPress={() => scrollToRoom(4)} 
+          style={({ pressed }) => [styles.navItem, pressed && styles.navItemPressed]}
+        >
+          <Image
+            source={(require('@/assets/images/main_dashboard/navigation_icon/AIIcon.png'))}
+            style={styles.navIcon}
+            resizeMode='contain'
+          />
+          <Text style={styles.navText}>AI</Text>
+        </Pressable>
+
+      </BlurView>
+      
     </View>
   );
 }
@@ -846,6 +930,12 @@ const styles = StyleSheet.create({
     zIndex: 2,            
     opacity: 0.2,         
   },
+  logoutWrapper: {
+    position: 'absolute',
+    top: '30%',
+    width: '30%',
+    height: "10%"
+  },
   windowBeamWrapper: {
     position: 'absolute',
     top: '-10%',    
@@ -1024,4 +1114,46 @@ const styles = StyleSheet.create({
     aspectRatio: 1.8,
   },
 
+  // ==========================
+  // --- NAVIGATION BAR STYLES ---
+  // ==========================
+  bottomNavBar: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 40 : 20, 
+    alignSelf: 'center',
+    width: '90%',
+    maxWidth: 600,
+    height: 70,
+    borderRadius: 35, 
+    overflow: 'hidden',
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    alignItems: 'center',
+    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  navItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    height: '80%',
+    marginHorizontal: 4, 
+    borderRadius: 20,
+  },
+  navItemPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)', 
+    transform: [{ scale: 0.92 }], 
+  },
+  navIcon: {
+    fontSize: 24, 
+    width: isTabletView ? 30 : 20,
+    height: isTabletView ? 30 : 20,
+    marginBottom: 2,
+  },
+  navText: {
+    fontSize: isTabletView ? 15 : 12,
+    color: '#FFFF',
+  },
 });
