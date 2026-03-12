@@ -35,7 +35,7 @@ export default function RootLayout() {
         await soundRef.current.setIsLoopingAsync(true);
         await soundRef.current.setVolumeAsync(0.3); 
         // Play it!
-        //await soundRef.current.playAsync();
+        // await soundRef.current.playAsync();
       } catch (err) {
         console.log("Error playing background music: ", err);
       }

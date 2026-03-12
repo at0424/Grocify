@@ -180,9 +180,9 @@ export default function AddItemScreen() {
                 {/* Search Bar */}
                 <View style={styles.searchContainer}>
                     <Image
-                            source={require('@/assets/images/listing/Magnifier.png')}
-                            style={styles.magnifierIcon}
-                            resizeMode="contain"
+                        source={require('@/assets/images/listing/Magnifier.png')}
+                        style={styles.magnifierIcon}
+                        resizeMode="contain"
                     />
 
                     <TextInput
@@ -272,11 +272,16 @@ export default function AddItemScreen() {
                     })}
                 </ScrollView>
 
-                {/* --- 4. Product Grid --- */}
+                {/* --- Product Grid --- */}
                 <View style={styles.itemsGrid}>
                     {/* Check if we are loading first */}
                     {loading ? (
-                        <ActivityIndicator size="large" color="#718F64" style={{ marginTop: 50, }} />
+                        <View style={{
+                            justifyContent: 'center', 
+                            width: '100%',
+                        }}>
+                            <ActivityIndicator size="large" color="#718F64" style={{ marginTop: 50, }} />
+                        </View> 
                     ) : (
                         filteredItems.map((item, index) => {
                             // Calculate how many of this item we have added

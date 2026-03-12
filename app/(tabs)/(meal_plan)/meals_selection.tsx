@@ -1,8 +1,11 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Ban, CheckCircle2, ChevronLeft, Utensils } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Dimensions,
+  Image,
+  ImageBackground,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -14,7 +17,7 @@ import {
 export default function MealSelectionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+
   // Get Dates from Params 
   const startDate = params.start ? new Date(params.start) : new Date();
   const endDate = params.end ? new Date(params.end) : new Date(Date.now() + 6 * 86400000);
@@ -28,30 +31,30 @@ export default function MealSelectionScreen() {
   useEffect(() => {
     const generatedDates = [];
     const initialSelection = {};
-    
+
     let currentDate = new Date(startDate);
     currentDate.setHours(0, 0, 0, 0);
     let finalDate = new Date(endDate);
     finalDate.setHours(0, 0, 0, 0);
-    
+
     while (currentDate <= finalDate) {
       const year = currentDate.getFullYear();
       const month = String(currentDate.getMonth() + 1).padStart(2, '0');
       const day = String(currentDate.getDate()).padStart(2, '0');
       const dateKey = `${year}-${month}-${day}`;
-            
+
       generatedDates.push(new Date(currentDate));
-      
+
       // Default: All meals selected
       initialSelection[dateKey] = {
         breakfast: true,
         lunch: true,
         dinner: true
       };
-      
+
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    
+
     setDates(generatedDates);
     setSelections(initialSelection);
   }, []);
@@ -71,7 +74,7 @@ export default function MealSelectionScreen() {
   const toggleAll = () => {
     const allSelected = Object.values(selections).every(day => day.breakfast && day.lunch && day.dinner);
     const newStatus = !allSelected;
-    
+
     const newSelections = {};
     Object.keys(selections).forEach(key => {
       newSelections[key] = { breakfast: newStatus, lunch: newStatus, dinner: newStatus };
@@ -87,7 +90,7 @@ export default function MealSelectionScreen() {
   const handleConfirm = () => {
     // Check if at least one meal is selected
     const hasSelection = Object.values(selections).some(day => day.breakfast || day.lunch || day.dinner);
-    
+
     if (!hasSelection) {
       Alert.alert("No Meals Selected", "Please select at least one meal to continue.");
       return;
@@ -96,7 +99,7 @@ export default function MealSelectionScreen() {
     // Pass the selection map to the next screen 
     router.push({
       pathname: '/preview',
-      params: { 
+      params: {
         selections: JSON.stringify(selections),
         start: startDate.toISOString(),
         end: endDate.toISOString()
@@ -104,20 +107,48 @@ export default function MealSelectionScreen() {
     });
   };
 
+  const allSelected = Object.values(selections).every(day => day.breakfast && day.lunch && day.dinner);
+
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
-      
+
       {/* --- Header --- */}
-      <View style={styles.header}>
+      <ImageBackground
+        source={require('@/assets/images/meal_plan/MealPlanHeader.png')}
+        style={styles.header}
+        resizeMode='stretch'
+      >
+        {/* Back Button */}
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ChevronLeft color="#FFFFFF" size={28} />
+          <Image
+            source={require('@/components/images/BackButton.png')}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode='contain'
+          />
         </TouchableOpacity>
+
+        {/* Title */}
         <Text style={styles.headerTitle}>Meals Selection</Text>
-        <TouchableOpacity onPress={toggleAll} style={styles.actionButton}>
-          <CheckCircle2 color="#FFFFFF" size={24} />
+
+        {/* Mark All Button */}
+        <TouchableOpacity
+          style={styles.toggleAllWrapper}
+          onPress={toggleAll}
+          activeOpacity={0.8}
+        >
+          <Image
+            source={
+              allSelected
+                ? require('@/components/images/Checkedbox.png')
+                : require('@/components/images/Checkbox.png')
+            }
+            style={styles.actionButton}
+            resizeMode="contain"
+          />
+
         </TouchableOpacity>
-      </View>
+
+      </ImageBackground>
 
       <View style={styles.contentContainer}>
         <Text style={styles.instructionText}>
@@ -126,14 +157,17 @@ export default function MealSelectionScreen() {
 
         {/* --- Column Headers --- */}
         <View style={styles.columnHeaders}>
-          <View style={styles.dateColumn} /> 
+          <View style={styles.dateColumn} />
           <Text style={styles.colHeader}>Breakfast</Text>
           <Text style={styles.colHeader}>Lunch</Text>
           <Text style={styles.colHeader}>Dinner</Text>
         </View>
 
         {/* --- The Grid --- */}
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false} 
+          style={{ maxHeight: isTabletView ? '75%' : '70%' }}
+        >
           {dates.map((date, index) => {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -145,25 +179,35 @@ export default function MealSelectionScreen() {
 
             return (
               <View key={dateKey} style={styles.row}>
-                {/* Date Label */}
-                <View style={styles.dateColumn}>
-                  <Text style={styles.dayText}>{getDayLabel(date)}</Text>
-                  <Text style={styles.dateText}>{getDateLabel(date)}</Text>
+
+                <Image
+                  source={require('@/assets/images/ai/TextInput.png')} 
+                  style={styles.rowBackgroundImage}
+                  resizeMode="stretch"
+                />
+
+                <View style={styles.rowContentLayer}>
+                  {/* Date Label */}
+                  <View style={styles.dateColumn}>
+                    <Text style={styles.dayText}>{getDayLabel(date)}</Text>
+                    <Text style={styles.dateText}>{getDateLabel(date)}</Text>
+                  </View>
+
+                  {/* Meal Slots */}
+                  <MealSlot
+                    isActive={dayState.breakfast}
+                    onPress={() => toggleSlot(dateKey, 'breakfast')}
+                  />
+                  <MealSlot
+                    isActive={dayState.lunch}
+                    onPress={() => toggleSlot(dateKey, 'lunch')}
+                  />
+                  <MealSlot
+                    isActive={dayState.dinner}
+                    onPress={() => toggleSlot(dateKey, 'dinner')}
+                  />
                 </View>
 
-                {/* Meal Slots */}
-                <MealSlot 
-                  isActive={dayState.breakfast} 
-                  onPress={() => toggleSlot(dateKey, 'breakfast')} 
-                />
-                <MealSlot 
-                  isActive={dayState.lunch} 
-                  onPress={() => toggleSlot(dateKey, 'lunch')} 
-                />
-                <MealSlot 
-                  isActive={dayState.dinner} 
-                  onPress={() => toggleSlot(dateKey, 'dinner')} 
-                />
               </View>
             );
           })}
@@ -172,8 +216,14 @@ export default function MealSelectionScreen() {
 
       {/* --- Footer --- */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-          <Text style={styles.confirmButtonText}>Generate Plan</Text>
+        <TouchableOpacity style={styles.confirmWoodButton} onPress={handleConfirm} activeOpacity={0.8}>
+          <ImageBackground
+            source={require('@/assets/images/freshness/GreenButton.png')}
+            style={styles.confirmButtonBackgroundImage}
+            resizeMode='stretch'
+          >
+            <Text style={styles.confirmButtonText}>Confirm</Text>
+          </ImageBackground>
         </TouchableOpacity>
       </View>
 
@@ -183,112 +233,136 @@ export default function MealSelectionScreen() {
 
 // --- Sub-Component: The Circle Button ---
 const MealSlot = ({ isActive, onPress }) => (
-  <TouchableOpacity 
+  <TouchableOpacity
     onPress={onPress}
     style={[
-      styles.slotButton, 
+      styles.slotButtonWrapper,
       isActive ? styles.slotActive : styles.slotInactive
     ]}
   >
-    {isActive ? (
-      <Utensils size={20} color="#FFFFFF" />
-    ) : (
-      <Ban size={18} color="#A0AEC0" /> 
-    )}
+    <Image
+      source={
+        isActive
+          ? require('@/assets/images/meal_plan/SelectedMeal.png')
+          : require('@/assets/images/meal_plan/UnselectedMeal.png')
+      }
+      style={styles.slotButton}
+      resizeMode='contain'
+    />
+    
   </TouchableOpacity>
 );
+
+const { width } = Dimensions.get('window');
+const isTabletView = width > 710;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E4D5B7',
   },
   // Header
   header: {
-    backgroundColor: '#7A9B6B',
-    height: 60,
+    height: isTabletView ? 100 : 70,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
+  backButton: {
+    height: isTabletView ? 50 : 35,
+    aspectRatio: 1,
+  },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: isTabletView ? 18 : 14,
+    fontFamily: 'PixelFont',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
+  },
+  toggleAllWrapper: {
+    height: isTabletView ? 50 : 35,
+    aspectRatio: 1,
   },
   actionButton: {
-    padding: 4,
+    height: '100%',
+    width: '100%'
   },
   contentContainer: {
     flex: 1,
     padding: 24,
   },
   instructionText: {
-    fontSize: 15,
+    fontSize: isTabletView ? 15 : 12,
     color: '#666666',
+    fontFamily: 'PixelFont',
     marginBottom: 24,
     lineHeight: 22,
   },
   // Grid Styles
   columnHeaders: {
     flexDirection: 'row',
-    marginBottom: 16,
-    paddingHorizontal: 8,
+    marginBottom: 8,
+    paddingHorizontal: '9%',
   },
   colHeader: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: isTabletView ? 12 : 7,
+    fontFamily: 'PixelFont',
     color: '#718096',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
   row: {
+    width: '100%',
+    marginBottom: 20,
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  rowBackgroundImage: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  rowContentLayer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    backgroundColor: '#F8FAFC',
-    padding: 12,
-    borderRadius: 16,
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingVertical: '5%',   
+    paddingHorizontal: '10%', 
   },
   dateColumn: {
-    width: 90, 
+    width: isTabletView ? '25%' : '35%',
     justifyContent: 'center',
   },
   dayText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: isTabletView ? 14 : 12,
+    fontFamily: 'PixelFont',
     color: '#2D3748',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
   dateText: {
     fontSize: 13,
+    fontFamily: 'PixelFont',
     color: '#718096',
     marginTop: 2,
   },
   // Slot Button
-  slotButton: {
+  slotButtonWrapper: {
     flex: 1,
-    aspectRatio: 1, // Keeps it square
-    borderRadius: 30,
-    marginHorizontal: 4, // Spacing between circles
+    aspectRatio: 1, 
+    marginHorizontal: 4, 
     justifyContent: 'center',
     alignItems: 'center',
   },
-  slotActive: {
-    backgroundColor: '#7A9B6B', // Active Green
-    shadowColor: '#7A9B6B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+  slotButton: {
+    width: '100%',
+    height: '100%'
   },
-  slotInactive: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
-    borderStyle: 'dashed', // Dashed border for empty state
-  },
-  
+
   // Footer
   footer: {
     position: 'absolute',
@@ -296,25 +370,32 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 24,
-    paddingBottom: 40,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  confirmButton: {
-    backgroundColor: '#7A9B6B',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     alignItems: 'center',
-    shadowColor: '#7A9B6B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+  },
+  confirmWoodButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    height: isTabletView ? 100 : 80,
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmButtonBackgroundImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   confirmButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontFamily: 'PixelFont',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 1,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
 });

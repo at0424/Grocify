@@ -1,6 +1,7 @@
 import { del, get, post, put } from 'aws-amplify/api';
 
-const API_NAME = 'GroceryAPI'; 
+const API_NAME = 'GroceryAPI';
+ 
 
 // Fetch the catalog
 export const fetchGroceryCatalog = async () => {
@@ -396,6 +397,26 @@ export const fetchRecipes = async (mealType = null) => {
     return json.data || [];
   } catch (error) {
     console.error("Error fetching recipes:", error);
+    return null;
+  }
+};
+
+export const fetchIngredientImageFromName = async (groceryName) => {
+  try {
+    const operation = get({ 
+      apiName: API_NAME,
+      path: '/getImageUrlByName',
+      options: {
+        queryParams: { name: groceryName }
+      }
+    });
+
+    const response = await operation.response;
+    const json = await response.body.json();
+
+    return json.imageUrl; 
+  } catch (error) {
+    console.error(`Error fetching image for ${groceryName}:`, error);
     return null;
   }
 };

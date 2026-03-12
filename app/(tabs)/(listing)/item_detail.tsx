@@ -187,7 +187,7 @@ const isTabletView = width > 710;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3E8D6', // Cozy parchment background
+    backgroundColor: '#F3E8D6', 
   },
   
   // ==========================================

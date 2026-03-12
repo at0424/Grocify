@@ -1,64 +1,119 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { BarChart3, ChefHat, ChevronLeft, Clock, Heart } from 'lucide-react-native';
-import React from 'react';
+import { fetchIngredientImageFromName } from '@/services/api';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { BarChart3, ChefHat, Clock } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    Dimensions,
-    Image,
-    ImageBackground,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Animated,
+  Dimensions,
+  Image,
+  ImageBackground,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// Define our header height constraints
+const HEADER_MAX_HEIGHT = height * 0.4; // 40% of screen height
+const HEADER_MIN_HEIGHT = 100; // Minimum height when scrolled (covers safe area + buttons)
+const SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
 export default function RecipeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+
+  const [ingredientsWithImages, setIngredientsWithImages] = useState([]);
   
-  // 1. Parse the recipe data passed from the previous screen
+  // Track the scroll position
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Parse the recipe data passed from the previous screen
   const recipe = params.recipeData ? JSON.parse(params.recipeData) : null;
 
+  useEffect(() => {
+    const loadIngredientImages = async () => {
+      if (!recipe?.ingredients) return;
+
+      const updatedIngredients = await Promise.all(
+        recipe.ingredients.map(async (ing) => {
+          const fetchedImageUrl = await fetchIngredientImageFromName(ing.groceryName);
+          
+          return {
+            ...ing,
+            imageUrl: fetchedImageUrl 
+          };
+        })
+      );
+
+      // Save to state
+      setIngredientsWithImages(updatedIngredients);
+    };
+
+    loadIngredientImages();
+  }, [recipe]);
+  
   if (!recipe) return null;
 
-  // Mock data for fields we might not have in DB yet (to match your UI)
   const difficulty = recipe.difficulty || "Medium";
   const cuisine = recipe.cuisine || "Malaysian";
   const ingredientCount = recipe.ingredients ? recipe.ingredients.length : 0;
+  const imageUrl = recipe.imageUrl || "https://placehold.co/600x400/png";
+  const cookingSteps = recipe.steps || [];
+
+  // Interpolate scroll position to calculate the shrinking height of the image
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, SCROLL_DISTANCE],
+    outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
+    extrapolate: 'clamp',
+  });
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
       
-      {/* --- HERO IMAGE BACKGROUND --- */}
-      <ImageBackground 
-        source={{ uri: "https://placehold.co/600x400/png" }} // Replace with recipe.image_url later
-        style={styles.heroImage}
-        resizeMode="cover"
+      {/* --- ANIMATED HERO IMAGE --- */}
+      <Animated.View style={[styles.heroImageContainer, { height: headerHeight }]}>
+        <Image 
+          source={{ uri: imageUrl }} 
+          style={styles.heroImage}
+          resizeMode="contain"
+        />
+      </Animated.View>
+
+      {/* --- FLOATING HEADER BUTTONS --- */}
+      {/* Placed outside ScrollView so they always stay pinned to the top */}
+      <SafeAreaView style={styles.floatingHeader} pointerEvents="box-none">
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Image
+              source={require('@/components/images/BackButton.png')}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode='contain'
+            />
+          </TouchableOpacity>
+
+          {/* Favourite Button (To be implement) */}
+          {/* <TouchableOpacity style={styles.circleButton}>
+            <Heart size={22} color="#FFFFFF" />
+          </TouchableOpacity> */}
+          
+        </View>
+      </SafeAreaView>
+
+      {/* --- SCROLLABLE CONTENT --- */}
+      <Animated.ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        scrollEventThrottle={16} // Captures scroll events smoothly
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false } // Required false because we are animating 'height'
+        )}
       >
-        <SafeAreaView style={styles.safeAreaHeader}>
-          {/* Header Buttons */}
-          <View style={styles.headerRow}>
-            <TouchableOpacity 
-              style={styles.circleButton} 
-              onPress={() => router.back()}
-            >
-              <ChevronLeft size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.circleButton}>
-              <Heart size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </ImageBackground>
-
-      {/* --- CONTENT CONTAINER (White Sheet) --- */}
-      <View style={styles.contentContainer}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* The White Content Sheet */}
+        <View style={styles.sheetContainer}>
           
           {/* Title & Description */}
           <Text style={styles.title}>{recipe.mealName}</Text>
@@ -68,18 +123,19 @@ export default function RecipeScreen() {
 
           {/* Stats Grid (3 Boxes) */}
           <View style={styles.statsRow}>
+        
             <InfoCard 
-              icon={<Clock size={20} color="#333" />} 
+              icon={<Clock size={isTabletView ? 36 : 28} color="#333" />} 
               label="Cooking Time" 
-              value={`~ ${recipe.prepTime} mins`} 
+              value={`~${recipe.prepTime} mins`} 
             />
             <InfoCard 
-              icon={<BarChart3 size={20} color="#333" />} 
+              icon={<BarChart3 size={isTabletView ? 36 : 28} color="#333" />} 
               label="Difficulty" 
               value={difficulty} 
             />
             <InfoCard 
-              icon={<ChefHat size={20} color="#333" />} 
+              icon={<ChefHat size={isTabletView ? 36 : 28} color="#333" />} 
               label="Cuisine" 
               value={cuisine} 
             />
@@ -89,66 +145,120 @@ export default function RecipeScreen() {
           <Text style={styles.sectionHeader}>Ingredients ({ingredientCount})</Text>
           
           <View style={styles.ingredientsList}>
-            {recipe.ingredients.map((ing, index) => (
-              <View key={index} style={styles.ingredientRow}>
-                {/* Ingredient Image Placeholder */}
-                <View style={styles.ingredientImageContainer}>
-                  {/* Using a generic image or icon if you don't have ingredient photos yet */}
-                  <Image 
-                    source={{ uri: 'https://placehold.co/100x100/png' }} 
-                    style={styles.ingredientImage} 
-                  />
+            {ingredientsWithImages.map((ing, index) => {
+              const imageSource = ing.imageUrl && ing.imageUrl.trim() !== ''
+                ? { uri: ing.imageUrl }
+                : require('@/assets/images/Apple.png');
+              
+              return (
+                <View key={index} style={styles.ingredientRow}>
+                  <ImageBackground 
+                    source={require('@/assets/images/listing/DetailBorder.png')}
+                    style={styles.ingredientImageContainer}
+                    resizeMode='stretch'
+                  >
+
+                    {/* Ingredient Image */}
+                    <Image
+                      source={imageSource}
+                      style={styles.ingredientImage}
+                    />
+
+                  </ImageBackground>
+
+                  <View style={styles.ingredientInfo}>
+                    <Text style={styles.ingredientName}>{ing.groceryName}</Text>
+                    <Text style={styles.ingredientAmount}>
+                      {ing.amount} {ing.unit}
+                    </Text>
+                  </View>
                 </View>
-                
-                {/* Name & Quantity */}
-                <View style={styles.ingredientInfo}>
-                  <Text style={styles.ingredientName}>{ing.groceryName}</Text>
-                  <Text style={styles.ingredientAmount}>
-                    {ing.amount} {ing.unit}
-                  </Text>
-                </View>
-              </View>
-            ))}
+              );
+              
+            })}
           </View>
 
-        </ScrollView>
+          {/* --- Cooking Steps Section --- */}
+          <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Cooking Steps</Text>
+          
+          <ImageBackground
+            source={require('@/assets/images/meal_plan/MealPlanFooter.png')} 
+            style={styles.stepsContainer}
+            imageStyle={styles.stepsContainerImage}
+          >
+            {cookingSteps && cookingSteps.length > 0 ? (
+              cookingSteps.map((step, index) => (
+                <View key={index} style={styles.stepRow}>
+                  {/* Step Number Box */}
+                  <ImageBackground 
+                    source={require('@/assets/images/meal_plan/RockContainer.png')} 
+                    style={styles.stepNumberBox}
+                    resizeMode="stretch"
+                  >
+                    <Text style={styles.stepNumberText}>{index + 1}</Text>
+                  </ImageBackground>
+                  
+                  {/* Instruction Text */}
+                  <Text style={styles.stepText}>{step}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.stepText}>No cooking instructions provided.</Text>
+            )}
+          </ImageBackground>
 
-        {/* --- BOTTOM FLOATING BUTTON --- */}
-        <View style={styles.footerContainer}>
-          <TouchableOpacity style={styles.addButton} onPress={() => console.log("Added!")}>
-            <Text style={styles.addButtonText}>Add to Plan</Text>
-          </TouchableOpacity>
         </View>
+      </Animated.ScrollView>
 
-      </View>
     </View>
   );
 }
 
 // --- HELPER COMPONENT: Info Card ---
 const InfoCard = ({ icon, label, value }) => (
-  <View style={styles.infoCard}>
-    <View style={styles.iconCircle}>
-      {icon}
+  <ImageBackground
+    source={require('@/assets/images/meal_plan/RockContainer.png')}
+    style={styles.infoCard}
+    resizeMode='stretch'
+  >
+    <View style={styles.rockInnerContent}>
+      <View style={styles.iconCircle}>{icon}</View>
+      <Text style={styles.infoLabel} numberOfLines={1} adjustsFontSizeToFit>{label}</Text>
+      <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
     </View>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
-  </View>
+  </ImageBackground>
 );
+
+const isTabletView = width > 710;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F3E8D6',
   },
-  // Hero Image
+  
+  // --- Hero Image & Header Styles ---
+  heroImageContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 0,
+    overflow: 'hidden',
+    backgroundColor: '#F4F1EA', 
+    alignItems: 'center',     
+    justifyContent: 'center',
+  },
   heroImage: {
-    width: '100%',
-    height: 300, 
-    justifyContent: 'flex-start',
+    width: '70%',
+    height: '70%',
   },
-  safeAreaHeader: {
-    flex: 1,
+  floatingHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10, 
   },
   headerRow: {
     flexDirection: 'row',
@@ -156,44 +266,56 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 10,
   },
+  backButton: {
+    height: isTabletView ? 50 : 35,
+    aspectRatio: 1,
+  },
   circleButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.3)', // Semi-transparent black
+    backgroundColor: 'rgba(0,0,0,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
 
-  // Main Content Sheet
-  contentContainer: {
-    flex: 1,
-    marginTop: -40, // Pull up over the image
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    overflow: 'hidden',
-  },
+  // --- Scroll & Sheet Styles ---
   scrollContent: {
+    paddingTop: HEADER_MAX_HEIGHT, 
+  },
+  sheetContainer: {
+    backgroundColor: '#FDF7EB',
+    borderTopLeftRadius: 40, 
+    borderTopRightRadius: 40,
+    borderTopWidth: 4, 
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderColor: '#C1A47A',
     padding: 24,
-    paddingBottom: 100, // Space for footer button
+    marginTop: -40, 
+    minHeight: height,
+
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 10, 
   },
   
-  // Typography
+  // --- Typography & Details (Same as yours) ---
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: isTabletView ? 25 : 20,
+    fontFamily: 'PixelFont',
     color: '#1A1A1A',
     marginBottom: 12,
   },
   description: {
-    fontSize: 15,
+    fontSize: isTabletView ? 18 : 12,
     color: '#666666',
+    fontFamily: 'PixelFont',
     lineHeight: 22,
     marginBottom: 24,
   },
-
-  // Stats Grid
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -201,40 +323,44 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   infoCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E8EDE6',
-    borderRadius: 16,
-    padding: 12,
+    padding: '5%',
     alignItems: 'flex-start',
-    // Shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    width: width * 0.28,
+    aspectRatio : 1,
+  },
+  rockInnerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+    width: '100%',
+    height: '100%',
+    paddingBottom: '20%'
   },
   iconCircle: {
     marginBottom: 12,
   },
   infoLabel: {
-    fontSize: 12,
-    color: '#8E8E8E',
+    fontSize: isTabletView ? 14 : 9,
+    fontFamily: 'PixelFont',
+    color: '#6D4C41',
     marginBottom: 4,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
   infoValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#2C3A26',
+    fontSize: isTabletView ? 11 : 8,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
-
-  // Ingredients
   sectionHeader: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: isTabletView ? 20 : 14,
+    fontFamily: 'PixelFont',
     color: '#1A1A1A',
     marginBottom: 16,
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
   ingredientsList: {
     gap: 12,
@@ -242,21 +368,25 @@ const styles = StyleSheet.create({
   ingredientRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8EDE6', // Light Green Background from design
+    backgroundColor: '#E8EDE6', 
     borderRadius: 12,
     padding: 12,
   },
   ingredientImageContainer: {
-    width: 48,
-    height: 48,
+    width: isTabletView ? 80 : 60,
+    height: isTabletView ? 80 : 60,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    padding: isTabletView ? 10 : 5,
     marginRight: 16,
     overflow: 'hidden',
+  },
+  borderImage: {
+    position: 'absolute'
   },
   ingredientImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'contain'
   },
   ingredientInfo: {
     flex: 1,
@@ -265,38 +395,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ingredientName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: isTabletView ? 16 : 12,
+    fontFamily: 'PixelFont',
     color: '#2C3A26',
+    maxWidth: '70%',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
   ingredientAmount: {
-    fontSize: 15,
+    fontSize: isTabletView ? 12 : 10,
     color: '#666666',
+    fontFamily: 'PixelFont',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
 
-  // Footer Button
-  footerContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  // --- Cooking Steps Styles ---
+  stepsContainer: {
     padding: 24,
-    backgroundColor: 'transparent', 
+    marginTop: 8,
+    minHeight: 200,
   },
-  addButton: {
-    backgroundColor: '#5E8050', // Dark Sage Green
-    paddingVertical: 18,
-    borderRadius: 16,
+  stepsContainerImage: {
+    resizeMode: 'stretch',
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  stepNumberBox: {
+    width: isTabletView ? 40 : 32,
+    height: isTabletView ? 40 : 32,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#5E8050',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginRight: 16,
+    marginTop: 2, 
   },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+  stepNumberText: {
+    fontFamily: 'PixelFont',
+    fontSize: isTabletView ? 16 : 14,
+    color: '#3E2723',
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  stepText: {
+    flex: 1,
+    fontFamily: 'PixelFont',
+    fontSize: isTabletView ? 16 : 12,
+    color: '#2C3A26', 
+    lineHeight: isTabletView ? 24 : 18,
   },
 });

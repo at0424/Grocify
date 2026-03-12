@@ -1427,10 +1427,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E0E0E0',
     },
-    pillActive: {
-        backgroundColor: '#007AFF',
-        borderColor: '#007AFF',
-    },
     pillText: {
         fontSize: isTabletView ? 14 : 10,
         fontFamily: 'PixelFont',
