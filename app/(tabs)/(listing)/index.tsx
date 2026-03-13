@@ -5,7 +5,7 @@ import { createNewList, deleteUserList, fetchCollaborators, fetchUserLists, remo
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 export default function ListingDashboard() {
   const router = useRouter();
@@ -260,7 +260,13 @@ export default function ListingDashboard() {
       <TouchableOpacity
         style={StyleSheet.absoluteFill}
         activeOpacity={1}
-        onPress={() => router.back()}
+        onPress={() => {
+          if (isEditing) {
+            setIsEditing(false);
+          } else {
+            router.back();
+          }
+        }}
       />
 
       <Animated.View
@@ -317,70 +323,75 @@ export default function ListingDashboard() {
         </View>
 
         {/* Cork Board */}
-        <View style={styles.corkBoardContainer}>
-          <Image
-            source={require('@/assets/images/main_dashboard/Board.png')}
-            style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
-            resizeMode="stretch"
-          />
-
-          {/* Grid of Notes */}
-          {loading ? (
-            <ActivityIndicator size="large" color="#5C4033" style={{ marginTop: 50 }} />
-          ) : (
-            <FlatList
-              data={lists}
-              keyExtractor={(item) => item.listId}
-              numColumns={2}
-              style={{ flex: 1, width: '100%' }}
-              columnWrapperStyle={styles.row}
-              contentContainerStyle={[
-                styles.listContent,
-                lists.length === 0 && { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100 }
-              ]}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#5C4033" />
-              }
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Image
-                    source={require('@/assets/images/listing/EmptyBasket.png')}
-                    style={styles.basketImage}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.emptyText}>No Grocery List Created.</Text>
-                  <Text style={styles.emptySubText}>Please create or join one!</Text>
-                </View>
-              }
-              renderItem={({ item }) => (
-                <StickyNote
-                  title={item.listName}
-                  color={item.color}
-                  collaborators={item.collaborators || []}
-                  onPress={() => {
-                    if (isEditing) {
-                      openModal(item);
-                    } else {
-                      router.push({
-                        pathname: "./detail_list",
-                        params: { listId: item.listId, title: item.listName, userRole: item.role, color: item.color }
-                      });
-                    }
-                  }}
-                  actionIcon={isEditing ? "trash-outline" : "person-add-outline"}
-                  onActionPress={() => {
-                    if (isEditing) {
-                      handleDelete(item.listId, item.listName);
-                    } else {
-                      handleOpenShareModal(item.listId);
-                    }
-                  }}
-                  style={isEditing ? { opacity: 0.9, transform: [{ scale: 0.98 }] } : {}}
-                />
-              )}
+        <TouchableWithoutFeedback onPress={() => {
+          if (isEditing) setIsEditing(false);
+        }}>
+          <View style={styles.corkBoardContainer}>
+            <Image
+              source={require('@/assets/images/main_dashboard/Board.png')}
+              style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+              resizeMode="stretch"
             />
-          )}
-        </View>
+
+            {/* Grid of Notes */}
+            {loading ? (
+              <ActivityIndicator size="large" color="#5C4033" style={{ marginTop: 50 }} />
+            ) : (
+              <FlatList
+                data={lists}
+                keyExtractor={(item) => item.listId}
+                numColumns={2}
+                style={{ flex: 1, width: '100%' }}
+                columnWrapperStyle={styles.row}
+                contentContainerStyle={[
+                  styles.listContent,
+                  lists.length === 0 && { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100 }
+                ]}
+                refreshControl={
+                  <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#5C4033" />
+                }
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Image
+                      source={require('@/assets/images/listing/EmptyBasket.png')}
+                      style={styles.basketImage}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.emptyText}>No Grocery List Created.</Text>
+                    <Text style={styles.emptySubText}>Please create or join one!</Text>
+                  </View>
+                }
+                renderItem={({ item }) => (
+                  <StickyNote
+                    title={item.listName}
+                    color={item.color}
+                    collaborators={item.collaborators || []}
+                    onPress={() => {
+                      if (isEditing) {
+                        openModal(item);
+                      } else {
+                        router.push({
+                          pathname: "./detail_list",
+                          params: { listId: item.listId, title: item.listName, userRole: item.role, color: item.color }
+                        });
+                      }
+                    }}
+                    actionIcon={isEditing ? "trash-outline" : "person-add-outline"}
+                    onActionPress={() => {
+                      if (isEditing) {
+                        handleDelete(item.listId, item.listName);
+                      } else {
+                        handleOpenShareModal(item.listId);
+                      }
+                    }}
+                    style={isEditing ? { opacity: 0.9, transform: [{ scale: 0.98 }] } : {}}
+                  />
+                )}
+              />
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+
 
       </Animated.View>
 
@@ -413,12 +424,12 @@ export default function ListingDashboard() {
 
               {/* Modal Header */}
               <View style={styles.modalHeader}>
-                
+
                 {/* Placeholder for Format */}
-                <View style={{opacity: 0}}>
+                <View style={{ opacity: 0 }}>
                   <Image
                     source={require('@/components/images/ExitButton.png')}
-                    style={[styles.exitIcon, {marginRight: 0}]}
+                    style={[styles.exitIcon, { marginRight: 0 }]}
                   />
                 </View>
 
@@ -720,7 +731,7 @@ const styles = StyleSheet.create({
     height: '50%',
     aspectRatio: 1,
     marginRight: "5%",
-    
+
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,

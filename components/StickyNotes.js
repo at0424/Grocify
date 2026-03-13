@@ -145,11 +145,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   actionButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: isTabletView ? 40 : 28,
+    height: isTabletView ? 40 : 28,
+    borderRadius: isTabletView ? 20 : 14,
     backgroundColor: 'rgba(0,0,0,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    top: 5
   },
 });
