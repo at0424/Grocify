@@ -1,10 +1,9 @@
 import { addListItems, fetchGroceryCatalog, fetchGroceryListDetails } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, ImageBackground, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Dimensions, Image, ImageBackground, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const CATEGORIES = [
     { id: '0', name: 'All', dbValue: 'All', iconSource: require('@/assets/images/listing/icons/AllIcon.png') },
@@ -27,18 +26,25 @@ export default function AddItemScreen() {
     const { listId, title } = useLocalSearchParams();
     const listName = title || 'Unnamed List';
 
-    // Data States
+    // --- Data States ---
     const [loading, setLoading] = useState(false);
     const [items, setItems] = useState([]);
 
-    // UI States
+    // --- UI States ---
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Logic States
+    // --- Logic States ---
     const [cartCounts, setCartCounts] = useState({}); // Tracks { 'Milk': 2, 'Eggs': 1 }
     const [addingId, setAddingId] = useState(null); // For loading spinner on button
     const [recentItems, setRecentItems] = useState([]); // For recently added items
+
+    // --- ANIMATION REFS & STATE ---
+    const [flyingImage, setFlyingImage] = useState(null);
+    const flyAnim = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+    const flyScaleAnim = useRef(new Animated.Value(1)).current;
+    const flyOpacityAnim = useRef(new Animated.Value(0)).current;
+    const listButtonScaleAnim = useRef(new Animated.Value(1)).current;
 
     // Filtered items for search and category
     const filteredItems = items.filter(item => {
@@ -129,27 +135,63 @@ export default function AddItemScreen() {
     }
 
     // Handle add item to list
-    const handleAddItem = async (item) => {
+    const handleAddItem = async (e, item) => {
         if (!listId) {
             Alert.alert("Error", "No List ID found. Please go back and reopen the list.");
             return;
         }
+        
+        const startX = e?.nativeEvent?.pageX || (width / 2);
+        const startY = e?.nativeEvent?.pageY || (height / 2);
 
         setAddingId(item.name); // Show spinner
-
         // Call API (Defaulting quantity to "1")
         const result = await addListItems(listId, item.name, "1", item.category, item.shelfLife);
-
         setAddingId(null);
 
         if (result.success) {
-            // Update the badge count locally
             setCartCounts(prev => ({
                 ...prev,
                 [item.name]: (prev[item.name] || 0) + 1
             }));
-
             addToHistory(item);
+
+            // Trigger the flying animation
+            setFlyingImage(item.imageUrl || 'https://cdn-icons-png.flaticon.com/512/2674/2674486.png');
+            
+            // Set starting position slightly offset so center of image is at the finger tap
+            flyAnim.setValue({ x: startX - 25, y: startY - 25 });
+            flyScaleAnim.setValue(1);
+            flyOpacityAnim.setValue(1);
+
+            // Animate flying down to the bottom right list button
+            Animated.parallel([
+                Animated.timing(flyAnim, {
+                    toValue: { x: width - 60, y: height - 90 }, 
+                    duration: 600,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(flyScaleAnim, {
+                    toValue: 0.2, // Shrink as it flies away
+                    duration: 600,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(flyOpacityAnim, {
+                    toValue: 0, // Fade out right at the end
+                    duration: 600,
+                    delay: 200, 
+                    useNativeDriver: true,
+                })
+            ]).start(() => {
+                setFlyingImage(null); // Clean up flying image
+
+                // Trigger the List Button Bounce effect when the item "lands"
+                Animated.sequence([
+                    Animated.timing(listButtonScaleAnim, { toValue: 1.2, duration: 150, useNativeDriver: true }),
+                    Animated.timing(listButtonScaleAnim, { toValue: 1, duration: 150, useNativeDriver: true })
+                ]).start();
+            });
+
         } else {
             Alert.alert("Error", "Could not add item.");
         }
@@ -158,7 +200,7 @@ export default function AddItemScreen() {
     return (
         <View style={styles.container}>
 
-            {/* --- 1. Header Area --- */}
+            {/* --- Header Area --- */}
             <View style={styles.header}>
                 <View style={styles.navBar}>
 
@@ -196,7 +238,7 @@ export default function AddItemScreen() {
 
             <ScrollView style={styles.contentContainer}>
 
-                {/* --- 2. Recently Added Tags --- */}
+                {/* --- Recently Added Tags --- */}
                 {recentItems.length > 0 && (
                     <>
                         <Text style={styles.sectionTitle}>Recently Added</Text>
@@ -206,7 +248,7 @@ export default function AddItemScreen() {
                                     key={index}
                                     style={styles.tag}
                                     // Clicking the tag adds it to the list
-                                    onPress={() => handleAddItem(recentItem)}
+                                    onPress={(e) => handleAddItem(e, recentItem)}
                                 >
                                     <Text style={styles.tagText}>{recentItem.name}</Text>
 
@@ -227,7 +269,7 @@ export default function AddItemScreen() {
                     </>
                 )}
 
-                {/* --- 3. Categories --- */}
+                {/* --- Categories --- */}
                 <View style={styles.categoryHeaderRow}>
                     <Text style={styles.sectionTitle}>Categories</Text>
                 </View>
@@ -335,7 +377,7 @@ export default function AddItemScreen() {
                                         {/* --- ADD BUTTON --- */}
                                         <TouchableOpacity
                                             style={styles.addButton}
-                                            onPress={() => handleAddItem(item)}
+                                            onPress={(e) => handleAddItem(e, item)}
                                             // Disable button while this specific item is loading
                                             disabled={addingId === item.name}
                                         >
@@ -357,10 +399,30 @@ export default function AddItemScreen() {
 
             </ScrollView>
 
-            {/* --- 5. Floating "Review List" Button (Bottom Right) ---
-            <TouchableOpacity style={styles.floatingListBtn} onPress={() => router.back()}>
-                <Ionicons name="list" size={28} color="#4A4A4A" />
-            </TouchableOpacity> */}
+            {/* Floating Flying Image  */}
+            {flyingImage && (
+                <Animated.Image
+                    source={{ uri: flyingImage }}
+                    style={[
+                        styles.flyingImage,
+                        {
+                            transform: [
+                                { translateX: flyAnim.x },
+                                { translateY: flyAnim.y },
+                                { scale: flyScaleAnim }
+                            ],
+                            opacity: flyOpacityAnim,
+                        }
+                    ]}
+                />
+            )}
+
+            {/* Floating Review List */}
+            <Animated.View style={[styles.floatingListBtnWrapper, { transform: [{ scale: listButtonScaleAnim }] }]}>
+                <TouchableOpacity style={styles.floatingListBtn} onPress={() => router.back()} activeOpacity={0.8}>
+                    <Ionicons name="receipt" size={28} color="#FFF9E6" />
+                </TouchableOpacity>
+            </Animated.View>
 
         </View>
     );
@@ -582,4 +644,37 @@ const styles = StyleSheet.create({
         fontFamily: 'PixelFont',
         color: '#FFF9E6'
     },
+
+    // --- ANIMATION OVERLAY STYLES ---
+    flyingImage: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: 50,
+        height: 50,
+        zIndex: 9999,
+    },
+    floatingListBtnWrapper: {
+        position: 'absolute',
+        bottom: 30,
+        right: 20,
+        zIndex: 100,
+    },
+    floatingListBtn: {
+        width: 60,
+        height: 60,
+        backgroundColor: '#5E7A4A', 
+        borderRadius: 30, 
+        borderWidth: 4,
+        borderColor: '#3E542F', 
+        justifyContent: 'center',
+        alignItems: 'center',
+        
+        // Shadow for floating effect
+        shadowColor: '#4A3525',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 5,
+        elevation: 8,
+    }
 });
