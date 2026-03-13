@@ -1,11 +1,12 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
+import { PixelAlert } from '@/components/PixelAlert';
 import StickyNote from '@/components/StickyNotes';
 import { createNewList, deleteUserList, fetchCollaborators, fetchUserLists, removeCollaborator, shareList, updateUserList } from '@/services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, FlatList, Image, ImageBackground, KeyboardAvoidingView, Modal, Platform, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
 export default function ListingDashboard() {
   const router = useRouter();
@@ -16,6 +17,32 @@ export default function ListingDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); // Pull-to-refresh state
   const [currentUserId, setCurrentUserId] = useState(null);
+
+  // --- Custom Pixel Alert State and Helpers ---
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    showCancel: false,
+    confirmText: 'OK',
+    onConfirm: undefined,
+  });
+
+  const closeAlert = () => setAlertConfig(prev => ({ ...prev, visible: false }));
+
+  const showAlert = (title, message, showCancel = false, confirmText = 'OK', customOnConfirm = null) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      showCancel,
+      confirmText,
+      onConfirm: () => {
+        closeAlert();
+        if (customOnConfirm) customOnConfirm();
+      }
+    });
+  };
 
   // Modal State 
   const [modalVisible, setModalVisible] = useState(false);
@@ -69,8 +96,8 @@ export default function ListingDashboard() {
       // Edit Mode
       // Owner Check
       if (listToEdit.role !== 'owner') {
-        Alert.alert("Permission Denied", "Only the owner can rename this list.");
-        return; // <--- STOP HERE. Do not open the modal.
+        showAlert("Permission Denied", "Only the owner can rename this list.");
+        return; 
       }
 
       setEditingListId(listToEdit.listId);
@@ -88,7 +115,7 @@ export default function ListingDashboard() {
   // Handle Submit (Create or Rename)
   const handleSubmit = async () => {
     if (!listNameInput.trim()) {
-      Alert.alert("Name Required", "Please name your list.");
+      showAlert("Name Required", "Please name your list.");
       return;
     }
 
@@ -109,7 +136,7 @@ export default function ListingDashboard() {
         setModalVisible(false);
         loadLists(); // Refresh UI
       } else {
-        Alert.alert("Error", "Operation failed. Try again.");
+        showAlert("Error", "Operation failed. Try again.");
       }
     }
     setIsSubmitting(false);
@@ -119,39 +146,30 @@ export default function ListingDashboard() {
   const handleDelete = async (listId, listName) => {
     const currentUserId = await getUserId();
 
-    Alert.alert(
+    showAlert(
       "Delete List?",
       `Are you sure you want to delete "${listName}"? This cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: 'destructive',
-          onPress: async () => {
-            // Call Delete API
-            setLoading(true);
-            const result = await deleteUserList(listId, currentUserId);
+      true, // Show Cancel Button
+      "Delete", // Confirm Text
+      async () => { // Action to run on Confirm
+        setLoading(true);
+        const result = await deleteUserList(listId, currentUserId);
 
-            if (result.success) {
-              loadLists();
-            } else {
-              setLoading(false); // Stop loading first
+        if (result.success) {
+          loadLists();
+        } else {
+          setLoading(false); // Stop loading first
 
-              const errorMsg = String(result.message || "");
+          const errorMsg = String(result.message || "");
 
-              // --- CHECK FOR PERMISSION ERROR ---
-              if (errorMsg.includes("Permission Denied") || errorMsg.includes("Only the Owner")) {
-                // Just notify the user politely
-                Alert.alert("Permission Denied", "Only the list owner can delete this list.");
-              } else {
-                // Real error (Network, Server crash, etc.)
-                console.log(errorMsg);
-                Alert.alert("Error", errorMsg || "Could not delete list.");
-              }
-            }
+          if (errorMsg.includes("Permission Denied") || errorMsg.includes("Only the Owner")) {
+            showAlert("Permission Denied", "Only the list owner can delete this list.");
+          } else {
+            console.log(errorMsg);
+            showAlert("Error", errorMsg || "Could not delete list.");
           }
         }
-      ]
+      }
     );
   };
 
@@ -169,7 +187,7 @@ export default function ListingDashboard() {
       });
       setShareModalVisible(true);
     } else {
-      Alert.alert("Error", "Could not load team members.");
+      showAlert("Error", "Could not load team members.");
     }
   };
 
@@ -178,12 +196,12 @@ export default function ListingDashboard() {
     const result = await shareList(listToShare, emailToInvite);
 
     if (result.success) {
-      Alert.alert("Success", "User added!");
+      showAlert("Success", "User added!");
       handleOpenShareModal(listToShare);
       loadLists(true); // Refresh background list
       return true;
     } else {
-      Alert.alert("Failed", result.message || "Could not find user.");
+      showAlert("Failed", result.message || "Could not find user.");
       return false;
     }
   };
@@ -199,34 +217,27 @@ export default function ListingDashboard() {
       ? "Are you sure you want to leave this list?"
       : "This will remove the user from the list.";
 
-    Alert.alert(title, message, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: isLeaving ? "Leave" : "Remove",
-        style: 'destructive',
-        onPress: async () => {
-          const result = await removeCollaborator(listToShare, idToRemove, currentUserId);
+    showAlert(
+      title,
+      message,
+      true, // Show Cancel Button
+      isLeaving ? "Leave" : "Remove", // Confirm Text
+      async () => {
+        const result = await removeCollaborator(listToShare, idToRemove, currentUserId);
 
-          if (result.success) {
-            if (isLeaving) {
-              // CASE 1: I LEFT. 
-              // Do NOT refresh the modal (I lost access). Close it immediately.
-              setShareModalVisible(false);
-              setListToShare(null); // Optional cleanup
-            } else {
-              // CASE 2: I KICKED SOMEONE.
-              // Refresh the modal to show they are gone.
-              handleOpenShareModal(listToShare);
-            }
-
-            // Always refresh the dashboard background
-            loadLists(true);
+        if (result.success) {
+          if (isLeaving) {
+            setShareModalVisible(false);
+            setListToShare(null); 
           } else {
-            Alert.alert("Error", result.message || "Could not remove user.");
+            handleOpenShareModal(listToShare);
           }
+          loadLists(true);
+        } else {
+          showAlert("Error", result.message || "Could not remove user.");
         }
       }
-    ]);
+    );
   };
 
   // =======================================
@@ -496,6 +507,16 @@ export default function ListingDashboard() {
         currentUserId={currentUserId}
         onInvite={handleShare}
         onRemove={handleRemove}
+      />
+
+      <PixelAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        showCancel={alertConfig.showCancel}
+        confirmText={alertConfig.confirmText}
+        onConfirm={alertConfig.onConfirm}
+        onClose={closeAlert}
       />
 
     </View>
