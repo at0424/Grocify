@@ -511,7 +511,20 @@ export default function ChatScreen() {
 
                 } else if (data.action === 'reply') {
                     const cleanReply = data.reply ? data.reply.replace(/\\/g, '') : "";
-                    setMessages(prev => [...prev, { id: Date.now().toString(), text: cleanReply, sender: 'bot' }]);
+                    
+                    // --- Bring User to Meal Plan Logic ---
+                    const createdMealPlan = currentIntermediateSteps.some(step => 
+                        step.functionResponse?.name === 'create_meal_plan' && 
+                        step.functionResponse?.response?.success === true
+                    );
+
+                    setMessages(prev => [...prev, { 
+                        id: Date.now().toString(), 
+                        text: cleanReply, 
+                        sender: 'bot',
+                        showMealPlanButton: createdMealPlan
+                    }]);
+
                     isConversationDone = true;
                 } else {
                     isConversationDone = true;
@@ -591,7 +604,25 @@ export default function ChatScreen() {
             {item.sender === 'user' ? (
                 <Text style={[styles.messageText, styles.userText]}>{item.text}</Text>
             ) : (
-                <Markdown style={botMarkdownStyles}>{item.text}</Markdown>
+                <View>
+                    <Markdown style={botMarkdownStyles}>{item.text}</Markdown>
+                    
+                    {/* To Meal Plan Button */}
+                    {item.showMealPlanButton && (
+                        <TouchableOpacity 
+                            style={styles.actionButtonWrapper}
+                            onPress={() => router.push('./(meal_plan)')}
+                        >
+                            <ImageBackground
+                                source={require('@/components/images/GeneralBlueButton.png')}
+                                style={styles.actionButtonBg}
+                                resizeMode="stretch"
+                            >
+                                <Text style={styles.actionButtonText}>View Meal Plan</Text>
+                            </ImageBackground>
+                        </TouchableOpacity>
+                    )}
+                </View>
             )}
         </View>
     );
@@ -1334,6 +1365,8 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 30,
     },
+
+    // --- Bubbles Styls ---
     messageBubble: {
         maxWidth: '90%',
         padding: 12,
@@ -1375,6 +1408,28 @@ const styles = StyleSheet.create({
     },
     userText: {
         color: '#FFFFFF',
+    },
+
+    // --- AI Bubbles Action Button --- 
+    actionButtonWrapper: {
+        marginTop: 12,
+        height: isTabletView ? 50 : 40,
+        width: isTabletView ? 160 : 130,
+        alignSelf: 'flex-start', 
+    },
+    actionButtonBg: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    actionButtonText: {
+        fontFamily: 'PixelFont',
+        color: '#FFFFFF',
+        fontSize: isTabletView ? 12 : 10,
+        textAlign: 'center',
+        includeFontPadding: false,
+        textAlignVertical: 'center',
     },
     inputWrapper: {
         flexDirection: 'row',
