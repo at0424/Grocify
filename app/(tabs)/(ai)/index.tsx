@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     Dimensions,
     FlatList,
     Image,
@@ -595,6 +596,20 @@ export default function ChatScreen() {
         </View>
     );
 
+    const renderFooter = () => {
+        if (!isLoading) return null;
+        
+        return (
+            <View style={[
+                styles.messageBubble, 
+                styles.botBubble, 
+                { alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 18 }
+            ]}>
+                <TypingIndicator />
+            </View>
+        );
+    };
+
     const generateDateOptions = () => {
         const options = [];
         for (let i = 0; i < 7; i++) {
@@ -1050,6 +1065,59 @@ export default function ChatScreen() {
     };
 
     // ==========================================
+    // ANIMATION
+    // ==========================================
+
+    // --- ANIMATED TYPING INDICATOR ---
+    const TypingIndicator = () => {
+        const dot1 = useRef(new Animated.Value(0)).current;
+        const dot2 = useRef(new Animated.Value(0)).current;
+        const dot3 = useRef(new Animated.Value(0)).current;
+
+        useEffect(() => {
+            const animateDot = (dot, delay) => {
+                return Animated.sequence([
+                    Animated.delay(delay),
+                    Animated.timing(dot, {
+                        toValue: 1,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(dot, {
+                        toValue: 0,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                ]);
+            };
+
+            const animationLoop = Animated.loop(
+                Animated.parallel([
+                    animateDot(dot1, 0),
+                    animateDot(dot2, 150),
+                    animateDot(dot3, 300),
+                ])
+            );
+
+            animationLoop.start();
+            return () => animationLoop.stop();
+        }, [dot1, dot2, dot3]);
+
+        // Interpolate the 0-1 values into vertical movement (moving up 6 pixels)
+        const translateY1 = dot1.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+        const translateY2 = dot2.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+        const translateY3 = dot3.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+
+        return (
+            <View style={styles.typingContainer}>
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: translateY1 }] }]} />
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: translateY2 }] }]} />
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: translateY3 }] }]} />
+            </View>
+        );
+    };
+
+    // ==========================================
     // MAIN RENDER
     // ==========================================
     return (
@@ -1113,6 +1181,7 @@ export default function ChatScreen() {
                             onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
                             keyboardShouldPersistTaps="handled"
                             keyboardDismissMode="on-drag"
+                            ListFooterComponent={renderFooter}
                         />
                     )}
 
@@ -1525,6 +1594,21 @@ const styles = StyleSheet.create({
         fontFamily: 'PixelFont',
         includeFontPadding: false,
         textAlignVertical: 'center'
+    },
+
+    // Typing Indicator
+    typingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingTop: 4,
+    },
+    typingDot: {
+        width: 8,
+        height: 8,
+        backgroundColor: '#623d23', 
+        borderRadius: 2, 
     },
 });
 
