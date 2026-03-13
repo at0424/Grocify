@@ -1,11 +1,11 @@
 import { getUserId } from '@/amplify/auth/authService';
+import LoadingScreen from '@/components/LoadingScreen';
 import { PixelAlert } from '@/components/PixelAlert';
 import { deleteUserPlan, fetchFridgeItems, fetchUserLists, fetchUserMealPlan, markMealAsConsumed } from '@/services/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertTriangle, MoreVertical, Utensils } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Dimensions,
     Image,
@@ -274,9 +274,7 @@ export default function MealPlanScreen() {
 
     if (loading) {
         return (
-            <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color="#7A9B6B" />
-            </View>
+            <LoadingScreen />
         );
     }
 
@@ -322,7 +320,6 @@ export default function MealPlanScreen() {
                 )}
             </ImageBackground>
 
-            {/* Replaced SectionList with ScrollView for better Pixel Art Wrapping */}
             <ScrollView
                 style={{ width: '100%', height: '100%' }}
                 contentContainerStyle={{ padding: 20, paddingBottom: 100 }}

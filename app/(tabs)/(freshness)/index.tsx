@@ -1,11 +1,11 @@
 import { getUserId } from '@/amplify/auth/authService';
+import LoadingPage from '@/components/LoadingScreen';
 import { fetchFridgeItems, fetchUserLists, updateFridgeItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Dimensions,
     Image,
@@ -177,10 +177,7 @@ const FreshnessDashboard = () => {
 
     // --- Render Loading State ---
     if (loading) return (
-        <View style={[styles.container, styles.center]}>
-            <ActivityIndicator size="large" color="#5C8D53" />
-            <Text style={{ marginTop: 10, color: '#666' }}>Scanning all your fridges...</Text>
-        </View>
+        <LoadingPage/>
     );
 
     return (
@@ -372,7 +369,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(60, 30, 10, 0.5)',
         paddingHorizontal: '5%',
         paddingVertical: '4%',
-        height: isTabletView ? 50 : 40,
+        height: isTabletView ? 60 : 50,
         borderRadius: 6,
         marginRight: 10,
         borderWidth: 2,
@@ -384,10 +381,11 @@ const styles = StyleSheet.create({
         borderColor: '#ffdd77',
     },
     filterText: {
-        fontSize: isTabletView ? 14 : 11,
+        fontSize: isTabletView ? 10 : 8,
+        fontFamily: 'PixelFont',
         color: '#eaddcf',
         textAlign: 'center',
-        fontWeight: 'bold',
+        includeFontPadding: false
     },
     filterTextActive: {
         color: '#4a2f1d',
