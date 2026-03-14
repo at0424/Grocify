@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Grocify",
+    "name": "Grocify!",
     "slug": "Grocify",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,7 +21,12 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.Grocify"
     },
     "web": {
       "output": "static",
@@ -32,7 +37,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/Grocify_Logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -42,7 +47,14 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access the microphone.",
+          "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to securely recognize user speech."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -10,6 +10,7 @@ import {
     updateUserPlan
 } from '@/services/api.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Voice from '@react-native-voice/voice';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -49,6 +50,7 @@ export default function ChatScreen() {
     const [currentUserId, setCurrentUserId] = useState(null);
     const [availableRecipes, setAvailableRecipes] = useState([]);
     const [userLists, setUserLists] = useState([]);
+    const [isRecording, setIsRecording] = useState(false);
 
     // Form State
     const [showMealForm, setShowMealForm] = useState(false);
@@ -72,10 +74,13 @@ export default function ChatScreen() {
 
     const planStartDateRef = useRef(new Date());
     const targetFridgeRef = useRef('ALL');
+    const preRecordTextRef = useRef('');
 
     // ==========================================
     // INITIALIZATION & EFFECTS
     // ==========================================
+
+    // --- Load Chat History ---
     useEffect(() => {
         const initialize = async () => {
             try {
@@ -97,9 +102,55 @@ export default function ChatScreen() {
         initialize();
     }, []);
 
+    // --- Update Chat ---
     useEffect(() => {
         if (messages.length > 0) saveChatHistory(messages);
     }, [messages]);
+
+    // --- Voice Recording ---
+    useEffect(() => {
+        // Setup Voice Listeners
+        Voice.onSpeechStart = () => setIsRecording(true);
+        Voice.onSpeechEnd = () => setIsRecording(false);
+        Voice.onSpeechError = (e) => {
+            console.error("Voice Error:", e.error);
+            setIsRecording(false);
+        };
+        Voice.onSpeechResults = (e) => {
+            if (e.value && e.value.length > 0) {
+                const voiceText = e.value[0];
+
+                if (preRecordTextRef.current.trim().length > 0) {
+                    setInputText(preRecordTextRef.current + " " + voiceText);
+                } else {
+                    setInputText(voiceText);
+                }
+            }
+        };
+
+        return () => {
+            Voice.destroy().then(Voice.removeAllListeners);
+        };
+    }, []);
+
+    const startRecording = async () => {
+        try {
+            preRecordTextRef.current = inputText;
+            await Voice.start('en-US'); 
+            setIsRecording(true);
+        } catch (e) {
+            console.error("Failed to start voice:", e);
+        }
+    };
+
+    const stopRecording = async () => {
+        try {
+            await Voice.stop();
+            setIsRecording(false);
+        } catch (e) {
+            console.error("Failed to stop voice:", e);
+        }
+    };
 
     // ==========================================
     // CHAT HISTORY MANAGEMENT
@@ -1237,7 +1288,22 @@ export default function ChatScreen() {
                                 }}
                             />
                         </ImageBackground>
+                        
+                        {/* Mic Button */}
+                        <TouchableOpacity onPress={isRecording ? stopRecording : startRecording}>
+                            <ImageBackground
+                                source={require('@/components/images/GeneralWoodenButton.png')} 
+                                style={[styles.sendButton, { width: isTabletView ? 60 : 45, marginLeft: 5 }]}
+                                resizeMode='stretch'
+                            >
+                                {/* A simple visual indicator for recording */}
+                                <Text style={[styles.sendButtonText, { color: isRecording ? '#FF5555' : '#FFFFFF', fontSize: 10 }]}>
+                                    {isRecording ? "Stop" : "Mic"}
+                                </Text>
+                            </ImageBackground>
+                        </TouchableOpacity>
 
+                        {/* Send Button */}
                         <TouchableOpacity onPress={sendMessage} disabled={isLoading}>
                             <ImageBackground
                                 source={require('@/components/images/GeneralRedButton.png')}
