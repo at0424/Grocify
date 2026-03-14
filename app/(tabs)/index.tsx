@@ -353,6 +353,15 @@ export default function HomeScreen() {
                 />
               </View>
 
+              {/* Sussy Pork Chop */}
+              <View style={styles.porkChopWrapper} pointerEvents='none'>
+                <Image
+                  source={require('@/assets/images/main_dashboard/PorkChop.png')} 
+                  style={styles.hangingLightImage} 
+                  resizeMode="contain"
+                />
+              </View>
+
               {/* Item on top of Fridge */}
               <View style={styles.fridgeTopRow}>
                 {/* Cat */}
@@ -368,6 +377,15 @@ export default function HomeScreen() {
                   resizeMode="contain"
                 />
               </View>
+
+              {/* Sussy Penguin */}
+                <View style={styles.penguinWrapper} pointerEvents='none'>
+                  <Image
+                    source={require('@/assets/images/main_dashboard/Penguin.png')}
+                    style={styles.hangingLightImage}
+                    resizeMode="contain"
+                  />
+                </View>
 
               {/* Animated Fridge Wrapper */}
               <Animated.View style={[
@@ -477,6 +495,24 @@ export default function HomeScreen() {
                 />
               </View>
 
+              {/* Sussy Cat */}
+              <View style={styles.catWrapper} pointerEvents='none'>
+                <Image
+                  source={require('@/assets/images/main_dashboard/Cat.png')}
+                  style={styles.hangingLightImage}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Sussy Snail */}
+              <View style={styles.snailWrapper} pointerEvents='none'>
+                <Image
+                  source={require('@/assets/images/main_dashboard/Snail.png')}
+                  style={styles.hangingLightImage}
+                  resizeMode="contain"
+                />
+              </View>
+
             </View>
           </View>
 
@@ -489,6 +525,15 @@ export default function HomeScreen() {
                 <Image
                   source={require('@/assets/images/main_dashboard/HangingShelf.png')} 
                   style={styles.hangingShelfImage}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Sussy Dust */}
+              <View style={styles.dustWrapper} pointerEvents='none'>
+                <Image
+                  source={require('@/assets/images/main_dashboard/Dust.png')}
+                  style={styles.hangingLightImage}
                   resizeMode="contain"
                 />
               </View>
@@ -628,6 +673,24 @@ export default function HomeScreen() {
                   resizeMode="contain"
                 />
 
+              </View>
+              
+              {/* Sussy Lizard */}
+              <View style={styles.lizardWrapper} pointerEvents='none'>
+                <Image
+                  source={require('@/assets/images/main_dashboard/Lizard.png')}
+                  style={styles.hangingLightImage}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Sussy Pearls */}
+              <View style={styles.pearlWrapper} pointerEvents='none'>
+                <Image
+                  source={require('@/assets/images/main_dashboard/Pearls.png')}
+                  style={styles.hangingLightImage}
+                  resizeMode="contain"
+                />
               </View>
 
             </View>
@@ -941,6 +1004,25 @@ const styles = StyleSheet.create({
     zIndex: 0,
     transform: [{ rotate: '-10deg' }]
   },
+  porkChopWrapper: {
+    position: 'absolute',
+    height: '5%',
+    aspectRatio: 1,
+    bottom: '39%',
+    left: '2%',
+    zIndex: -1,
+    transform: [{ rotate: '20deg' }]
+  },
+  penguinWrapper: {
+    position: 'absolute',
+    height: '7%',
+    aspectRatio: 1,
+    top: '38.5%',
+    right: '23%',
+    zIndex: 1,
+    opacity: 0.9,
+    transform: [{ scaleX: -1 }]
+  },
   bearWrapper: {
     position: 'absolute',
     height: '20%',
@@ -948,6 +1030,50 @@ const styles = StyleSheet.create({
     bottom: '3%',
     left: '5%',
     transform: [{ scaleX: -1 }]
+  },
+  catWrapper: {
+    position: 'absolute',
+    height: '7%',
+    aspectRatio: 1,
+    bottom: '20%',
+    left: '31%',
+    opacity: 0.9
+  },
+  snailWrapper: {
+    position: 'absolute',
+    height: '5%',
+    aspectRatio: 1,
+    bottom: '38%',
+    left: '8%',
+    zIndex: 0,
+    opacity: 0.9
+  },
+  dustWrapper: {
+    position: 'absolute',
+    height: '5%',
+    aspectRatio: 1,
+    top: '7%',
+    right: '35%',
+    zIndex: 1,
+    opacity: 0.8
+  },
+  pearlWrapper: {
+    position: 'absolute',
+    height: '5%',
+    aspectRatio: 1,
+    zIndex: 1,
+    bottom: '13%',
+    right: "25%",
+    opacity: 0.8
+  },
+  lizardWrapper: {
+    position: 'absolute',
+    height: '5%',
+    aspectRatio: 1,
+    zIndex: 1,
+    bottom: "35%",
+    right: 0,
+    opacity: 0.9
   },
 
   // --- Light Styles ---
