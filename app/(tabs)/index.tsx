@@ -291,6 +291,15 @@ export default function HomeScreen() {
                 />
               </View>
 
+              {/* Sussy Shrimp */}
+              <View style={styles.shrimpWrapper} pointerEvents='none'>
+                <Image
+                  source={require('@/assets/images/main_dashboard/Shrimp.png')} 
+                  style={styles.hangingLightImage} 
+                  resizeMode="contain"
+                />
+              </View>
+
               {/* Tall Flower Pot */}
               <View style={styles.tallFlowerPotWrapper} pointerEvents='none'>
                 <Image
@@ -401,6 +410,15 @@ export default function HomeScreen() {
                     source={require('@/assets/images/main_dashboard/WindowBeamLight.png')}
                     style={styles.beamImage}
                     resizeMode="stretch"
+                  />
+                </View>
+
+                {/* Sussy White Bear */}
+                <View style={styles.bearWrapper} pointerEvents='none'>
+                  <Image
+                    source={require('@/assets/images/main_dashboard/WhiteBear.png')}
+                    style={styles.hangingLightImage}
+                    resizeMode="contain"
                   />
                 </View>
 
@@ -913,6 +931,25 @@ const styles = StyleSheet.create({
   // --- DESIGN ITEM STYLES ---
   // ==========================
 
+  // --- General ---
+  shrimpWrapper: {
+    position: 'absolute',
+    height: '5%',
+    aspectRatio: 1,
+    bottom: '39%',
+    right: '1%',
+    zIndex: 0,
+    transform: [{ rotate: '-10deg' }]
+  },
+  bearWrapper: {
+    position: 'absolute',
+    height: '20%',
+    aspectRatio: 1,
+    bottom: '3%',
+    left: '5%',
+    transform: [{ scaleX: -1 }]
+  },
+
   // --- Light Styles ---
   hangingLightWrapper:{
     height: "30%",
@@ -942,7 +979,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '30%',
     width: '30%',
-    height: "10%"
+    height: "10%",
   },
   windowBeamWrapper: {
     position: 'absolute',

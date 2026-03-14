@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
+  Dimensions,
   Easing,
   Image,
   KeyboardAvoidingView,
@@ -93,6 +94,7 @@ export default function SignInScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
           <ScrollView
+            style={{ overflow: 'hidden' }}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             bounces={false}
@@ -192,6 +194,9 @@ export default function SignInScreen() {
     </View>
   );
 }
+
+const { width, height } = Dimensions.get('window');
+const isTabletView = width > 710;
 
 const styles = StyleSheet.create({
   root: {
@@ -358,6 +363,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: "#2D1B00",
     fontFamily: 'PixelFont',
+    fontSize: 10,
     paddingVertical: 0,
     includeFontPadding: false,
   },
@@ -452,7 +458,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   inputTablet: {
-    fontSize: 15,
+    fontSize: 12,
   },
   forgotTextTablet: {
     fontSize: 16,
