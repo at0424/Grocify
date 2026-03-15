@@ -4,7 +4,7 @@
     "slug": "Grocify",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/Grocify_Logo.png",
+    "icon": "./assets/images/Grocify_App_Logo.png",
     "scheme": "grocify",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,9 +15,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/Grocify_Logo.png",
-        "backgroundImage": "./assets/images/Grocify_Logo.png",
-        "monochromeImage": "./assets/images/Grocify_Logo.png"
+        "foregroundImage": "./assets/images/Grocify_App_Logo.png",
+        "backgroundImage": "./assets/images/Grocify_App_Logo.png",
+        "monochromeImage": "./assets/images/Grocify_App_Logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -29,14 +29,14 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/Grocify_App_Logo.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/Grocify_Logo.png",
+          "image": "./assets/images/Grocify_App_Logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -48,14 +48,12 @@
       "@react-native-community/datetimepicker",
       "expo-font",
       [
-        "@react-native-voice/voice",
+        "expo-speech-recognition",
         {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access the microphone.",
-          "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to securely recognize user speech."
+          "microphonePermission": "Allow Grocify! to access the microphone.",
+          "speechRecognitionPermission": "Allow Grocify! to securely recognize user speech."
         }
-      ],
-      "./withAndroidComponentFactory.cjs",
-      "./withAndroidProperties.cjs"
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

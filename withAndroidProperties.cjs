@@ -12,6 +12,11 @@ module.exports = function withAndroidProperties(config) {
       key: 'android.enableJetifier',
       value: 'true',
     });
+    config.modResults.push({
+      type: 'property',
+      key: 'reactNativeBridgelessEnabled',
+      value: 'false',
+    });
     return config;
   });
 };

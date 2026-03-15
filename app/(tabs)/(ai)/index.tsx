@@ -10,9 +10,9 @@ import {
     updateUserPlan
 } from '@/services/api.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Voice from '@react-native-voice/voice';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useRouter } from 'expo-router';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -53,7 +53,7 @@ export default function ChatScreen() {
     const [availableRecipes, setAvailableRecipes] = useState([]);
     const [userLists, setUserLists] = useState([]);
 
-    // --- NEW VOICE STATES ---
+    // --- VOICE STATES ---
     const [isRecording, setIsRecording] = useState(false);
     const [showVoiceModal, setShowVoiceModal] = useState(false);
     const [liveVoiceText, setLiveVoiceText] = useState('');
@@ -112,67 +112,54 @@ export default function ChatScreen() {
     // ==========================================
     // VOICE RECORDING LOGIC
     // ==========================================
-    useEffect(() => {
-        Voice.onSpeechStart = () => setIsRecording(true);
-        Voice.onSpeechEnd = () => setIsRecording(false);
-
-        Voice.onSpeechError = (e) => {
-            if (e.error && (e.error.code === "recognition_fail" || e.error.message?.includes("No speech"))) {
-                console.log("Mic turned off automatically: No speech detected.");
-            } else {
-                console.log("Voice Info:", e.error);
-            }
-            setIsRecording(false);
-        };
-
-        // Update the LIVE text while they are speaking in the new page
-        Voice.onSpeechResults = (e) => {
-            if (e.value && e.value.length > 0) {
-                setLiveVoiceText(e.value[0]);
-            }
-        };
-
-        return () => {
-            Voice.destroy().then(Voice.removeAllListeners);
-        };
-    }, []);
+    useSpeechRecognitionEvent("start", () => setIsRecording(true));
+    useSpeechRecognitionEvent("end", () => setIsRecording(false));
+    useSpeechRecognitionEvent("error", (event) => {
+        console.log("Voice Error:", event.error, event.message);
+        setIsRecording(false);
+    });
+    
+    // This grabs the live text as you speak!
+    useSpeechRecognitionEvent("result", (event) => {
+        const text = event.results[0]?.transcript || "";
+        setLiveVoiceText(text);
+    });
 
     const startRecording = async () => {
         try {
-            setLiveVoiceText(''); // Clear old text
-            setShowVoiceModal(true); // Open the new page overlay
-            await Voice.start('en-US');
-            setIsRecording(true);
+            const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+            if (!perm.granted) {
+                alert("Microphone permission is required to use voice chat!");
+                return;
+            }
+            
+            setLiveVoiceText('');
+            setShowVoiceModal(true);
+            ExpoSpeechRecognitionModule.start({
+                lang: "en-US",
+                interimResults: true, 
+            });
         } catch (e) {
             console.error("Failed to start voice:", e);
             setShowVoiceModal(false);
         }
     };
 
-    const stopRecordingAndSave = async () => {
-        try {
-            await Voice.stop();
-            setIsRecording(false);
-            setShowVoiceModal(false); // Close the new page
-
-            // Append what they just said to whatever was already in the input box!
-            if (liveVoiceText.trim().length > 0) {
-                setInputText((prev) => (prev + " " + liveVoiceText).trim());
-            }
-        } catch (e) {
-            console.error("Failed to stop voice:", e);
+    const stopRecordingAndSave = () => {
+        ExpoSpeechRecognitionModule.stop();
+        setIsRecording(false);
+        setShowVoiceModal(false);
+        
+        if (liveVoiceText.trim().length > 0) {
+            setInputText((prev) => (prev + " " + liveVoiceText).trim());
         }
     };
 
-    const cancelRecording = async () => {
-        try {
-            await Voice.stop();
-            setIsRecording(false);
-            setShowVoiceModal(false);
-            setLiveVoiceText(''); // Trash what they said
-        } catch (e) {
-            console.error("Failed to cancel voice:", e);
-        }
+    const cancelRecording = () => {
+        ExpoSpeechRecognitionModule.abort();
+        setIsRecording(false);
+        setShowVoiceModal(false);
+        setLiveVoiceText('');
     };
 
     // ==========================================
