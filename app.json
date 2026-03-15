@@ -23,7 +23,6 @@
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
       "package": "com.anonymous.Grocify"
@@ -54,11 +53,19 @@
           "microphonePermission": "Allow $(PRODUCT_NAME) to access the microphone.",
           "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to securely recognize user speech."
         }
-      ]
+      ],
+      "./withAndroidComponentFactory.cjs",
+      "./withAndroidProperties.cjs"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5cbd4341-1916-43a8-8ba2-d6b51637d16f"
+      }
     }
   }
 }
