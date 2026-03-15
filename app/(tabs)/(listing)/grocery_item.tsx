@@ -229,6 +229,7 @@ export default function AddItemScreen() {
 
                     <TextInput
                         placeholder="Search ingredients..."
+                        placeholderTextColor={'#bd906cff'}
                         style={styles.searchInput}
                         value={searchQuery}
                         onChangeText={(text) => setSearchQuery(text)}
