@@ -21,7 +21,6 @@ import {
     FlatList,
     Image,
     ImageBackground,
-    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -30,7 +29,6 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    TouchableWithoutFeedback,
     View
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
@@ -1303,7 +1301,6 @@ export default function ChatScreen() {
     // MAIN RENDER
     // ==========================================
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={{ flex: 1 }}>
                 <ImageBackground
                     source={require('@/assets/images/ai/AI_BG.png')}
@@ -1426,7 +1423,6 @@ export default function ChatScreen() {
                     </SafeAreaView>
                 </ImageBackground>
             </View>
-        </TouchableWithoutFeedback>
 
     );
 }

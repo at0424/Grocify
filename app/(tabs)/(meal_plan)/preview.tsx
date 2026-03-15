@@ -1,4 +1,5 @@
 import { getUserId } from '@/amplify/auth/authService';
+import LoadingScreen from '@/components/LoadingScreen';
 import { batchAddListItems, createNewList, createUserPlan, fetchGroceryCatalog, fetchRecipes, fetchUserLists, fetchUserMealPlan, updateUserPlan } from '@/services/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Moon, Snowflake, Sun, Utensils } from 'lucide-react-native';
@@ -426,10 +427,7 @@ export default function MealPlanPreviewScreen() {
 
     if (loading) {
         return (
-            <View style={styles.centerContainer}>
-                <ActivityIndicator size="large" color="#7A9B6B" />
-                <Text style={styles.loadingText}>Curating your menu...</Text>
-            </View>
+            <LoadingScreen />
         );
     }
 
