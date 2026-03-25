@@ -46,7 +46,7 @@ export default function RootLayout() {
     // Clean up the audio when the app is completely closed
     return () => {
       soundRef.current.unloadAsync();
-    };
+    }; 
   }, []);
 
    if (!loaded && !error) {

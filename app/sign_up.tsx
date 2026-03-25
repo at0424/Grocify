@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 10,
     color: "#2D1B00",
     fontFamily: 'PixelFont',
     paddingVertical: 0,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
   },
   inputTablet: {
-    fontSize: 14,
+    fontSize: 12,
   },
   buttonTablet: {
     padding: 20,

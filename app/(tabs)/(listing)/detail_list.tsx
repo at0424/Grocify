@@ -540,6 +540,7 @@ const styles = StyleSheet.create({
     fontSize: isTabletView ? 24 : 12,
     fontFamily: 'PixelFont',
     color: '#000000', 
+    textAlign: 'center',
     includeFontPadding: false,
     textAlignVertical: 'center',
   },

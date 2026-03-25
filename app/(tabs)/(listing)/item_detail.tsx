@@ -1,11 +1,12 @@
 import { addListItems } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ImageBackground } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator, Alert, Dimensions,
-  Image, ScrollView, StyleSheet,
+  Image,
+  ImageBackground,
+  ScrollView, StyleSheet,
   Text, TouchableOpacity, View
 } from 'react-native';
 
@@ -109,7 +110,7 @@ export default function ItemDetailScreen() {
           
           <Text style={styles.title}>{item.name}</Text>
           <Text style={styles.category}>{item.category}</Text>
-
+          
           <ImageBackground
             source={require('@/assets/images/listing/DescriptionBG.png')}
             style={styles.descBackground}

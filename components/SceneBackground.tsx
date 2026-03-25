@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Image, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 export default function SceneBackground() {
   const { width, height } = useWindowDimensions();
@@ -153,9 +153,29 @@ export default function SceneBackground() {
         style={[styles.penguin, isTablet && styles.penguinTablet]} 
         resizeMode="contain" 
       />
+
+      {/* Sussy Grass */}
+      <Image 
+        source={require('@/assets/images/sign_in/Grass.png')} 
+        style={[styles.grass]} 
+        resizeMode="contain" 
+      />
+
+      {/* Sussy Mountain */}
+      <Image 
+        source={require('@/assets/images/sign_in/Mountain.png')} 
+        style={[styles.mountain, isTablet && styles.mountainTablet]} 
+        resizeMode="contain" 
+      />
+
+      {/* Dark Overlay */}
+      <View style={styles.overlay} />
+
     </View>
   );
 }
+
+const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
@@ -254,6 +274,8 @@ const styles = StyleSheet.create({
       aspectRatio: 0.9,
       zIndex: 3,      
   },
+
+  // --- Sussy Elemenet ---
   penguin: {
     position: 'absolute',
     height: "10%",
@@ -267,6 +289,29 @@ const styles = StyleSheet.create({
     top: '48%',
     zIndex: 2
   },
+  grass: {
+    position: 'absolute',
+    height: "8%",
+    aspectRatio: 1,
+    bottom: "3%",
+    left: "-5%",
+    zIndex: 1
+  },
+  mountain: {
+    position: 'absolute',
+    height: "8%",
+    aspectRatio: 1,
+    bottom: "50%",
+    right: "15%",
+    zIndex: 0,
+    opacity: 0.5
+  },
+  mountainTablet: {
+    right: "35%",
+    bottom: "50%",
+    zIndex: 0
+  },
+  
   // --- Trees Styles ---
   singleTreeLeft: {
       position: 'absolute',
@@ -300,4 +345,9 @@ const styles = StyleSheet.create({
       aspectRatio: 0.60,  
       zIndex: 2,    
   },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)', 
+    zIndex: 10, 
+  }
 });

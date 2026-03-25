@@ -12,9 +12,11 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useRouter } from 'expo-router';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Animated,
     Dimensions,
     FlatList,
     Image,
@@ -32,7 +34,11 @@ import {
 import Markdown from 'react-native-markdown-display';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const SERVER_URL = 'http://192.168.100.34:3000/chat';
+// const SERVER_URL = 'http://192.168.100.46:3000/chat';
+// const SERVER_URL = 'http://172.20.10.2:3000/chat';
+const SERVER_URL = 'https://grocify-backend-busk.onrender.com/chat';
+
+console.log(SERVER_URL)
 
 export default function ChatScreen() {
     // ==========================================
@@ -48,6 +54,11 @@ export default function ChatScreen() {
     const [currentUserId, setCurrentUserId] = useState(null);
     const [availableRecipes, setAvailableRecipes] = useState([]);
     const [userLists, setUserLists] = useState([]);
+
+    // --- VOICE STATES ---
+    const [isRecording, setIsRecording] = useState(false);
+    const [showVoiceModal, setShowVoiceModal] = useState(false);
+    const [liveVoiceText, setLiveVoiceText] = useState('');
 
     // Form State
     const [showMealForm, setShowMealForm] = useState(false);
@@ -65,7 +76,6 @@ export default function ChatScreen() {
 
     const [isAdvancedMeals, setIsAdvancedMeals] = useState(false);
     const [advancedMeals, setAdvancedMeals] = useState(
-        // Pre-fill an array for up to 7 days to track individual daily selections
         Array.from({ length: 7 }, () => ({ breakfast: true, lunch: true, dinner: true }))
     );
 
@@ -75,6 +85,7 @@ export default function ChatScreen() {
     // ==========================================
     // INITIALIZATION & EFFECTS
     // ==========================================
+
     useEffect(() => {
         const initialize = async () => {
             try {
@@ -99,6 +110,59 @@ export default function ChatScreen() {
     useEffect(() => {
         if (messages.length > 0) saveChatHistory(messages);
     }, [messages]);
+
+    // ==========================================
+    // VOICE RECORDING LOGIC
+    // ==========================================
+    useSpeechRecognitionEvent("start", () => setIsRecording(true));
+    useSpeechRecognitionEvent("end", () => setIsRecording(false));
+    useSpeechRecognitionEvent("error", (event) => {
+        console.log("Voice Error:", event.error, event.message);
+        setIsRecording(false);
+    });
+    
+    // This grabs the live text as you speak!
+    useSpeechRecognitionEvent("result", (event) => {
+        const text = event.results[0]?.transcript || "";
+        setLiveVoiceText(text);
+    });
+
+    const startRecording = async () => {
+        try {
+            const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+            if (!perm.granted) {
+                alert("Microphone permission is required to use voice chat!");
+                return;
+            }
+            
+            setLiveVoiceText('');
+            setShowVoiceModal(true);
+            ExpoSpeechRecognitionModule.start({
+                lang: "en-US",
+                interimResults: true, 
+            });
+        } catch (e) {
+            console.error("Failed to start voice:", e);
+            setShowVoiceModal(false);
+        }
+    };
+
+    const stopRecordingAndSave = () => {
+        ExpoSpeechRecognitionModule.stop();
+        setIsRecording(false);
+        setShowVoiceModal(false);
+        
+        if (liveVoiceText.trim().length > 0) {
+            setInputText((prev) => (prev + " " + liveVoiceText).trim());
+        }
+    };
+
+    const cancelRecording = () => {
+        ExpoSpeechRecognitionModule.abort();
+        setIsRecording(false);
+        setShowVoiceModal(false);
+        setLiveVoiceText('');
+    };
 
     // ==========================================
     // CHAT HISTORY MANAGEMENT
@@ -133,7 +197,6 @@ export default function ChatScreen() {
     //  LOGIC
     // ==========================================
 
-    // Helper to toggle specific meals on specific days
     const toggleAdvancedMeal = (dayIndex, mealType) => {
         setAdvancedMeals(prev => {
             const newMeals = [...prev];
@@ -170,15 +233,11 @@ export default function ChatScreen() {
         planStartDateRef.current = formStartDate;
         targetFridgeRef.current = formTargetFridge;
 
-        // What the user SEES
         const displayText = `Please create a ${formDays}-day meal plan named "${finalName}".`;
-
-        // What the AI SEES
         const engineeredPrompt = `Please create a ${formDays}-day meal plan for me starting on ${formStartDate.toDateString()}.\n• Name: "${finalName}"\n• Meals included: ${mealsPromptText}\n• Allergies or restrictions: ${finalAllergies}\n\nPlease generate this using recipes from the catalog and save it!`;
 
         sendMessage(displayText, true, engineeredPrompt);
 
-        // Reset Form
         setFormName('');
         setFormDays(3);
         setFormMeals({ breakfast: true, lunch: true, dinner: true });
@@ -188,9 +247,6 @@ export default function ChatScreen() {
         setFormColor(COLORS[3]);
     };
 
-    // ==========================================
-    // COOK FROM FRIDGE LOGIC
-    // ==========================================
     const submitFridgeCookRequest = () => {
         setShowFridgeForm(false);
 
@@ -200,12 +256,10 @@ export default function ChatScreen() {
 
         const listName = selectedList ? (selectedList.listName || selectedList.name) : "All Lists";
 
-        // What the user SEES in the chat bubble
         const displayText = cookTargetFridge === 'ALL'
             ? "What can I make with the ingredients in my fridge?"
             : `What can I make with the ingredients in "${listName}"?`;
 
-        // What the AI SEES in the backend
         let hiddenPrompt = "I want to cook from my fridge. Please check ALL of my grocery lists. DO NOT ask me which list to choose. Use your tools to pick a list, check it silently, and immediately suggest exactly ONE recipe I can make right now. Do not format this as a daily meal plan.";
 
         if (cookTargetFridge !== 'ALL') {
@@ -215,10 +269,6 @@ export default function ChatScreen() {
         sendMessage(displayText, true, hiddenPrompt);
         setCookTargetFridge('ALL');
     };
-
-    // ==========================================
-    // TOOL EXECUTION HELPERS
-    // ==========================================
 
     const processMealPlanTool = async (args) => {
         console.log(`\n=== STARTING MEAL PLAN CREATION ===`);
@@ -453,9 +503,6 @@ export default function ChatScreen() {
         }
     };
 
-    // ==========================================
-    // MAIN CHAT LOGIC (API CALLS)
-    // ==========================================
     const sendMessage = async (presetText, isSystemPrompt = false, hiddenApiText = null) => {
         const userMsgText = typeof presetText === 'string' ? presetText : inputText;
         if (userMsgText.trim().length === 0) return;
@@ -490,9 +537,12 @@ export default function ChatScreen() {
                     intermediateSteps: currentIntermediateSteps
                 };
 
+                console.log("Sending request to ", SERVER_URL);
                 const response = await fetch(SERVER_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify(requestBody)
                 });
 
@@ -510,7 +560,19 @@ export default function ChatScreen() {
 
                 } else if (data.action === 'reply') {
                     const cleanReply = data.reply ? data.reply.replace(/\\/g, '') : "";
-                    setMessages(prev => [...prev, { id: Date.now().toString(), text: cleanReply, sender: 'bot' }]);
+
+                    const createdMealPlan = currentIntermediateSteps.some(step =>
+                        step.functionResponse?.name === 'create_meal_plan' &&
+                        step.functionResponse?.response?.success === true
+                    );
+
+                    setMessages(prev => [...prev, {
+                        id: Date.now().toString(),
+                        text: cleanReply,
+                        sender: 'bot',
+                        showMealPlanButton: createdMealPlan
+                    }]);
+
                     isConversationDone = true;
                 } else {
                     isConversationDone = true;
@@ -532,8 +594,7 @@ export default function ChatScreen() {
         <View style={styles.welcomeContainer}>
             <Text style={styles.welcomeTitle}>How can I help you today?</Text>
             <View style={styles.suggestionsGrid}>
-
-                {/* Box 1: Create a meal plan */}
+                {/* Box 1 */}
                 <View style={styles.suggestionWrapper}>
                     <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowMealForm(true)}>
                         <Image
@@ -545,7 +606,7 @@ export default function ChatScreen() {
                     <Text style={styles.suggestionText}>Create a meal plan</Text>
                 </View>
 
-                {/* Box 2: Add to grocery list */}
+                {/* Box 2 */}
                 <View style={styles.suggestionWrapper}>
                     <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("I need to add some items to my grocery list.")}>
                         <Image
@@ -557,7 +618,7 @@ export default function ChatScreen() {
                     <Text style={styles.suggestionText}>Add to grocery list</Text>
                 </View>
 
-                {/* Box 3: Cook from my fridge */}
+                {/* Box 3 */}
                 <View style={styles.suggestionWrapper}>
                     <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowFridgeForm(true)}>
                         <Image
@@ -569,7 +630,7 @@ export default function ChatScreen() {
                     <Text style={styles.suggestionText}>Cook from my fridge</Text>
                 </View>
 
-                {/* Box 4: Suggest a recipe */}
+                {/* Box 4 */}
                 <View style={styles.suggestionWrapper}>
                     <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("Can you suggest me a recipe?")}>
                         <Image
@@ -580,7 +641,6 @@ export default function ChatScreen() {
                     </TouchableOpacity>
                     <Text style={styles.suggestionText}>Suggest a recipe</Text>
                 </View>
-
             </View>
         </View>
     );
@@ -590,10 +650,41 @@ export default function ChatScreen() {
             {item.sender === 'user' ? (
                 <Text style={[styles.messageText, styles.userText]}>{item.text}</Text>
             ) : (
-                <Markdown style={botMarkdownStyles}>{item.text}</Markdown>
+                <View>
+                    <Markdown style={botMarkdownStyles}>{item.text}</Markdown>
+
+                    {item.showMealPlanButton && (
+                        <TouchableOpacity
+                            style={styles.actionButtonWrapper}
+                            onPress={() => router.push('./(meal_plan)')}
+                        >
+                            <ImageBackground
+                                source={require('@/components/images/GeneralBlueButton.png')}
+                                style={styles.actionButtonBg}
+                                resizeMode="stretch"
+                            >
+                                <Text style={styles.actionButtonText}>View Meal Plan</Text>
+                            </ImageBackground>
+                        </TouchableOpacity>
+                    )}
+                </View>
             )}
         </View>
     );
+
+    const renderFooter = () => {
+        if (!isLoading) return null;
+
+        return (
+            <View style={[
+                styles.messageBubble,
+                styles.botBubble,
+                { alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 18 }
+            ]}>
+                <TypingIndicator />
+            </View>
+        );
+    };
 
     const generateDateOptions = () => {
         const options = [];
@@ -956,9 +1047,9 @@ export default function ChatScreen() {
 
                         {/* Fridge Selector */}
                         <Text style={styles.inputLabel}>Which list should I look in?</Text>
-                        <ScrollView 
-                            horizontal 
-                            showsHorizontalScrollIndicator={false} 
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
                             style={{}}
                             contentContainerStyle={{ gap: 10, paddingVertical: 10, alignItems: 'center' }}
                         >
@@ -1049,117 +1140,297 @@ export default function ChatScreen() {
         );
     };
 
+    // --- VOICE RECORDING FULL-SCREEN MODAL ---
+    const renderVoiceModal = () => {
+        return (
+            <Modal visible={showVoiceModal} animationType="slide" transparent={false}>
+                <ImageBackground
+                    source={require('@/assets/images/ai/AI_BG.png')}
+                    style={styles.voiceModalContainer}
+                    resizeMode="cover"
+                >
+                    <SafeAreaView style={styles.voiceModalSafeArea}>
+
+                        {/* Close/Cancel Button */}
+                        <TouchableOpacity style={styles.voiceCloseButton} onPress={cancelRecording}>
+                            <Image
+                                source={require('@/components/images/ExitButton.png')}
+                                style={{ width: 40, height: 40 }}
+                                resizeMode="contain"
+                            />
+                        </TouchableOpacity>
+
+                        <View style={styles.voiceModalContent}>
+                            <Text style={styles.voiceTitleText}>
+                                {isRecording ? "I'm listening..." : "Tap mic to speak"}
+                            </Text>
+
+                            {/* Sound Waves & Mic Container */}
+                            <View style={styles.micAnimationContainer}>
+                                {isRecording && <PulseAnimation />}
+
+                                <TouchableOpacity
+                                    onPress={isRecording ? stopRecordingAndSave : startRecording}
+                                    style={styles.bigMicButton}
+                                >
+                                    <Image
+                                        source={
+                                            isRecording
+                                                ? require('@/components/images/MicOn.png')
+                                                : require('@/components/images/MicOff.png')
+                                        }
+                                        style={styles.bigMicIcon}
+                                        resizeMode="contain"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Live Text Display */}
+                            <View style={styles.liveTextContainer}>
+                                <Text style={styles.liveTextPrompt}>
+                                    {liveVoiceText.length > 0 ? `"${liveVoiceText}"` : "..."}
+                                </Text>
+                            </View>
+
+                            {/* Confirm Button */}
+                            <TouchableOpacity onPress={stopRecordingAndSave} style={styles.voiceConfirmButtonWrapper}>
+                                <ImageBackground
+                                    source={require('@/components/images/GeneralBlueButton.png')}
+                                    style={styles.voiceConfirmButton}
+                                    resizeMode="stretch"
+                                >
+                                    <Text style={styles.voiceConfirmText}>Done</Text>
+                                </ImageBackground>
+                            </TouchableOpacity>
+
+                        </View>
+                    </SafeAreaView>
+                </ImageBackground>
+            </Modal>
+        );
+    };
+
+
+    // ==========================================
+    // ANIMATION
+    // ==========================================
+
+    // --- ANIMATED TYPING INDICATOR ---
+    const TypingIndicator = () => {
+        const dot1 = useRef(new Animated.Value(0)).current;
+        const dot2 = useRef(new Animated.Value(0)).current;
+        const dot3 = useRef(new Animated.Value(0)).current;
+
+        useEffect(() => {
+            const animateDot = (dot, delay) => {
+                return Animated.sequence([
+                    Animated.delay(delay),
+                    Animated.timing(dot, {
+                        toValue: 1,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(dot, {
+                        toValue: 0,
+                        duration: 300,
+                        useNativeDriver: true,
+                    }),
+                ]);
+            };
+
+            const animationLoop = Animated.loop(
+                Animated.parallel([
+                    animateDot(dot1, 0),
+                    animateDot(dot2, 150),
+                    animateDot(dot3, 300),
+                ])
+            );
+
+            animationLoop.start();
+            return () => animationLoop.stop();
+        }, [dot1, dot2, dot3]);
+
+        const translateY1 = dot1.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+        const translateY2 = dot2.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+        const translateY3 = dot3.interpolate({ inputRange: [0, 1], outputRange: [0, -6] });
+
+        return (
+            <View style={styles.typingContainer}>
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: translateY1 }] }]} />
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: translateY2 }] }]} />
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: translateY3 }] }]} />
+            </View>
+        );
+    };
+
+    // --- SOUND WAVE PULSE ANIMATION ---
+    const PulseAnimation = () => {
+        const wave1 = useRef(new Animated.Value(1)).current;
+        const wave2 = useRef(new Animated.Value(1)).current;
+        const wave3 = useRef(new Animated.Value(1)).current;
+
+        useEffect(() => {
+            const createWave = (anim, delay) => {
+                return Animated.loop(
+                    Animated.sequence([
+                        Animated.delay(delay),
+                        Animated.parallel([
+                            Animated.timing(anim, { toValue: 2.5, duration: 2000, useNativeDriver: true }),
+                        ]),
+                        Animated.timing(anim, { toValue: 1, duration: 0, useNativeDriver: true }),
+                    ])
+                );
+            };
+
+            const animations = [
+                createWave(wave1, 0),
+                createWave(wave2, 600),
+                createWave(wave3, 1200)
+            ];
+
+            animations.forEach(anim => anim.start());
+
+            return () => {
+                animations.forEach(anim => anim.stop());
+            };
+        }, []);
+
+        return (
+            <View style={styles.pulseWrapper}>
+                <Animated.View style={[styles.pulseCircle, { transform: [{ scale: wave1 }], opacity: wave1.interpolate({ inputRange: [1, 2.5], outputRange: [0.6, 0] }) }]} />
+                <Animated.View style={[styles.pulseCircle, { transform: [{ scale: wave2 }], opacity: wave2.interpolate({ inputRange: [1, 2.5], outputRange: [0.6, 0] }) }]} />
+                <Animated.View style={[styles.pulseCircle, { transform: [{ scale: wave3 }], opacity: wave3.interpolate({ inputRange: [1, 2.5], outputRange: [0.6, 0] }) }]} />
+            </View>
+        );
+    };
+
     // ==========================================
     // MAIN RENDER
     // ==========================================
     return (
-        <ImageBackground
-            source={require('@/assets/images/ai/AI_BG.png')}
-            style={styles.background}
-            resizeMode="stretch"
-        >
-            <SafeAreaView style={styles.container}>
-                {/* Header */}
+            <View style={{ flex: 1 }}>
                 <ImageBackground
-                    source={require('@/assets/images/freshness/SelectorPanel.png')}
-                    style={styles.header}
+                    source={require('@/assets/images/ai/AI_BG.png')}
+                    style={styles.background}
                     resizeMode="stretch"
                 >
-                    <View style={styles.headerWrapper}>
-                        <Image
-                            source={require('@/assets/images/ai/Paper.png')}
-                            style={styles.headerPaper}
-                            resizeMode='stretch'
-                        />
-                    </View>
-
-                    <TouchableOpacity
-                        style={styles.headerIcon}
-                        onPress={() => router.back()}
-                    >
-                        <Image
-                            source={require('@/components/images/BackButton.png')}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode='contain'
-                        />
-                    </TouchableOpacity>
-
-                    <Text style={styles.headerTitle}>AI Assistant</Text>
-
-                    <TouchableOpacity style={styles.headerIcon} onPress={clearHistory}>
-                        <Image
-                            source={require('@/components/images/RefreshButton.png')}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode='contain'
-                        />
-                    </TouchableOpacity>
-                </ImageBackground>
-
-                {/* Chat Content */}
-                <KeyboardAvoidingView
-                    style={{ flex: 1 }}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
-                >
-                    {messages.length === 0 ? renderWelcomeScreen() : (
-                        <FlatList
-                            ref={flatListRef}
-                            data={messages}
-                            renderItem={renderItem}
-                            keyExtractor={(item) => item.id}
-                            contentContainerStyle={styles.listContent}
-                            style={{ flex: 1 }}
-                            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                            onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                            keyboardShouldPersistTaps="handled"
-                            keyboardDismissMode="on-drag"
-                        />
-                    )}
-
-                    {/* Text Input */}
-                    <View style={styles.inputWrapper}>
+                    <SafeAreaView style={styles.container}>
+                        {/* Header */}
                         <ImageBackground
-                            source={require('@/assets/images/ai/TextInput.png')}
-                            style={styles.inputContainer}
+                            source={require('@/assets/images/freshness/SelectorPanel.png')}
+                            style={styles.header}
                             resizeMode="stretch"
                         >
-                            <TextInput
-                                style={styles.input}
-                                value={inputText}
-                                onChangeText={setInputText}
-                                placeholder="Ask AI for Help!"
-                                multiline={true}
-                                placeholderTextColor="#888"
-                                onFocus={() => {
-                                    setTimeout(() => {
-                                        flatListRef.current?.scrollToEnd({ animated: true });
-                                    }, 200);
-                                }}
-                            />
+                            <View style={styles.headerWrapper}>
+                                <Image
+                                    source={require('@/assets/images/ai/Paper.png')}
+                                    style={styles.headerPaper}
+                                    resizeMode='stretch'
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.headerIcon}
+                                onPress={() => router.back()}
+                            >
+                                <Image
+                                    source={require('@/components/images/BackButton.png')}
+                                    style={{ width: '100%', height: '100%' }}
+                                    resizeMode='contain'
+                                />
+                            </TouchableOpacity>
+
+                            <Text style={styles.headerTitle}>AI Assistant</Text>
+
+                            <TouchableOpacity style={styles.headerIcon} onPress={clearHistory}>
+                                <Image
+                                    source={require('@/components/images/RefreshButton.png')}
+                                    style={{ width: '100%', height: '100%' }}
+                                    resizeMode='contain'
+                                />
+                            </TouchableOpacity>
                         </ImageBackground>
 
-                        <TouchableOpacity onPress={sendMessage} disabled={isLoading}>
-                            <ImageBackground
-                                source={require('@/components/images/GeneralRedButton.png')}
-                                style={styles.sendButton}
-                                resizeMode='stretch'
-                            >
-                                {isLoading ? (
-                                    <ActivityIndicator color="#FFFFFF" size="small" />
-                                ) : (
-                                    <Text style={styles.sendButtonText}>Send</Text>
-                                )}
-                            </ImageBackground>
-                        </TouchableOpacity>
-                    </View>
-                </KeyboardAvoidingView>
+                        {/* Chat Content */}
+                        <KeyboardAvoidingView
+                            style={{ flex: 1 }}
+                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                            keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+                        >
+                            {messages.length === 0 ? renderWelcomeScreen() : (
+                                <FlatList
+                                    ref={flatListRef}
+                                    data={messages}
+                                    renderItem={renderItem}
+                                    keyExtractor={(item) => item.id}
+                                    contentContainerStyle={styles.listContent}
+                                    style={{ flex: 1 }}
+                                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                                    onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                                    keyboardShouldPersistTaps="handled"
+                                    keyboardDismissMode="on-drag"
+                                    ListFooterComponent={renderFooter}
+                                />
+                            )}
 
-                {/* Overlays */}
-                {renderMealPlanModal()}
-                {renderFridgeCookModal()}
+                            {/* Text Input */}
+                            <View style={styles.inputWrapper}>
+                                <ImageBackground
+                                    source={require('@/assets/images/ai/TextInput.png')}
+                                    style={styles.inputContainer}
+                                    resizeMode="stretch"
+                                >
+                                    <TextInput
+                                        style={styles.input}
+                                        value={inputText}
+                                        onChangeText={setInputText}
+                                        placeholder="Ask AI for Help!"
+                                        multiline={true}
+                                        placeholderTextColor="#888"
+                                        onFocus={() => {
+                                            setTimeout(() => {
+                                                flatListRef.current?.scrollToEnd({ animated: true });
+                                            }, 200);
+                                        }}
+                                    />
 
-            </SafeAreaView>
-        </ImageBackground>
+                                    {/* Tap this to open the Voice Record Overlay! */}
+                                    <TouchableOpacity onPress={startRecording} style={styles.micIconWrapper}>
+                                        <Image
+                                            source={require('@/components/images/MicOff.png')}
+                                            style={styles.micIcon}
+                                            resizeMode="contain"
+                                        />
+                                    </TouchableOpacity>
+
+                                </ImageBackground>
+
+                                {/* Send Button */}
+                                <TouchableOpacity onPress={sendMessage} disabled={isLoading}>
+                                    <ImageBackground
+                                        source={require('@/components/images/GeneralRedButton.png')}
+                                        style={styles.sendButton}
+                                        resizeMode='stretch'
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator color="#FFFFFF" size="small" />
+                                        ) : (
+                                            <Text style={styles.sendButtonText}>Send</Text>
+                                        )}
+                                    </ImageBackground>
+                                </TouchableOpacity>
+                            </View>
+                        </KeyboardAvoidingView>
+
+                        {/* Overlays */}
+                        {renderMealPlanModal()}
+                        {renderFridgeCookModal()}
+                        {renderVoiceModal()}
+
+                    </SafeAreaView>
+                </ImageBackground>
+            </View>
+
     );
 }
 
@@ -1265,6 +1536,8 @@ const styles = StyleSheet.create({
         padding: 16,
         paddingBottom: 30,
     },
+
+    // --- Bubbles Styls ---
     messageBubble: {
         maxWidth: '90%',
         padding: 12,
@@ -1307,6 +1580,28 @@ const styles = StyleSheet.create({
     userText: {
         color: '#FFFFFF',
     },
+
+    // --- AI Bubbles Action Button --- 
+    actionButtonWrapper: {
+        marginTop: 12,
+        height: isTabletView ? 50 : 40,
+        width: isTabletView ? 160 : 130,
+        alignSelf: 'flex-start',
+    },
+    actionButtonBg: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    actionButtonText: {
+        fontFamily: 'PixelFont',
+        color: '#FFFFFF',
+        fontSize: isTabletView ? 12 : 10,
+        textAlign: 'center',
+        includeFontPadding: false,
+        textAlignVertical: 'center',
+    },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1316,8 +1611,9 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         flex: 1,
+        flexDirection: 'row',
         minHeight: 60,
-        justifyContent: 'center',
+        alignItems: 'center',
         marginRight: 10,
         paddingLeft: '5%',
         paddingRight: '4%',
@@ -1325,6 +1621,7 @@ const styles = StyleSheet.create({
         paddingBottom: 14,
     },
     input: {
+        flex: 1,
         paddingHorizontal: 16,
         fontSize: isTabletView ? 16 : 12,
         fontFamily: 'PixelFont',
@@ -1333,6 +1630,15 @@ const styles = StyleSheet.create({
         maxHeight: 100,
         includeFontPadding: false,
         textAlignVertical: 'center'
+    },
+    micIconWrapper: {
+        paddingHorizontal: 5,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    micIcon: {
+        width: isTabletView ? 28 : 20,
+        height: isTabletView ? 28 : 20,
     },
     sendButton: {
         width: isTabletView ? 100 : 80,
@@ -1526,6 +1832,123 @@ const styles = StyleSheet.create({
         includeFontPadding: false,
         textAlignVertical: 'center'
     },
+
+    // Typing Indicator
+    typingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingTop: 4,
+    },
+    typingDot: {
+        width: 8,
+        height: 8,
+        backgroundColor: '#623d23',
+        borderRadius: 2,
+    },
+
+    // --- NEW VOICE OVERLAY STYLES ---
+    voiceModalContainer: {
+        flex: 1,
+        width: '100%',
+        height: '100%'
+    },
+    voiceModalSafeArea: {
+        flex: 1,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 20,
+    },
+    voiceCloseButton: {
+        alignSelf: 'flex-end',
+        padding: 20,
+    },
+    voiceModalContent: {
+        flex: 1,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingBottom: 50,
+    },
+    voiceTitleText: {
+        fontSize: isTabletView ? 28 : 22,
+        fontFamily: 'PixelFont',
+        color: '#5C4033',
+        marginBottom: 50,
+        textAlign: 'center',
+    },
+    micAnimationContainer: {
+        width: 200,
+        height: 200,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    pulseWrapper: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pulseCircle: {
+        position: 'absolute',
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: '#E6D5B3', // Soft matching glow
+    },
+    bigMicButton: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#FFF9E6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
+        shadowColor: '#4A3525',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
+        elevation: 8,
+    },
+    bigMicIcon: {
+        width: 60,
+        height: 60,
+    },
+    liveTextContainer: {
+        width: '80%',
+        minHeight: 80,
+        padding: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    liveTextPrompt: {
+        fontSize: isTabletView ? 20 : 16,
+        fontFamily: 'PixelFont',
+        color: '#4A3525',
+        textAlign: 'center',
+        lineHeight: 24,
+    },
+    voiceConfirmButtonWrapper: {
+        width: 160,
+        height: 50,
+    },
+    voiceConfirmButton: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    voiceConfirmText: {
+        color: '#FFFFFF',
+        fontFamily: 'PixelFont',
+        fontSize: 16,
+        includeFontPadding: false,
+        textAlignVertical: 'center'
+    }
 });
 
 const botMarkdownStyles = {
@@ -1546,7 +1969,7 @@ const botMarkdownStyles = {
         fontFamily: 'PixelFont',
         fontSize: 13,
         fontWeight: 'normal',
-        color: 'black', // Slightly darker for emphasis
+        color: 'black',
     },
     bullet_list: {
         marginBottom: 10,
@@ -1559,7 +1982,7 @@ const botMarkdownStyles = {
         marginBottom: 10,
     },
     th: {
-        backgroundColor: '#D4BA8C', // Darker parchment for headers
+        backgroundColor: '#D4BA8C',
         padding: 8,
         fontWeight: 'bold',
         textAlign: 'left',

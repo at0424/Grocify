@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Grocify",
+    "name": "Grocify!",
     "slug": "Grocify",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/Grocify_Logo.png",
+    "icon": "./assets/images/Grocify_App_Logo.png",
     "scheme": "grocify",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,24 +15,28 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/Grocify_Logo.png",
-        "backgroundImage": "./assets/images/Grocify_Logo.png",
-        "monochromeImage": "./assets/images/Grocify_Logo.png"
+        "foregroundImage": "./assets/images/Grocify_App_Logo.png",
+        "backgroundImage": "./assets/images/Grocify_App_Logo.png",
+        "monochromeImage": "./assets/images/Grocify_App_Logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.anonymous.Grocify"
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/Grocify_App_Logo.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/Grocify_App_Logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -42,11 +46,24 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Grocify! to access the microphone.",
+          "speechRecognitionPermission": "Allow Grocify! to securely recognize user speech."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "5cbd4341-1916-43a8-8ba2-d6b51637d16f"
+      }
     }
   }
 }
