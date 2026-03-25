@@ -34,7 +34,11 @@ import {
 import Markdown from 'react-native-markdown-display';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const SERVER_URL = 'http://192.168.100.34:3000/chat';
+// const SERVER_URL = 'http://192.168.100.46:3000/chat';
+// const SERVER_URL = 'http://172.20.10.2:3000/chat';
+const SERVER_URL = 'https://grocify-backend-busk.onrender.com/chat';
+
+console.log(SERVER_URL)
 
 export default function ChatScreen() {
     // ==========================================
@@ -533,9 +537,12 @@ export default function ChatScreen() {
                     intermediateSteps: currentIntermediateSteps
                 };
 
+                console.log("Sending request to ", SERVER_URL);
                 const response = await fetch(SERVER_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify(requestBody)
                 });
 
@@ -1133,7 +1140,7 @@ export default function ChatScreen() {
         );
     };
 
-    // --- NEW VOICE RECORDING FULL-SCREEN MODAL ---
+    // --- VOICE RECORDING FULL-SCREEN MODAL ---
     const renderVoiceModal = () => {
         return (
             <Modal visible={showVoiceModal} animationType="slide" transparent={false}>

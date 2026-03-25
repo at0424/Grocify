@@ -110,7 +110,7 @@ export default function ItemDetailScreen() {
           
           <Text style={styles.title}>{item.name}</Text>
           <Text style={styles.category}>{item.category}</Text>
-
+          
           <ImageBackground
             source={require('@/assets/images/listing/DescriptionBG.png')}
             style={styles.descBackground}
