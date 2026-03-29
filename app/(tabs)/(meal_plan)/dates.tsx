@@ -23,7 +23,7 @@ LocaleConfig.locales['en'] = {
 };
 LocaleConfig.defaultLocale = 'en';
 
-const CustomPixelDatePicker = ({ visible, onClose, selectedDate, minDate, onDateSelect, title }) => {
+const CustomPixelDatePicker = ({ visible, onClose, selectedDate, minDate, maxDate, onDateSelect, title }) => {
   // Format dates to 'YYYY-MM-DD' for the calendar library
   const getFormattedDate = (d) => {
     if (!d) return undefined;
@@ -33,6 +33,7 @@ const CustomPixelDatePicker = ({ visible, onClose, selectedDate, minDate, onDate
 
   const formattedSelected = getFormattedDate(selectedDate);
   const formattedMin = getFormattedDate(minDate);
+  const formattedMax = getFormattedDate(maxDate);
 
   return (
     <Modal
@@ -48,6 +49,7 @@ const CustomPixelDatePicker = ({ visible, onClose, selectedDate, minDate, onDate
           <Calendar
             current={formattedSelected}
             minDate={formattedMin}
+            maxDate={formattedMax}
             onDayPress={(day) => {
               const newDate = new Date(`${day.dateString}T12:00:00`);
               onDateSelect(newDate);
@@ -116,6 +118,8 @@ export default function MealPlanCreateDateScreen() {
 
   const [startDate, setStartDate] = useState(new Date()); 
   const [endDate, setEndDate] = useState(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000)); 
+  const maxEndDate = new Date(startDate);
+  maxEndDate.setDate(startDate.getDate() + 6);    // Limit end date to one week
 
   // Modal visibility states
   const [isStartVisible, setStartVisible] = useState(false);
@@ -123,10 +127,12 @@ export default function MealPlanCreateDateScreen() {
 
   const handleStartChange = (newDate) => {
     setStartDate(newDate);
-    if (newDate > endDate) {
-      const nextWeek = new Date(newDate);
-      nextWeek.setDate(newDate.getDate() + 6);
-      setEndDate(nextWeek);
+
+    const newMax = new Date(newDate);
+    newMax.setDate(newDate.getDate() + 6);
+
+    if (endDate < newDate || endDate > newMax) {
+    setEndDate(newMax); // Default to the end of the week
     }
   };
 
@@ -206,6 +212,7 @@ export default function MealPlanCreateDateScreen() {
         title="Select End Date"
         selectedDate={endDate}
         minDate={startDate} 
+        maxDate={maxEndDate}
         onClose={() => setEndVisible(false)}
         onDateSelect={setEndDate}
       />
