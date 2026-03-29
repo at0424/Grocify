@@ -58,6 +58,7 @@ export default function RecipesListScreen() {
 
       const targetDate = params.date;
       const mealType = params.type;
+      const targetSlotId = params.slotId;
 
       if (!targetDate || !mealType) {
         Alert.alert("Error", "Missing date or meal type. Cannot swap.");
@@ -83,15 +84,27 @@ export default function RecipesListScreen() {
       const dayIndex = updatedPlanData.findIndex(day => day.date === targetDate);
       
       if (dayIndex !== -1) {
-        // Find the exact meal type (e.g., 'breakfast') inside that day
-        const mealIndex = updatedPlanData[dayIndex].meals.findIndex(m => m.type === mealType);
+        
+        let mealIndex = -1;
+
+        if (targetSlotId) {
+            mealIndex = updatedPlanData[dayIndex].meals.findIndex(m => m.slotId === targetSlotId);
+        } else {
+            // Fallback to type matching just in case slotId is missing
+            mealIndex = updatedPlanData[dayIndex].meals.findIndex(m => m.type === mealType);
+        }
         
         if (mealIndex !== -1) {
           // SWAP THE RECIPE! Overwrite the old recipe with the newly selected one
           updatedPlanData[dayIndex].meals[mealIndex].recipe = newRecipe;
         } else {
-          // If for some reason the meal slot doesn't exist, create it
-          updatedPlanData[dayIndex].meals.push({ type: mealType, recipe: newRecipe, consumed: false });
+          // Include a generated slotId if creating a fallback slot
+          updatedPlanData[dayIndex].meals.push({ 
+            slotId: `slot-${Date.now()}`, 
+            type: mealType, 
+            recipe: newRecipe, 
+            consumed: false 
+          });
         }
       }
 

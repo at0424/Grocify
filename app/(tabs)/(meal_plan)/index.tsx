@@ -1,15 +1,17 @@
 import { getUserId } from '@/amplify/auth/authService';
 import LoadingScreen from '@/components/LoadingScreen';
 import { PixelAlert } from '@/components/PixelAlert';
-import { deleteUserPlan, fetchFridgeItems, fetchUserLists, fetchUserMealPlan, markMealAsConsumed } from '@/services/api';
+import { batchAddListItems, deleteUserPlan, fetchFridgeItems, fetchGroceryCatalog, fetchUserLists, fetchUserMealPlan, markMealAsConsumed, updateUserPlan } from '@/services/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertTriangle, MoreVertical, Utensils } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
+    DeviceEventEmitter,
     Dimensions,
     Image,
     ImageBackground,
+    Modal,
     RefreshControl,
     SafeAreaView,
     ScrollView,
@@ -28,6 +30,12 @@ export default function MealPlanScreen() {
     const [plan, setPlan] = useState(null);
     const [groupedMeals, setGroupedMeals] = useState([]);
     const [fridgeInventory, setFridgeInventory] = useState(new Set());
+
+    // Add dishes state
+    const [addingDishDate, setAddingDishDate] = useState(null);
+    const [pendingAddition, setPendingAddition] = useState(null);
+    const [isUpdatingCloud, setIsUpdatingCloud] = useState(false); 
+    const [catalogMap, setCatalogMap] = useState(new Map());
 
     const [alertConfig, setAlertConfig] = useState<{
         visible: boolean;
@@ -252,8 +260,8 @@ export default function MealPlanScreen() {
         });
     };
 
-    const handleSwap = (date, type) => {
-        router.push({ pathname: '/recipes_list', params: { type: type, date: date } });
+    const handleSwap = (date, type, slotId) => {
+        router.push({ pathname: '/recipes_list', params: { type: type, date: date, slotId: slotId } });
     };
 
     const goToDetails = (recipe) => {
@@ -270,6 +278,161 @@ export default function MealPlanScreen() {
         return recipe.ingredients
             .filter(ing => !fridgeInventory.has(ing.groceryName.toLowerCase().trim()))
             .map(ing => ing.groceryName);
+    };
+
+    // --- Handle Add Dish ---
+
+    // Load Catalog on Mount
+    useEffect(() => {
+        const loadCatalog = async () => {
+            try {
+                const data = await fetchGroceryCatalog();
+                const map = new Map();
+                if (Array.isArray(data)) {
+                    data.forEach(item => {
+                        if (item.name) {
+                            map.set(item.name.toLowerCase().trim(), item);
+                        }
+                    });
+                }
+                setCatalogMap(map);
+            } catch (error) {
+                console.error("Failed to load catalog for lookup:", error);
+            }
+        };
+        loadCatalog();
+    }, []);
+
+    const handleAddDishPrompt = (date) => {
+        setAddingDishDate(date);
+    };
+
+    const handleSelectMealType = (mealType) => {
+        const targetDate = addingDishDate;
+        setAddingDishDate(null);
+        setPendingAddition({ date: targetDate, mealType: mealType });
+        // Go to recipe list in "Draft" mode so it returns the recipe instead of updating DB
+        router.push({
+            pathname: '/recipes_list',
+            params: { 
+                type: mealType,
+                date: targetDate,
+                isDraft: 'true',
+                isAddingNew: 'true' 
+            }
+        });
+    };
+
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('event.recipeSelected', async (selectedRecipe) => {
+             if (selectedRecipe && plan && pendingAddition) {
+                 await saveNewDishToCloud(selectedRecipe, pendingAddition.date, pendingAddition.mealType);
+                 setPendingAddition(null); 
+             }
+        });
+
+        return () => {
+            subscription.remove();
+        };
+    }, [pendingAddition, plan]);
+
+    const saveNewDishToCloud = async (newRecipe, date, mealType) => {
+        setIsUpdatingCloud(true);
+        try {
+            const userId = await getUserId();
+            
+            // --- A. Update the Meal Plan ---
+            const updatedPlanData = [...plan.planData];
+            const dayIndex = updatedPlanData.findIndex(d => d.date === date);
+            
+            if (dayIndex !== -1) {
+                // Add the new meal to that day
+                updatedPlanData[dayIndex].meals.push({
+                    type: mealType,
+                    recipe: newRecipe,
+                    consumed: false
+                });
+
+                // Sort them Breakfast -> Lunch -> Dinner
+                const order = { 'Breakfast': 1, 'Lunch': 2, 'Dinner': 3 };
+                updatedPlanData[dayIndex].meals.sort((a, b) => order[a.type] - order[b.type]);
+            }
+
+            const updatePayload = {
+                userId: userId,
+                planId: plan.planId,
+                endDate: plan.endDate,
+                planData: updatedPlanData,
+                targetFridges: plan.targetFridges || ['ALL']
+            };
+
+            await updateUserPlan(updatePayload);
+
+            // --- B. Update the Grocery List ---
+            let targetListId = null;
+
+            // Check if we have a specific list ID saved
+            if (plan.targetFridges && plan.targetFridges.length > 0 && plan.targetFridges[0] !== 'ALL') {
+                targetListId = plan.targetFridges[0];
+            } else {
+                // If it is 'ALL', search for a list with the same name as the meal plan
+                const planName = plan.planName || plan.name; 
+                
+                if (planName) {
+                    console.log(`Searching for a list named: ${planName}`);
+                    const userLists = await fetchUserLists(userId);
+                    
+                    if (userLists && Array.isArray(userLists)) {
+                        const matchingList = userLists.find(list => 
+                            (list.listName || list.name) === planName
+                        );
+                        
+                        if (matchingList) {
+                            targetListId = matchingList.listId;
+                            console.log("Found matching list!");
+                        }
+                    }
+                }
+            }
+
+            // Upload the ingredients if we found a valid list
+            if (targetListId && newRecipe.ingredients && newRecipe.ingredients.length > 0) {
+                
+                // Format ingredients for batch upload WITH Catalog Lookup
+                const ingredientsToAdd = newRecipe.ingredients.map(ing => {
+                    const rawName = ing.groceryName || "Unknown Item";
+                    const cleanName = rawName.trim();
+                    const lowerName = cleanName.toLowerCase();
+                    
+                    // Look up the item in our catalog map
+                    const catalogItem = catalogMap.get(lowerName) || {};
+
+                    return {
+                        name: cleanName,
+                        quantity: `${ing.amount || ''} ${ing.unit || ''}`.trim(),
+                        // Prioritize catalog data, fallback to recipe data, fallback to defaults
+                        category: catalogItem.category || ing.groceryCategory || "Uncategorized",
+                        shelfLife: catalogItem.shelfLife || ing.shelfLife || "7"
+                    };
+                });
+
+                console.log(`Adding ${ingredientsToAdd.length} items to list ${targetListId}`);
+                await batchAddListItems(targetListId, ingredientsToAdd);
+            } else {
+                 console.log("No specific target list found or no ingredients to add. Skipping grocery update.");
+            }
+
+            // --- C. Refresh UI ---
+            setPlan(prev => ({ ...prev, planData: updatedPlanData }));
+            processPlanData(updatedPlanData);
+            Alert.alert("Success", "Dish added to your plan and ingredients added to your list!");
+
+        } catch (error) {
+            console.error("Failed to add new dish:", error);
+            Alert.alert("Error", "Could not save the new dish.");
+        } finally {
+            setIsUpdatingCloud(false);
+        }
     };
 
     if (loading) {
@@ -301,7 +464,7 @@ export default function MealPlanScreen() {
                 style={styles.header}
                 resizeMode='stretch'
             >
-                <TouchableOpacity onPress={() => router.push('../')} style={styles.backButton}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Image
                         source={require('@/components/images/BackButton.png')}
                         style={{ width: '100%', height: '100%' }}
@@ -312,9 +475,12 @@ export default function MealPlanScreen() {
                 <Text style={styles.headerTitle}>Meal Plan</Text>
 
                 {plan ? (
-                    <TouchableOpacity onPress={showActionMenu} style={styles.actionButton}>
-                        <MoreVertical color="#FFFFFF" size={24} />
-                    </TouchableOpacity>
+                    <View style={{width: '5%'}} pointerEvents="box-only" >
+                        <TouchableOpacity onPress={showActionMenu} style={styles.actionButton}>
+                            <MoreVertical color="#FFFFFF" size={24} />
+                        </TouchableOpacity>
+                    </View>
+                    
                 ) : (
                     <View style={{ width: 28 }} />
                 )}
@@ -432,7 +598,7 @@ export default function MealPlanScreen() {
                                                             handleConsumeMeal(section.date, item.type, item.recipe);
                                                         }
                                                     } else {
-                                                        handleSwap(section.date, item.type);
+                                                        handleSwap(section.date, item.type, item.slotId);
                                                     }
                                                 }}
                                             >
@@ -464,9 +630,17 @@ export default function MealPlanScreen() {
                                         </TouchableOpacity>
                                     );
                                 })}
+
+                                {/* --- Add Dish Button --- */}
+                                <TouchableOpacity
+                                    style={styles.addDishLiveButton}
+                                    onPress={() => handleAddDishPrompt(section.date)}
+                                >
+                                    <Text style={styles.addDishLiveText}>+ Add dish to this day</Text>
+                                </TouchableOpacity>
                             </View>
 
-                            {/* 3The Wooden Label Header */}
+                            {/* The Wooden Label Header */}
                             <View style={styles.sectionHeaderContainer}>
                                 <ImageBackground
                                     source={require('@/assets/images/meal_plan/MealLabel.png')}
@@ -496,6 +670,37 @@ export default function MealPlanScreen() {
                 onClose={closeAlert}
             />
 
+            {/* Custom Pixel Art Modal for Adding a Dish */}
+            <Modal
+                visible={!!addingDishDate}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setAddingDishDate(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalBox}>
+                        <Text style={styles.modalTitle}>Add Another Dish</Text>
+                        <Text style={styles.modalMessage}>Which meal would you like to add an extra dish to?</Text>
+
+                        <TouchableOpacity style={styles.modalOptionButton} onPress={() => handleSelectMealType('Breakfast')}>
+                            <Text style={styles.modalOptionText}>Breakfast</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.modalOptionButton} onPress={() => handleSelectMealType('Lunch')}>
+                            <Text style={styles.modalOptionText}>Lunch</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.modalOptionButton} onPress={() => handleSelectMealType('Dinner')}>
+                            <Text style={styles.modalOptionText}>Dinner</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.closeModalButton} onPress={() => setAddingDishDate(null)}>
+                            <Text style={styles.closeModalButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 }
@@ -516,7 +721,7 @@ const styles = StyleSheet.create({
     header: { height: isTabletView ? 100 : 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
     headerTitle: { color: '#FFFFFF', fontSize: isTabletView ? 20 : 18, fontFamily: 'PixelFont', includeFontPadding: false, textAlignVertical: 'center' },
     backButton: { height: isTabletView ? 50 : 35, aspectRatio: 1 },
-    actionButton: { padding: 8 },
+    actionButton: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center'},
 
     // Empty State
     emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 60, height: '100%', width: '100%', paddingBottom: '20%' },
@@ -578,7 +783,7 @@ const styles = StyleSheet.create({
     },
     mealCardDivider: {
         borderBottomWidth: 2,
-        borderBottomColor: '#D1C4A5', // Soft dashed/pixel line color between items
+        borderBottomColor: '#D1C4A5', 
     },
 
     // Pixel Image Box
@@ -664,5 +869,90 @@ const styles = StyleSheet.create({
         fontSize: isTabletView ? 14 : 10,
         includeFontPadding: false,
         textAlignVertical: 'center',
+    },
+
+    // Add Dish Button
+    addDishLiveButton: {
+        paddingVertical: 12,
+        alignItems: 'center',
+        marginTop: 10,
+        marginBottom: 5,
+        backgroundColor: 'rgba(255, 255, 255, 0.4)', 
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#D1C4A5',
+        borderStyle: 'dashed'
+    },
+    addDishLiveText: {
+        color: '#4A2F1D',
+        fontFamily: 'PixelFont',
+        fontSize: isTabletView ? 14 : 12,
+    },
+
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalBox: {
+        backgroundColor: '#F3E8D6',
+        borderWidth: 4,
+        borderColor: '#4A2F1D',
+        borderRadius: 8,
+        padding: 24,
+        width: '90%',
+        maxWidth: 550,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontFamily: 'PixelFont',
+        fontSize: isTabletView ? 20 : 16,
+        color: '#4A2F1D',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    modalMessage: {
+        fontFamily: 'PixelFont',
+        fontSize: isTabletView ? 14 : 12,
+        color: '#718096',
+        marginBottom: 24,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    modalOptionButton: {
+        backgroundColor: '#E8EDE6',
+        borderWidth: 2,
+        borderColor: '#4A2F1D',
+        borderRadius: 8,
+        width: '100%',
+        paddingVertical: 14,
+        marginBottom: 12,
+        alignItems: 'center',
+    },
+    modalOptionText: {
+        fontFamily: 'PixelFont',
+        fontSize: isTabletView ? 16 : 14,
+        color: '#4A2F1D',
+    },
+    closeModalButton: {
+        marginTop: 20,
+        backgroundColor: '#8C5A35',
+        borderWidth: 2,
+        borderColor: '#4A2F1D',
+        paddingVertical: 10,
+        alignItems: 'center',
+        borderRadius: 6,
+        width: 200
+    },
+    closeModalButtonText: {
+        fontFamily: 'PixelFont',
+        color: '#FFFFFF',
+        fontSize: 16,
+        includeFontPadding: false,
+        textAlignVertical: 'center'
     }
 });
