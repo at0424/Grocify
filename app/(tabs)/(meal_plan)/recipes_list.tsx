@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  DeviceEventEmitter,
   Dimensions,
   FlatList,
   Image,
@@ -44,6 +45,14 @@ export default function RecipesListScreen() {
 
   // Handle Selection (The "Return" Logic)
   const handleSelectRecipe = async (newRecipe) => {
+
+    // If its for preview page, just update the preview list
+    if (params.isDraft === 'true') {
+      DeviceEventEmitter.emit('event.recipeSelected', newRecipe);
+      router.back();
+      return; 
+    }
+
     try {
       setLoading(true);
 
@@ -116,7 +125,7 @@ export default function RecipesListScreen() {
     }
   };
 
-  // 4. Search Logic
+  // Search Logic
   const filteredRecipes = recipes.filter(r => 
     r.mealName.toLowerCase().includes(searchQuery.toLowerCase())
   );

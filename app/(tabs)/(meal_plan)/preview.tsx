@@ -190,7 +190,11 @@ export default function MealPlanPreviewScreen() {
 
         router.push({
             pathname: '/recipes_list',
-            params: { type: mealType }
+            params: { 
+                type: mealType,
+                date: dateKey,
+                isDraft: 'true'
+            }
         });
     };
 
@@ -525,8 +529,7 @@ export default function MealPlanPreviewScreen() {
                                     </View>
 
 
-                                    {/* Swap Button - Keep this separate! */}
-                                    {/* We use a View to intercept the touch so swapping doesn't open the page */}
+                                    {/* Swap Button */}
                                     <TouchableOpacity
                                         style={styles.actionButton}
                                         onPress={() => handleSwap(day.date, meal.slotId, meal.type)}

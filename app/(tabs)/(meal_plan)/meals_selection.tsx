@@ -155,6 +155,26 @@ export default function MealSelectionScreen() {
           Please select the meals that you wish to include in the meal plan.
         </Text>
 
+        {/* --- Legend Section --- */}
+        <View style={styles.legendContainer}>
+          <View style={styles.legendItem}>
+            <Image 
+              source={require('@/assets/images/meal_plan/SelectedMeal.png')} 
+              style={styles.legendIcon} 
+              resizeMode="contain" 
+            />
+            <Text style={styles.legendText}>Selected</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Image 
+              source={require('@/assets/images/meal_plan/UnselectedMeal.png')} 
+              style={styles.legendIcon} 
+              resizeMode="contain" 
+            />
+            <Text style={styles.legendText}>Unselected</Text>
+          </View>
+        </View>
+
         {/* --- Column Headers --- */}
         <View style={styles.columnHeaders}>
           <View style={styles.dateColumn} />
@@ -298,6 +318,30 @@ const styles = StyleSheet.create({
     fontFamily: 'PixelFont',
     marginBottom: 24,
     lineHeight: 22,
+  },
+  // Legend Styles
+  legendContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24, 
+    gap: 24, 
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendIcon: {
+    width: isTabletView ? 50 : 30,
+    height: isTabletView ? 50 : 30,
+  },
+  legendText: {
+    fontFamily: 'PixelFont',
+    fontSize: isTabletView ? 14 : 12,
+    color: '#666666',
+    includeFontPadding: false,
+    textAlignVertical: 'center'
   },
   // Grid Styles
   columnHeaders: {
