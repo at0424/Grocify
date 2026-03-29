@@ -476,9 +476,11 @@ export default function MealPlanScreen() {
                 <Text style={styles.headerTitle}>Meal Plan</Text>
 
                 {plan ? (
-                    <View style={{width: '5%'}} pointerEvents="box-only" >
+                    <View style={{width: '10%'}} >
                         <TouchableOpacity onPress={showActionMenu} style={styles.actionButton}>
-                            <MoreVertical color="#FFFFFF" size={24} />
+                            <View pointerEvents="none">
+                                <MoreVertical color="#FFFFFF" size={24} />
+                            </View>
                         </TouchableOpacity>
                     </View>
                     
@@ -722,7 +724,7 @@ const styles = StyleSheet.create({
     header: { height: isTabletView ? 100 : 70, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
     headerTitle: { color: '#FFFFFF', fontSize: isTabletView ? 20 : 18, fontFamily: 'PixelFont', includeFontPadding: false, textAlignVertical: 'center' },
     backButton: { height: isTabletView ? 50 : 35, aspectRatio: 1 },
-    actionButton: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center'},
+    actionButton: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
 
     // Empty State
     emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 60, height: '100%', width: '100%', paddingBottom: '20%' },
