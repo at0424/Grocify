@@ -338,12 +338,13 @@ export default function MealPlanPreviewScreen() {
                 const updatePayload = {
                     planId: existingPlan.planId,
                     userId: currentUser,
-                    endDate: params.end, // The new extended end date
+                    endDate: params.end, 
                     planData: combinedDays,
-                    targetFridges: combinedFridges
+                    targetFridges: combinedFridges,
+                    mealName: listName
                 };
 
-                await updateUserPlan(updatePayload); // We will create this API next
+                await updateUserPlan(updatePayload);
 
             } else {
                 console.log("Creating brand new meal plan...");
@@ -353,7 +354,8 @@ export default function MealPlanPreviewScreen() {
                     startDate: params.start,
                     endDate: params.end,
                     days: plan,
-                    targetFridges: finalTargetFridges
+                    targetFridges: finalTargetFridges,
+                    mealName: listName
                 };
 
                 await createUserPlan(createPayload);

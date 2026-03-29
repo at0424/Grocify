@@ -376,7 +376,8 @@ export default function MealPlanScreen() {
                 targetListId = plan.targetFridges[0];
             } else {
                 // If it is 'ALL', search for a list with the same name as the meal plan
-                const planName = plan.planName || plan.name; 
+                const planName = plan.mealName; 
+                console.log(plan);
                 
                 if (planName) {
                     console.log(`Searching for a list named: ${planName}`);
