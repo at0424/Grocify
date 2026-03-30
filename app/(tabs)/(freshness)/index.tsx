@@ -199,16 +199,26 @@ const FreshnessDashboard = () => {
                                     <View style={styles.backButton} />
                                 </View>
 
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContainer}>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    style={{ width: '100%' }}
+                                    contentContainerStyle={styles.filterContainer}
+                                >
                                     <TouchableOpacity style={[styles.filterChip, selectedListId === 'ALL' && styles.filterChipActive]} onPress={() => setSelectedListId('ALL')}>
                                         <Text style={[styles.filterText, selectedListId === 'ALL' && styles.filterTextActive]}>All Fridges</Text>
                                     </TouchableOpacity>
+                                    
                                     {userLists.map((list) => (
                                         <TouchableOpacity key={list.listId} style={[styles.filterChip, selectedListId === list.listId && styles.filterChipActive]} onPress={() => setSelectedListId(list.listId)}>
                                             <Text style={[styles.filterText, selectedListId === list.listId && styles.filterTextActive]}>{list.listName}</Text>
                                         </TouchableOpacity>
                                     ))}
+
+                                    <View style={{ width: 40 }} />
+                                    
                                 </ScrollView>
+                                
 
                             </ImageBackground>
                         </View>
@@ -328,17 +338,16 @@ const styles = StyleSheet.create({
 
     // Header & Filters
     headerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
         zIndex: 20,
+        width: '100%'
     },
     filterWrapper: {
-        flex: 1,
+        width: '100%',
+        flexGrow: 1
     },
     woodPanelBackground: {
         paddingTop: 12,
         paddingBottom: 22,
-        paddingHorizontal: '5%',
         justifyContent: 'center',
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
@@ -362,13 +371,13 @@ const styles = StyleSheet.create({
         textAlignVertical: 'center'
     },
     filterContainer: {
-        paddingRight: 20,
+        paddingHorizontal: 20,
         alignItems: 'center',
+        paddingRight: 40
     },
     filterChip: {
         backgroundColor: 'rgba(60, 30, 10, 0.5)',
-        paddingHorizontal: '5%',
-        paddingVertical: '4%',
+        paddingHorizontal: 20,
         height: isTabletView ? 60 : 50,
         borderRadius: 6,
         marginRight: 10,
@@ -395,7 +404,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 8,
-        paddingLeft: 5,
+        paddingHorizontal: '5%'
     },
     backButton: {
         marginRight: 8,
