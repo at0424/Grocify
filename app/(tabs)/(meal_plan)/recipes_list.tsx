@@ -178,6 +178,7 @@ export default function RecipesListScreen() {
 
           <TextInput
             placeholder="Search Recipe"
+            placeholderTextColor={"#946744ff"}
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}

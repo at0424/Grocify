@@ -190,7 +190,7 @@ export default function MealPlanPreviewScreen() {
 
         router.push({
             pathname: '/recipes_list',
-            params: { 
+            params: {
                 type: mealType,
                 date: dateKey,
                 isDraft: 'true'
@@ -338,7 +338,7 @@ export default function MealPlanPreviewScreen() {
                 const updatePayload = {
                     planId: existingPlan.planId,
                     userId: currentUser,
-                    endDate: params.end, 
+                    endDate: params.end,
                     planData: combinedDays,
                     targetFridges: combinedFridges,
                     mealName: listName
@@ -459,263 +459,153 @@ export default function MealPlanPreviewScreen() {
                 <View style={styles.backButton} />
             </ImageBackground>
 
-            <View style={styles.contentContainer}>
-                <Text style={styles.subHeader}>
-                    Here are the recipes we have chosen for your meal plan! Feel free to modify it.
-                </Text>
-
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: isTabletView ? '50%' : '65%' }}>
-                    {plan.map((day, index) => (
-                        <View key={day.date} style={styles.daySection}>
-
-                            {/* Divider Line */}
-                            <View style={styles.dividerLine} />
-
-                            {/* Day Header */}
-                            <ImageBackground
-                                source={require('@/assets/images/meal_plan/MealLabel.png')}
-                                style={styles.dayLabel}
-                                imageStyle={{ resizeMode: 'stretch' }}
-                            >
-                                <Text style={styles.dayHeaderTitle}>{formatDateTitle(day.date)}</Text>
-                            </ImageBackground>
-
-
-                            {/* Meal Cards */}
-                            {day.meals.map((meal, mIndex) => (
-                                <TouchableOpacity
-                                    key={meal.slotId}
-                                    style={styles.mealCard}
-                                    activeOpacity={0.7}
-                                    onPress={() => {
-                                        // Check if recipe exists
-                                        if (!meal.recipe) return;
-
-                                        // Navigate to Details Page
-                                        router.push({
-                                            pathname: '/recipes_details',
-                                            params: { recipeData: JSON.stringify(meal.recipe) }
-                                        });
-                                    }}
-                                >
-
-                                    {/* Icon Box */}
-                                    <View style={styles.recipeImageBox}>
-                                        {meal.recipe && meal.recipe.imageUrl ? (
-                                            <Image
-                                                source={{ uri: meal.recipe.imageUrl }}
-                                                style={styles.recipeImage}
-                                                resizeMode="contain"
-                                            />
-                                        ) : (
-                                            // Fallback to your icons if no image exists
-                                            getIconForType(meal.type)
-                                        )}
-                                    </View>
-
-                                    {/* Text Info */}
-                                    <View style={styles.mealInfo}>
-                                        <Text style={styles.mealTypeLabel}>
-                                            {meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}
-                                        </Text>
-                                        <Text style={styles.recipeName}>
-                                            {meal.recipe ? meal.recipe.mealName : "Loading..."}
-                                        </Text>
-                                        {meal.recipe && (
-                                            <Text style={styles.caloriesText}>
-                                                {meal.recipe.calories} kcal • {meal.recipe.prepTime} min
-                                            </Text>
-                                        )}
-                                    </View>
-
-
-                                    {/* Swap Button */}
-                                    <TouchableOpacity
-                                        style={styles.actionButton}
-                                        onPress={() => handleSwap(day.date, meal.slotId, meal.type)}
-                                    >
-                                        <Image
-                                            source={require('@/components/images/RefreshButton.png')}
-                                            style={{ width: '100%', height: '100%' }}
-                                            resizeMode='contain'
-                                        />
-
-                                    </TouchableOpacity>
-
-                                    {/* Delete Button */}
-                                    <TouchableOpacity
-                                        style={styles.deleteButtonBg}
-                                        onPress={() => handleDeleteDish(day.date, meal.slotId)}
-                                    >
-                                        <Image
-                                            source={require('@/components/images/ExitButton.png')}
-                                            style={{ width: '100%', height: '100%' }}
-                                            resizeMode='contain'
-                                        />
-                                    </TouchableOpacity>
-
-
-                                </TouchableOpacity>
-                            ))}
-
-                            <TouchableOpacity
-                                style={styles.addDishButton}
-                                onPress={() => handleAddDishPrompt(day.date)}
-                            >
-                                <Text style={styles.addDishText}>+ Add dish to this day</Text>
-                            </TouchableOpacity>
-
-                        </View>
-                    ))}
-                </ScrollView>
-            </View>
-
-            {/* Footer */}
             <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-                style={styles.footerWrapper}
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
             >
-                <ImageBackground
-                    source={require('@/assets/images/meal_plan/MealPlanFooter.png')}
-                    style={styles.footerContainer}
-                    imageStyle={{ resizeMode: 'stretch' }}
-                >
-                    {/* Name Input Section */}
-                    <View style={styles.inputSection}>
+                {/* Main Scroll Content */}
+                <View style={styles.contentContainer}>
+                    <Text style={styles.subHeader}>
+                        Here are the recipes we have chosen for your meal plan! Feel free to modify it.
+                    </Text>
 
-                        <Text style={styles.inputLabel}>Plan Name (Optional)</Text>
-                        <View style={styles.inputWrapper}>
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        keyboardDismissMode="on-drag"
+                        keyboardShouldPersistTaps="handled"
+                        contentContainerStyle={{ paddingBottom: 20 }} // <--- Reduced from 65% since footer is no longer absolute
+                    >
+                        {plan.map((day, index) => (
+                            <View key={day.date} style={styles.daySection}>
+                                {/* Divider Line */}
+                                <View style={styles.dividerLine} />
 
-                            <Image
-                                source={require('@/assets/images/listing/DescriptionBG.png')}
-                                style={styles.backgroundImage}
-                                resizeMode="stretch"
-                            />
+                                {/* Day Header */}
+                                <ImageBackground
+                                    source={require('@/assets/images/meal_plan/MealLabel.png')}
+                                    style={styles.dayLabel}
+                                    imageStyle={{ resizeMode: 'stretch' }}
+                                >
+                                    <Text style={styles.dayHeaderTitle}>{formatDateTitle(day.date)}</Text>
+                                </ImageBackground>
 
-                            <View style={styles.inputContent}>
+                                {/* Meal Cards */}
+                                {day.meals.map((meal, mIndex) => (
+                                    <TouchableOpacity
+                                        key={meal.slotId}
+                                        style={styles.mealCard}
+                                        activeOpacity={0.7}
+                                        onPress={() => {
+                                            if (!meal.recipe) return;
+                                            router.push({
+                                                pathname: '/recipes_details',
+                                                params: { recipeData: JSON.stringify(meal.recipe) }
+                                            });
+                                        }}
+                                    >
+                                        {/* Icon Box */}
+                                        <View style={styles.recipeImageBox}>
+                                            {meal.recipe && meal.recipe.imageUrl ? (
+                                                <Image source={{ uri: meal.recipe.imageUrl }} style={styles.recipeImage} resizeMode="contain" />
+                                            ) : (
+                                                getIconForType(meal.type)
+                                            )}
+                                        </View>
 
-                                <Image
-                                    source={require('@/components/images/EditPencil.png')}
-                                    style={styles.pencilIcon}
-                                    resizeMode="contain"
-                                />
+                                        {/* Text Info */}
+                                        <View style={styles.mealInfo}>
+                                            <Text style={styles.mealTypeLabel}>{meal.type.charAt(0).toUpperCase() + meal.type.slice(1)}</Text>
+                                            <Text style={styles.recipeName}>{meal.recipe ? meal.recipe.mealName : "Loading..."}</Text>
+                                            {meal.recipe && (
+                                                <Text style={styles.caloriesText}>{meal.recipe.calories} kcal • {meal.recipe.prepTime} min</Text>
+                                            )}
+                                        </View>
 
-                                <TextInput
-                                    style={styles.textInput}
-                                    placeholder={`Groceries (${new Date(params.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`}
-                                    placeholderTextColor="#968373"
-                                    value={customName}
-                                    onChangeText={setCustomName}
-                                    returnKeyType="done"
-                                />
+                                        {/* Swap Button */}
+                                        <TouchableOpacity style={styles.actionButton} onPress={() => handleSwap(day.date, meal.slotId, meal.type)}>
+                                            <Image source={require('@/components/images/RefreshButton.png')} style={{ width: '100%', height: '100%' }} resizeMode='contain' />
+                                        </TouchableOpacity>
+
+                                        {/* Delete Button */}
+                                        <TouchableOpacity style={styles.deleteButtonBg} onPress={() => handleDeleteDish(day.date, meal.slotId)}>
+                                            <Image source={require('@/components/images/ExitButton.png')} style={{ width: '100%', height: '100%' }} resizeMode='contain' />
+                                        </TouchableOpacity>
+                                    </TouchableOpacity>
+                                ))}
+
+                                <TouchableOpacity style={styles.addDishButton} onPress={() => handleAddDishPrompt(day.date)}>
+                                    <Text style={styles.addDishText}>+ Add dish to this day</Text>
+                                </TouchableOpacity>
+
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+
+                <View style={styles.footerWrapper}>
+                    <ImageBackground
+                        source={require('@/assets/images/meal_plan/MealPlanFooter.png')}
+                        style={styles.footerContainer}
+                        imageStyle={{ resizeMode: 'stretch' }}
+                    >
+                        {/* Name Input Section */}
+                        <View style={styles.inputSection}>
+                            <Text style={styles.inputLabel}>Plan Name (Optional)</Text>
+                            <View style={styles.inputWrapper}>
+                                <Image source={require('@/assets/images/listing/DescriptionBG.png')} style={styles.backgroundImage} resizeMode="stretch" />
+                                <View style={styles.inputContent}>
+                                    <Image source={require('@/components/images/EditPencil.png')} style={styles.pencilIcon} resizeMode="contain" />
+                                    <TextInput
+                                        style={styles.textInput}
+                                        placeholder={`Groceries (${new Date(params.start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`}
+                                        placeholderTextColor="#968373"
+                                        value={customName}
+                                        onChangeText={setCustomName}
+                                        returnKeyType="done"
+                                    />
+                                </View>
                             </View>
                         </View>
 
-                    </View>
+                        {/* Fridge Selector */}
+                        <View style={styles.fridgeHeaderRow}>
+                            <Snowflake size={16} color="#5E8050" />
+                            <Text style={styles.fridgeLabel}>Check ingredients against:</Text>
+                        </View>
 
-                    {/* Fridge Selector */}
-                    <View style={styles.fridgeHeaderRow}>
-                        <Snowflake size={16} color="#5E8050" />
-                        <Text style={styles.fridgeLabel}>Check ingredients against:</Text>
-                    </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillContainer}>
+                            <TouchableOpacity style={styles.pillWrapper} onPress={() => setSelectedFridgeId('ALL')}>
+                                <ImageBackground source={selectedFridgeId === 'ALL' ? require('@/components/images/GeneralBlueButton.png') : require('@/components/images/GeneralWoodenButton.png')} style={[styles.pillImageBackground]} resizeMode="stretch">
+                                    <Text style={[styles.chipText, selectedFridgeId === 'ALL' && styles.chipTextActive]}>All Inventory</Text>
+                                </ImageBackground>
+                            </TouchableOpacity>
 
-                    {/* Horizontal Scroll of Chips */}
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        style={styles.pillContainer}
-                    >
-                        {/* Default: ALL */}
-                        <TouchableOpacity
-                            style={styles.pillWrapper}
-                            onPress={() => setSelectedFridgeId('ALL')}
-                        >
-                            <ImageBackground
-                                source={
-                                    selectedFridgeId === 'ALL'
-                                        ? require('@/components/images/GeneralBlueButton.png')
-                                        : require('@/components/images/GeneralWoodenButton.png')
-                                }
-                                style={[styles.pillImageBackground]}
-                                resizeMode="stretch"
-                            >
-                                <Text style={[styles.chipText, selectedFridgeId === 'ALL' && styles.chipTextActive]}>
-                                    All Inventory
-                                </Text>
+                            <TouchableOpacity style={styles.pillWrapper} onPress={() => setSelectedFridgeId('CURRENT_PLAN')}>
+                                <ImageBackground source={selectedFridgeId === 'CURRENT_PLAN' ? require('@/components/images/GeneralBlueButton.png') : require('@/components/images/GeneralWoodenButton.png')} style={[styles.pillImageBackground]} resizeMode="stretch">
+                                    <Text style={[styles.chipText, selectedFridgeId === 'CURRENT_PLAN' && styles.chipTextActive]}>Current Meal Plan</Text>
+                                </ImageBackground>
+                            </TouchableOpacity>
+
+                            {userFridges.map((fridge) => {
+                                const isSelected = selectedFridgeId === fridge.id;
+                                return (
+                                    <TouchableOpacity key={fridge.id} style={styles.pillWrapper} onPress={() => setSelectedFridgeId(fridge.id)}>
+                                        <ImageBackground source={isSelected ? require('@/components/images/GeneralBlueButton.png') : require('@/components/images/GeneralWoodenButton.png')} style={[styles.pillImageBackground]} resizeMode="stretch">
+                                            <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>{fridge.name}</Text>
+                                        </ImageBackground>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+
+                        <TouchableOpacity style={styles.confirmWoodButton} onPress={handleCreatePlan} disabled={saving}>
+                            <ImageBackground source={require('@/assets/images/freshness/GreenButton.png')} style={styles.confirmButtonBackgroundImage} resizeMode='stretch'>
+                                {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.confirmButtonText}>Confirm & Create Plan</Text>}
                             </ImageBackground>
-
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.pillWrapper}
-                            onPress={() => setSelectedFridgeId('CURRENT_PLAN')}
-                        >
-                            <ImageBackground
-                                source={
-                                    selectedFridgeId === 'CURRENT_PLAN'
-                                        ? require('@/components/images/GeneralBlueButton.png')
-                                        : require('@/components/images/GeneralWoodenButton.png')
-                                }
-                                style={[styles.pillImageBackground]}
-                                resizeMode="stretch"
-                            >
-                                <Text style={[styles.chipText, selectedFridgeId === 'CURRENT_PLAN' && styles.chipTextActive]}>
-                                    Current Meal Plan
-                                </Text>
-                            </ImageBackground>
-
-                        </TouchableOpacity>
-
-                        {/* Dynamic User Lists */}
-                        {userFridges.map((fridge) => {
-                            const isSelected = selectedFridgeId === fridge.id;
-                            return (
-                                <TouchableOpacity
-                                    key={fridge.id}
-                                    style={styles.pillWrapper}
-                                    onPress={() => setSelectedFridgeId(fridge.id)}
-                                >
-                                    <ImageBackground
-                                        source={
-                                            isSelected
-                                                ? require('@/components/images/GeneralBlueButton.png')
-                                                : require('@/components/images/GeneralWoodenButton.png')
-                                        }
-                                        style={[styles.pillImageBackground]}
-                                        resizeMode="stretch"
-                                    >
-                                        <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                                            {fridge.name}
-                                        </Text>
-                                    </ImageBackground>
-
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
-
-                    <TouchableOpacity
-                        style={styles.confirmWoodButton}
-                        onPress={handleCreatePlan}
-                        disabled={saving}
-                    >
-                        <ImageBackground
-                            source={require('@/assets/images/freshness/GreenButton.png')}
-                            style={styles.confirmButtonBackgroundImage}
-                            resizeMode='stretch'
-                        >
-                            {saving ? (
-                                <ActivityIndicator color="#FFF" />
-                            ) : (
-                                <Text style={styles.confirmButtonText}>Confirm & Create Plan</Text>
-                            )}
-                        </ImageBackground>
-
-                    </TouchableOpacity>
-                </ImageBackground>
+                    </ImageBackground>
+                </View>
             </KeyboardAvoidingView>
 
             {/* Custom Pixel Art Modal for Adding a Dish */}
@@ -893,8 +783,8 @@ const styles = StyleSheet.create({
     },
     deleteButtonBg: {
         position: 'absolute',
-        top: -10,     
-        right: 0,   
+        top: -10,
+        right: 0,
         width: 28,
         height: 28,
         justifyContent: 'center',
@@ -921,10 +811,7 @@ const styles = StyleSheet.create({
 
     // Footer
     footerWrapper: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        width: '100%',
     },
     footerContainer: {
         paddingHorizontal: '5%',
