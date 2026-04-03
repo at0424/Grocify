@@ -171,18 +171,31 @@ export default function HomeScreen() {
   const wiggleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      wiggleAnim.setValue(0);
+    // Reset position immediately when switching rooms
+    wiggleAnim.setValue(0);
+
+    // Create a continuous loop: Wiggle -> Wait 3 Seconds -> Repeat
+    const wiggleLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(wiggleAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
         Animated.timing(wiggleAnim, { toValue: -1, duration: 60, useNativeDriver: true }),
         Animated.timing(wiggleAnim, { toValue: 1, duration: 60, useNativeDriver: true }),
         Animated.timing(wiggleAnim, { toValue: -1, duration: 60, useNativeDriver: true }),
-        Animated.timing(wiggleAnim, { toValue: 0, duration: 60, useNativeDriver: true })
-      ]).start();
+        Animated.timing(wiggleAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+        Animated.delay(3000) 
+      ])
+    );
+
+    // Start the loop with 400ms initial delay 
+    const timeout = setTimeout(() => {
+      wiggleLoop.start();
     }, 400); 
 
-    return () => clearTimeout(timeout);
+    // Clean up the loop when the user swipes to the next room
+    return () => {
+      clearTimeout(timeout);
+      wiggleLoop.stop();
+    };
   }, [activeIndex, wiggleAnim]);
 
   const wiggleRotation = wiggleAnim.interpolate({
