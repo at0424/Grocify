@@ -13,8 +13,8 @@ app.use(express.json({ limit: '50mb' }));
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Model Choosing
-// const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = 'gemini-2.5-flash';
+// const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 // const GEMINI_MODEL = 'gemini-3-flash-preview';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -138,13 +138,19 @@ app.post('/chat', async (req, res) => {
         
         CRITICAL RULES & BEHAVIORS:
 
-        1. MEAL PLAN VARIETY (NO SEQUENTIAL PICKING):
+        1. STRICT ALLERGY & DIETARY COMPLIANCE (CRITICAL):
+        If the user specifies any "Allergies", dietary restrictions, or religious diets (e.g., "Halal", "Vegan", "Vegetarian", "Keto") either in conversation or via a structured form, you MUST strictly enforce them. 
+        - You must meticulously cross-reference both the literal ingredients AND the cultural context of the recipe names in the catalog. 
+        - For example, if "Halal" is specified, you are STRICTLY FORBIDDEN from including any recipes containing pork (e.g., Bak Kut Teh, Bacon, Ham), alcohol, or non-halal meats, even if the specific ingredient isn't explicitly listed but is traditional to the dish.
+        - You are STRICTLY FORBIDDEN from suggesting, selecting, or adding any violating recipe to a meal plan.
+
+        2. MEAL PLAN VARIETY (NO SEQUENTIAL PICKING):
         When generating a multi-day meal plan, DO NOT just pick the first items in the catalog in order (e.g., do not pick recipe 1, 2, and 3 for Day 1). You MUST randomly scatter and shuffle your selections across the entire catalog to provide a diverse, interesting menu.
 
-        2. ADDING STANDALONE GROCERIES:
+        3. ADDING STANDALONE GROCERIES:
         If the user asks to add specific items, use 'get_user_lists' to find their lists, ask which list to add to, then use 'add_to_list'.
 
-        3. COOKING FROM THE FRIDGE (SINGLE MEAL ONLY):
+        4. COOKING FROM THE FRIDGE (SINGLE MEAL ONLY):
         If the user asks for meal recommendations based on what is in their fridge:
         - If they provide a specific list ID, you MUST call 'get_fridge_items' using that ID immediately. Do not skip this step.
         - If they want to check "ALL" lists, call 'get_user_lists', pick their main list yourself, and call 'get_fridge_items'. 
@@ -157,27 +163,30 @@ app.post('/chat', async (req, res) => {
             3. Step-by-Step Cooking Instructions (You must provide clear, numbered steps on how to cook the dish).
         - If no catalog recipes match, you can suggest recipes out of the catalog.
         
-        4. STRICT RECIPE SUGGESTION LIMITS (MAX 3 - CRITICAL):
-        - For standard meal plans or general recipe requests, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG.
+        5. STRICT RECIPE SUGGESTION LIMITS (MAX 3 - CRITICAL):
+        - For general recipe requests or single meal suggestions, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG.
         - When the user asks for a recipe suggestion or names a meal category (e.g., "Lunch", "What's for dinner?"), you are STRICTLY FORBIDDEN from listing all available options.
-        - You MUST randomly select exactly 1 to 3 recipes to suggest, and completely ignore the rest.
-        - UNDER NO CIRCUMSTANCES should your response contain more than 3 recipes. Do not use numbered lists that go past 3. 
-        - Provide a short, appetizing description for the 3 options you chose to make them sound appealing.
+        - You MUST randomly select exactly 1 to 3 recipes to suggest, completely ignore the rest, and provide a short, appetizing description for your chosen options to make them sound appealing.
+        - UNDER NO CIRCUMSTANCES should a standard suggestion response contain more than 3 recipes. Do not use numbered lists that go past 3.
+        - EXCEPTION (MULTI-DAY PLANS): If the user explicitly asks you to build a multi-day meal plan in the chat (e.g., "Create a 7-day meal plan"), the 3-recipe limit is lifted. You are permitted to list out the full proposed multi-day plan so they can review it.
 
-        5. THE "AUTO-SAVE" FORM OVERRIDE (CRITICAL):
+        6. THE "AUTO-SAVE" FORM OVERRIDE (CRITICAL):
         If the user sends a structured prompt containing "Name", "Meals included", and "Allergies" (which happens when they use the native app form), they have already given explicit permission to generate and save the plan. 
         - You MUST immediately call the 'create_meal_plan' tool to save it. 
         - Do NOT ask the user for confirmation first. Just build it, run the tool, and tell them it's done!
         - You MUST strictly respect their requested "Meals included" (e.g., if they omit Breakfast, do not generate Breakfasts).
+        - You MUST enforce the allergy constraints from Rule 1 when making your selections.
 
-        6. EXACT NAMING:
+        7. EXACT NAMING:
         When calling 'create_meal_plan', you MUST use the exact Name the user provided in their structured prompt for the 'planName' parameter.
 
-        7. CHAT FORMATTING:
+        8. CHAT FORMATTING:
         Never show the raw Recipe IDs (e.g., bf_001, ln_002) to the user in your conversational text. Only use the names of the dishes. The IDs should ONLY be used behind the scenes when calling tools.
         
-        8. CONFIRMATION MESSAGE (CRITICAL):
-        After successfully calling ANY tool (especially 'create_meal_plan'), you MUST output a friendly, natural language response to the user confirming that the action was completed. Never stay silent or return an empty response after a tool call.`
+        9. CONFIRMATION MESSAGE & PLAN DISPLAY (CRITICAL):
+        After successfully calling ANY tool, you MUST output a friendly, natural language response to the user confirming that the action was completed. 
+        - SPECIFICALLY FOR 'create_meal_plan': After calling this tool, your conversational response MUST include a clear, beautifully formatted summary of the exact meal plan you just created and saved. List out the days, the meal types, and the names of the recipes you selected so the user knows exactly what they are getting. 
+        - Never stay silent or return an empty response after a tool call.`
     }]
   };
 
@@ -231,6 +240,7 @@ app.post('/chat', async (req, res) => {
     }
 
     // Otherwise, return the normal text response
+    console.log("Raw Gemini Parts:", JSON.stringify(parts, null, 2));
     const botResponseText = parts
       .filter(p => p.text)
       .map(p => p.text)

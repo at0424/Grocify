@@ -21,7 +21,6 @@ import {
     FlatList,
     Image,
     ImageBackground,
-    Keyboard,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -30,15 +29,14 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    TouchableWithoutFeedback,
     View
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// const SERVER_URL = 'http://192.168.100.46:3000/chat';
+const SERVER_URL = 'http://192.168.100.46:3000/chat';
 // const SERVER_URL = 'http://172.20.10.2:3000/chat';
-const SERVER_URL = 'https://grocify-backend-busk.onrender.com/chat';
+// const SERVER_URL = 'https://grocify-backend-busk.onrender.com/chat';
 
 console.log(SERVER_URL)
 
@@ -1016,6 +1014,30 @@ export default function ChatScreen() {
     };
 
     const renderFridgeCookModal = () => {
+
+        // Button Helper Fnction
+        const formatButtonText = (text) => {
+            // If it's short, or a single giant word with no spaces, leave it alone
+            if (text.length <= 12 || !text.includes(' ')) return text;
+
+            const words = text.split(' ');
+            const middle = Math.floor(text.length / 2);
+
+            let line1 = "";
+            let line2 = "";
+
+            for (let word of words) {
+                // Fill line 1 until we hit the middle of the string
+                if (line1.length < middle) {
+                    line1 += (line1.length > 0 ? " " : "") + word;
+                } else {
+                    line2 += (line2.length > 0 ? " " : "") + word;
+                }
+            }
+            // Return with a physical line break
+            return line2 ? `${line1}\n${line2}` : line1;
+        };
+
         return (
             <Modal visible={showFridgeForm} transparent animationType="fade">
                 <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -1063,8 +1085,8 @@ export default function ChatScreen() {
                                 style={[
                                     styles.pillWrapper,
                                     {
-                                        width: '40%',
-                                        height: '40%',
+                                        width: isTabletView ? 150 : 100,
+                                        height: isTabletView ? 60 : 50,
                                         justifyContent: 'center',
                                         alignItems: 'center'
                                     }
@@ -1077,7 +1099,10 @@ export default function ChatScreen() {
                                             ? require('@/components/images/GeneralBlueButton.png')
                                             : require('@/components/images/GeneralWoodenButton.png')
                                     }
-                                    style={[styles.pillImageBackground]}
+                                    style={[
+                                        styles.pillImageBackground,
+                                        { width: 'auto', paddingHorizontal: isTabletView ? 24 : 16 }
+                                    ]}
                                     resizeMode="stretch"
                                 >
                                     <Text style={[styles.pillText, cookTargetFridge === 'ALL' && styles.pillTextActive]}>All Lists</Text>
@@ -1089,14 +1114,18 @@ export default function ChatScreen() {
                                 const listId = list.listId || list.id || list._id;
                                 const listName = list.listName || list.name || "Unnamed List";
                                 const isActive = cookTargetFridge === listId;
+
+                                const displayListText = formatButtonText(listName);
+
                                 return (
                                     <TouchableOpacity
                                         key={listId}
                                         style={[
                                             styles.pillWrapper,
                                             {
-                                                width: '40%',
-                                                height: '40%',
+                                                width: 'auto',
+                                                minWidth: isTabletView ? 120 : 90,
+                                                height: isTabletView ? 60 : 50, 
                                                 justifyContent: 'center',
                                                 alignItems: 'center'
                                             }
@@ -1109,12 +1138,23 @@ export default function ChatScreen() {
                                                     ? require('@/components/images/GeneralBlueButton.png')
                                                     : require('@/components/images/GeneralWoodenButton.png')
                                             }
-                                            style={[styles.pillImageBackground]}
+                                            style={[
+                                                styles.pillImageBackground,
+                                                { width: 'auto', paddingHorizontal: isTabletView ? 24 : 16 } 
+                                            ]}
                                             resizeMode="stretch"
                                         >
-                                            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{listName}</Text>
+                                            <Text
+                                                numberOfLines={2}
+                                                style={[
+                                                    styles.pillText,
+                                                    isActive && styles.pillTextActive,
+                                                    { textAlign: 'center', lineHeight: isTabletView ? 16 : 14 } 
+                                                ]}
+                                            >
+                                                {displayListText}
+                                            </Text>
                                         </ImageBackground>
-
                                     </TouchableOpacity>
                                 );
                             })}
@@ -1322,7 +1362,7 @@ export default function ChatScreen() {
             >
                 <SafeAreaView style={styles.container}>
                     {/* Header */}
-                    <ImageBackground 
+                    <ImageBackground
                         source={require('@/assets/images/freshness/SelectorPanel.png')}
                         style={styles.header}
                         resizeMode="stretch"
@@ -1364,73 +1404,71 @@ export default function ChatScreen() {
                         keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
                     >
 
-                        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                            <View style={{ flex: 1 }}>
-                                {messages.length === 0 ? renderWelcomeScreen() : (
-                                    <FlatList
-                                        ref={flatListRef}
-                                        data={messages}
-                                        renderItem={renderItem}
-                                        keyExtractor={(item) => item.id}
-                                        contentContainerStyle={styles.listContent}
-                                        style={{ flex: 1 }}
-                                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                                        onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                                        keyboardShouldPersistTaps="handled"
-                                        keyboardDismissMode="on-drag"
-                                        ListFooterComponent={renderFooter}
+                        <View style={{ flex: 1 }}>
+                            {messages.length === 0 ? renderWelcomeScreen() : (
+                                <FlatList
+                                    ref={flatListRef}
+                                    data={messages}
+                                    renderItem={renderItem}
+                                    keyExtractor={(item) => item.id}
+                                    contentContainerStyle={styles.listContent}
+                                    style={{ flex: 1 }}
+                                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                                    onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                                    keyboardShouldPersistTaps="handled"
+                                    keyboardDismissMode="on-drag"
+                                    ListFooterComponent={renderFooter}
+                                />
+                            )}
+
+                            {/* Text Input */}
+                            <View style={styles.inputWrapper}>
+                                <ImageBackground
+                                    source={require('@/assets/images/ai/TextInput.png')}
+                                    style={styles.inputContainer}
+                                    resizeMode="stretch"
+                                >
+                                    <TextInput
+                                        style={styles.input}
+                                        value={inputText}
+                                        onChangeText={setInputText}
+                                        placeholder="Ask AI for Help!"
+                                        multiline={true}
+                                        placeholderTextColor="#888"
+                                        onFocus={() => {
+                                            setTimeout(() => {
+                                                flatListRef.current?.scrollToEnd({ animated: true });
+                                            }, 200);
+                                        }}
                                     />
-                                )}
 
-                                {/* Text Input */}
-                                <View style={styles.inputWrapper}>
-                                    <ImageBackground
-                                        source={require('@/assets/images/ai/TextInput.png')}
-                                        style={styles.inputContainer}
-                                        resizeMode="stretch"
-                                    >
-                                        <TextInput
-                                            style={styles.input}
-                                            value={inputText}
-                                            onChangeText={setInputText}
-                                            placeholder="Ask AI for Help!"
-                                            multiline={true}
-                                            placeholderTextColor="#888"
-                                            onFocus={() => {
-                                                setTimeout(() => {
-                                                    flatListRef.current?.scrollToEnd({ animated: true });
-                                                }, 200);
-                                            }}
+                                    {/* Tap this to open the Voice Record Overlay! */}
+                                    <TouchableOpacity onPress={startRecording} style={styles.micIconWrapper}>
+                                        <Image
+                                            source={require('@/components/images/MicOff.png')}
+                                            style={styles.micIcon}
+                                            resizeMode="contain"
                                         />
-
-                                        {/* Tap this to open the Voice Record Overlay! */}
-                                        <TouchableOpacity onPress={startRecording} style={styles.micIconWrapper}>
-                                            <Image
-                                                source={require('@/components/images/MicOff.png')}
-                                                style={styles.micIcon}
-                                                resizeMode="contain"
-                                            />
-                                        </TouchableOpacity>
-
-                                    </ImageBackground>
-
-                                    {/* Send Button */}
-                                    <TouchableOpacity onPress={sendMessage} disabled={isLoading}>
-                                        <ImageBackground
-                                            source={require('@/components/images/GeneralRedButton.png')}
-                                            style={styles.sendButton}
-                                            resizeMode='stretch'
-                                        >
-                                            {isLoading ? (
-                                                <ActivityIndicator color="#FFFFFF" size="small" />
-                                            ) : (
-                                                <Text style={styles.sendButtonText}>Send</Text>
-                                            )}
-                                        </ImageBackground>
                                     </TouchableOpacity>
-                                </View>
+
+                                </ImageBackground>
+
+                                {/* Send Button */}
+                                <TouchableOpacity onPress={sendMessage} disabled={isLoading}>
+                                    <ImageBackground
+                                        source={require('@/components/images/GeneralRedButton.png')}
+                                        style={styles.sendButton}
+                                        resizeMode='stretch'
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator color="#FFFFFF" size="small" />
+                                        ) : (
+                                            <Text style={styles.sendButtonText}>Send</Text>
+                                        )}
+                                    </ImageBackground>
+                                </TouchableOpacity>
                             </View>
-                        </TouchableWithoutFeedback>
+                        </View>
 
                     </KeyboardAvoidingView>
 
