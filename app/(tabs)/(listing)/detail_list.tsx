@@ -1,10 +1,11 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
+import VoiceInputModal from '@/components/VoiceInputModal';
 import { batchToggleGroceryItem, connectGroceryListSocket, fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, ImageBackground, RefreshControl, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Dimensions, Image, ImageBackground, Modal, RefreshControl, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ListingDetailScreen() {
@@ -24,12 +25,17 @@ export default function ListingDetailScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalData, setModalData] = useState({ collaborators: [], ownerEmail: '', myRole: '' });
 
+  // Voice State
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+
+  // ==========================================
+  // WEBSOCKET SETUP & DATA LOADING
+  // ==========================================
   const wsRef = useRef(null);
 
   useEffect(() => {
     if (!listId) return;
 
-    // Define what happens when a message arrives
     const handleIncomingMessage = (message) => {
       switch (message.action) {
         case 'ITEM_TOGGLED':
@@ -51,14 +57,12 @@ export default function ListingDetailScreen() {
       }
     };
 
-    // Initialize the connection
     const setupSocket = async () => {
       wsRef.current = await connectGroceryListSocket(listId, handleIncomingMessage);
     };
 
     setupSocket();
 
-    // Cleanup: Disconnect when the user leaves the screen
     return () => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.close();
@@ -112,6 +116,21 @@ export default function ListingDetailScreen() {
     loadItems(true);
   };
 
+  // Handle for Voice
+  const handleVoiceComplete = (transcribedText) => {
+      setShowVoiceModal(false);
+      if (transcribedText.trim().length > 0) {
+          console.log("User finished speaking/editing:", transcribedText);
+          
+          // Hook up your API logic here to process the text!
+          Alert.alert("Process Items", `Text to send to AI:\n\n"${transcribedText}"`);
+      }
+  };
+
+
+  // ==========================================
+  // LIST HANDLERS
+  // ==========================================
   const handleToggle = async (targetItem) => {
     const newItems = items.map(i => {
       if (i.itemId === targetItem.itemId) {
@@ -123,40 +142,23 @@ export default function ListingDetailScreen() {
     await toggleGroceryItem(listId, targetItem.itemId, currentUserId);
   };
 
-  // Mark All Handler
   const handleMarkAll = async () => {
     if (items.length === 0) return;
-
-    // Determine Target Logic
     const allAreChecked = items.every(item => item.checked);
-    const targetStatus = !allAreChecked; // If all checked -> Unmark All. Else -> Mark All.
-
-    // Optimistic Update (Instant UI Feedback)
-    const oldItems = [...items]; // Keep a backup in case the server fails
+    const targetStatus = !allAreChecked; 
+    const oldItems = [...items]; 
     
     const updatedItems = items.map(item => ({
       ...item,
       checked: targetStatus
     }));
-    setItems(updatedItems); // UI updates instantly!
-
-    console.log(`Sending ONE batch request to set all to ${targetStatus}...`);
+    setItems(updatedItems); 
 
     try {
         const result = await batchToggleGroceryItem(listId, targetStatus, currentUserId);
-        
-        if (!result || !result.success) {
-            throw new Error("Batch update failed on server");
-        }
-        
-        console.log("Batch update success!");
-        
-        if (result.items) {
-             setItems(result.items); 
-        }
-
+        if (!result || !result.success) throw new Error("Batch update failed on server");
+        if (result.items) setItems(result.items); 
     } catch (error) {
-        console.error("Failed:", error);
         Alert.alert("Sync Error", "Could not update list. Reverting changes.");
         setItems(oldItems); 
     }
@@ -165,7 +167,6 @@ export default function ListingDetailScreen() {
   const handleOpenModal = async () => {
     const uid = await getUserId();
     const data = await fetchCollaborators(listId, uid);
-
     if (data.success) {
       setModalData({
         collaborators: data.collaborators,
@@ -220,18 +221,13 @@ export default function ListingDetailScreen() {
     ]);
   };
 
-  // Group items by category for the SectionList
   const groupedItems = useMemo(() => {
     const grouped = {};
     items.forEach((item) => {
-      // Use the category field if it exists, otherwise default to "Others"
       const cat = item.category || 'Others';
-      if (!grouped[cat]) {
-        grouped[cat] = [];
-      }
+      if (!grouped[cat]) grouped[cat] = [];
       grouped[cat].push(item);
     });
-
     return Object.keys(grouped).map((key) => ({
       title: key,
       data: grouped[key],
@@ -240,11 +236,7 @@ export default function ListingDetailScreen() {
 
   const renderSectionHeader = ({ section: { title } }) => (
     <View style={styles.sectionHeaderContainer}>
-      <ImageBackground
-        source={require('@/assets/images/listing/SectionHeader.png')} 
-        style={styles.sectionHeaderBackground}
-        resizeMode="stretch" 
-      >
+      <ImageBackground source={require('@/assets/images/listing/SectionHeader.png')} style={styles.sectionHeaderBackground} resizeMode="stretch" >
         <Text style={styles.sectionHeaderText}>{title}</Text>
       </ImageBackground>
     </View>
@@ -252,41 +244,28 @@ export default function ListingDetailScreen() {
 
   const renderItem = ({ item }) => {
     const isChecked = item.checked || false;
-
     return (
       <TouchableOpacity onPress={() => handleToggle(item)} activeOpacity={0.7} style={styles.itemContainer}>
         <View style={styles.mainRow}>
-
-          {/* Left Side: Name and Quantity Column */}
           <View style={styles.leftContent}>
-            
-            {/* Title Row: Bullet + Item Name */}
             <View style={styles.nameRow}>
               <View style={styles.pixelBullet} />
               <Text style={[styles.itemText, isChecked && styles.itemTextMuted]}>
                 {item.name}
               </Text>
             </View>
-
-            {/* Child Row: Quantity */}
             <View style={styles.quantityRow}>
               <Text style={[styles.quantityText, isChecked && styles.itemTextMuted]}>
                 x {item.quantity || 1}
               </Text>
             </View>
-
           </View>
-
-          {/* Right Side: Pixel Checkbox */}
           <View style={styles.rightSide}>
             <View style={styles.pixelCheckbox}>
               {isChecked && <Ionicons name="checkmark-sharp" size={18} color="#3E2723" style={{ marginTop: -2 }} />}
             </View>
           </View>
-
         </View>
-
-        {/* The scratch-out effect */}
         {isChecked && <View style={styles.crossLine} />}
       </TouchableOpacity>
     );
@@ -294,71 +273,149 @@ export default function ListingDetailScreen() {
 
   const allItemsChecked = items.length > 0 && items.every(i => i.checked);
 
+  // ==========================================
+  // VOICE ANIMATION SUB-COMPONENT
+  // ==========================================
+  const PulseAnimation = () => {
+      const wave1 = useRef(new Animated.Value(1)).current;
+      const wave2 = useRef(new Animated.Value(1)).current;
+      const wave3 = useRef(new Animated.Value(1)).current;
+
+      useEffect(() => {
+          const createWave = (anim, delay) => {
+              return Animated.loop(
+                  Animated.sequence([
+                      Animated.delay(delay),
+                      Animated.parallel([
+                          Animated.timing(anim, { toValue: 2.5, duration: 2000, useNativeDriver: true }),
+                      ]),
+                      Animated.timing(anim, { toValue: 1, duration: 0, useNativeDriver: true }),
+                  ])
+              );
+          };
+
+          const animations = [
+              createWave(wave1, 0),
+              createWave(wave2, 600),
+              createWave(wave3, 1200)
+          ];
+
+          animations.forEach(anim => anim.start());
+
+          return () => { animations.forEach(anim => anim.stop()); };
+      }, []);
+
+      return (
+          <View style={styles.pulseWrapper}>
+              <Animated.View style={[styles.pulseCircle, { transform: [{ scale: wave1 }], opacity: wave1.interpolate({ inputRange: [1, 2.5], outputRange: [0.6, 0] }) }]} />
+              <Animated.View style={[styles.pulseCircle, { transform: [{ scale: wave2 }], opacity: wave2.interpolate({ inputRange: [1, 2.5], outputRange: [0.6, 0] }) }]} />
+              <Animated.View style={[styles.pulseCircle, { transform: [{ scale: wave3 }], opacity: wave3.interpolate({ inputRange: [1, 2.5], outputRange: [0.6, 0] }) }]} />
+          </View>
+      );
+  };
+
+  // ==========================================
+  // VOICE OVERLAY RENDER
+  // ==========================================
+  const renderVoiceModal = () => {
+      return (
+          <Modal visible={showVoiceModal} animationType="slide" transparent={false}>
+              <ImageBackground
+                  source={require('@/assets/images/ai/AI_BG.png')}
+                  style={styles.voiceModalContainer}
+                  resizeMode="cover"
+              >
+                  <SafeAreaView style={styles.voiceModalSafeArea}>
+                      <TouchableOpacity style={styles.voiceCloseButton} onPress={cancelRecording}>
+                          <Image
+                              source={require('@/components/images/ExitButton.png')}
+                              style={{ width: 40, height: 40 }}
+                              resizeMode="contain"
+                          />
+                      </TouchableOpacity>
+
+                      <View style={styles.voiceModalContent}>
+                          <Text style={styles.voiceTitleText}>
+                              {isRecording ? "I'm listening..." : "Tap mic to speak"}
+                          </Text>
+
+                          <View style={styles.micAnimationContainer}>
+                              {isRecording && <PulseAnimation />}
+
+                              <TouchableOpacity
+                                  onPress={isRecording ? stopRecordingAndProcess : startRecording}
+                                  style={styles.bigMicButton}
+                              >
+                                  <Image
+                                      source={
+                                          isRecording
+                                              ? require('@/components/images/MicOn.png')
+                                              : require('@/components/images/MicOff.png')
+                                      }
+                                      style={styles.bigMicIcon}
+                                      resizeMode="contain"
+                                  />
+                              </TouchableOpacity>
+                          </View>
+
+                          <View style={styles.liveTextContainer}>
+                              <Text style={styles.liveTextPrompt}>
+                                  {liveVoiceText.length > 0 ? `"${liveVoiceText}"` : "..."}
+                              </Text>
+                          </View>
+
+                          <TouchableOpacity onPress={stopRecordingAndProcess} style={styles.voiceConfirmButtonWrapper}>
+                              <ImageBackground
+                                  source={require('@/components/images/GeneralBlueButton.png')}
+                                  style={styles.voiceConfirmButton}
+                                  resizeMode="stretch"
+                              >
+                                  <Text style={styles.voiceConfirmText}>Done</Text>
+                              </ImageBackground>
+                          </TouchableOpacity>
+
+                      </View>
+                  </SafeAreaView>
+              </ImageBackground>
+          </Modal>
+      );
+  };
+
+
   return (
     <View style={styles.screenContainer}>
       <SafeAreaView style={{ flex: 1, width: '100%', justifyContent: 'center' }}>
         
         <View style={styles.modalContainer}>
-          
-          {/* Header Bar */}
           <View style={styles.header}>
-
-            {/* Exit/Back Button */}
             <TouchableOpacity onPress={() => router.back()} style={[styles.iconButton, { left: '5%' }]}>
-              <Image
-                source={require('@/components/images/BackButton.png')}
-                style={styles.iconImage}
-                resizeMode="contain"
-              />
+              <Image source={require('@/components/images/BackButton.png')} style={styles.iconImage} resizeMode="contain" />
             </TouchableOpacity>
 
-            {/* Title */}
             <TouchableOpacity onPress={handleOpenModal} activeOpacity={0.8} style={styles.titleWrapper}>
-              <Image
-                source={require('@/assets/images/listing/TitlePanel.png')}
-                style={styles.titlePlaque}
-                resizeMode="stretch"
-              />
+              <Image source={require('@/assets/images/listing/TitlePanel.png')} style={styles.titlePlaque} resizeMode="stretch" />
                 <Text style={styles.plaqueTitle} numberOfLines={2}>{title || "Unnamed List"}</Text>
             </TouchableOpacity>
 
-            {/* Mark All Button */}
             <TouchableOpacity style={styles.markAllWrapper} onPress={handleMarkAll} activeOpacity={0.8}>
-              
               <Image
-                source={
-                  allItemsChecked 
-                  ? require('@/components/images/Checkedbox.png') 
-                  : require('@/components/images/Checkbox.png') 
-                }
+                source={allItemsChecked ? require('@/components/images/Checkedbox.png') : require('@/components/images/Checkbox.png') }
                 style={styles.titlePlaque}
                 resizeMode="contain"
               />
-
             </TouchableOpacity>
-
           </View>
 
-          {/* Cork Board Container */}
           <View style={styles.corkBoardContainer}>
             <Image
               source={require('@/assets/images/main_dashboard/Board.png')}
               style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
               resizeMode="stretch"
             />
+            <Image source={require('@/assets/images/listing/Pin.png')} style={styles.pinImage} resizeMode="contain" />
 
-            {/* Pin Image */}
-            <Image
-              source={require('@/assets/images/listing/Pin.png')} 
-              style={styles.pinImage}
-              resizeMode="contain"
-            />
-
-            {/* The Giant CSS Sticky Note */}
             <View style={[styles.noteWrapper, { backgroundColor: `${color}` || '#FFF9C4' }]}>
               <View style={styles.noteContent}>
-
-                {/* --- LIST CONTENT --- */}
                 {loading ? (
                   <ActivityIndicator size="large" color="#3E2723" style={{ marginTop: 50 }} />
                 ) : (
@@ -369,9 +426,7 @@ export default function ListingDetailScreen() {
                     renderSectionHeader={renderSectionHeader}
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
-                    refreshControl={
-                      <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3E2723" />
-                    }
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3E2723" />}
                     ListEmptyComponent={
                       <View style={styles.emptyContainer}>
                         <Text style={styles.emptyTitle}>List Empty!</Text>
@@ -380,11 +435,10 @@ export default function ListingDetailScreen() {
                     }
                   />
                 )}
-
               </View>
             </View>
 
-            {/* --- PIXEL WOODEN FAB --- */}
+            {/* --- WOODEN FAB (Manual Add) --- */}
             <TouchableOpacity
               style={styles.pixelFab}
               onPress={() => router.push({
@@ -400,12 +454,30 @@ export default function ListingDetailScreen() {
               />
             </TouchableOpacity>
 
+            {/* --- VOICE FAB (Voice Add) --- */}
+            <TouchableOpacity
+              style={styles.voiceFab}
+              onPress={() => setShowVoiceModal(true)}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={require('@/components/images/MicButton.png')}
+                style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            
+            {/* Voice Overlay */}
+            <VoiceInputModal
+              visible={showVoiceModal}
+              onClose={() => setShowVoiceModal(false)}
+              onComplete={handleVoiceComplete}
+            />
+
           </View>
         </View>
-
       </SafeAreaView>
 
-      {/* Collaborator Modal */}
       <CollaboratorModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -436,7 +508,6 @@ const styles = StyleSheet.create({
     width: '90%',
     height: '98%',
     alignSelf: 'center',
-
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -444,10 +515,6 @@ const styles = StyleSheet.create({
     elevation: 20,
     zIndex: 1,
   },
-
-  // ==========================================
-  // HEADER
-  // ==========================================
   header: {
     position: 'absolute',
     width: '85%',
@@ -466,7 +533,6 @@ const styles = StyleSheet.create({
     width: '15%',
     alignItems: 'center',
     zIndex: 3,
-
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -476,7 +542,6 @@ const styles = StyleSheet.create({
   iconImage: {
     width: '100%',
     height: '100%',
-
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -512,7 +577,6 @@ const styles = StyleSheet.create({
     height: '5%',
     aspectRatio: 1,
     top: '2%',
-    
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.4,
@@ -523,27 +587,17 @@ const styles = StyleSheet.create({
     height: '80%',
     aspectRatio: 1
   },
-
-
-  // ==========================================
-  // CORKBOARD CONTAINER
-  // ==========================================
   corkBoardContainer: {
     flex: 1,
     width: '100%',
     marginTop: -8,
     zIndex: 1,
   },
-
-  // =================================================
-  // STICKY NOTE
-  // =================================================
   noteWrapper: {
     flex: 1,
     marginTop: '9%',
     marginHorizontal: '8%',
     marginBottom: '10%',
-    
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 6 },
     shadowOpacity: 0.3,
@@ -555,10 +609,6 @@ const styles = StyleSheet.create({
     paddingTop: isTabletView ? 100 : 70,
     paddingBottom: 20, 
   },
-
-  // =================================================
-  // SECTION HEADERS (Categories)
-  // =================================================
   sectionHeaderContainer: {
     width: '100%',
     alignItems: 'center',
@@ -571,7 +621,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12, 
     justifyContent: 'center',
     alignItems: 'center',
-    
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -586,12 +635,8 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
-
-  // =================================================
-  // LIST CONTENT & ITEMS
-  // =================================================
   listContent: {
-    paddingBottom: 80, // Space for FAB
+    paddingBottom: 80,
   },
   itemContainer: {
     marginBottom: 15,
@@ -602,7 +647,7 @@ const styles = StyleSheet.create({
   },
   mainRow: {
     flexDirection: 'row',
-    alignItems: 'center', // Vertically centers the checkbox with the two rows of text
+    alignItems: 'center',
     justifyContent: 'space-between'
   },
   leftContent: {
@@ -620,25 +665,25 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: '#3E2723',
     marginRight: 12,
-    marginTop: isTabletView ? 6 : 4, // Pushes the bullet down slightly to align with the text
+    marginTop: isTabletView ? 6 : 4,
   },
   itemText: {
     fontSize: isTabletView ? 16 : 12,
     fontFamily: 'PixelFont',
     color: '#3E2723',
     includeFontPadding: false,
-    lineHeight: isTabletView ? 20 : 16, // Added explicit line height for better wrapping
+    lineHeight: isTabletView ? 20 : 16,
   },
   quantityRow: {
-    paddingLeft: 20, // Perfectly aligns with the text above (8 width bullet + 12 margin)
+    paddingLeft: 20,
     marginTop: 6,
   },
   quantityText: {
-    fontSize: isTabletView ? 14 : 11, // Slightly larger than before for readability
+    fontSize: isTabletView ? 14 : 11,
     fontFamily: 'PixelFont',
     color: '#3E2723',
     includeFontPadding: false,
-    opacity: 0.8, // Slightly muted natively to look like a sub-item
+    opacity: 0.8,
   },
   itemTextMuted: {
     opacity: 0.5,
@@ -658,24 +703,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // =================================================
-  // STRIKETHROUGH EFFECT
-  // =================================================
   crossLine: {
     position: 'absolute',
     height: 2,
     backgroundColor: '#3E2723',
     width: '90%',
     top: '50%',
-    left: 20, // Adjusted due to itemContainer padding
+    left: 20, 
     opacity: 0.8,
     transform: [{ rotate: '-1deg' }]
   },
-
-  // =================================================
-  // EMPTY STATE
-  // =================================================
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -696,7 +733,7 @@ const styles = StyleSheet.create({
   },
 
   // =================================================
-  // PIXEL WOODEN FAB (+)
+  // FABs (+)
   // =================================================
   pixelFab: {
     position: 'absolute',
@@ -706,11 +743,138 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.4,
     shadowRadius: 5,
     elevation: 8,
   },
+  voiceFab: {
+    position: 'absolute',
+    bottom: '4%',
+    left: '6%', 
+    height: '7%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  voiceFabBackground: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#DEB887',
+    borderWidth: 3,
+    borderColor: '#3E2723',
+    borderRadius: 8, 
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // =================================================
+  // NEW VOICE OVERLAY STYLES
+  // =================================================
+  voiceModalContainer: {
+      flex: 1,
+      width: '100%',
+      height: '100%'
+  },
+  voiceModalSafeArea: {
+      flex: 1,
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingTop: 20,
+  },
+  voiceCloseButton: {
+      alignSelf: 'flex-end',
+      padding: 20,
+  },
+  voiceModalContent: {
+      flex: 1,
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingBottom: 50,
+  },
+  voiceTitleText: {
+      fontSize: isTabletView ? 28 : 22,
+      fontFamily: 'PixelFont',
+      color: '#5C4033',
+      marginBottom: 50,
+      textAlign: 'center',
+  },
+  micAnimationContainer: {
+      width: 200,
+      height: 200,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 40,
+  },
+  pulseWrapper: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+  },
+  pulseCircle: {
+      position: 'absolute',
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: '#E6D5B3', 
+  },
+  bigMicButton: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: '#FFF9E6',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+      shadowColor: '#4A3525',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 5,
+      elevation: 8,
+  },
+  bigMicIcon: {
+      width: 60,
+      height: 60,
+  },
+  liveTextContainer: {
+      width: '80%',
+      minHeight: 80,
+      padding: 20,
+      backgroundColor: 'rgba(255, 255, 255, 0.5)',
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 40,
+  },
+  liveTextPrompt: {
+      fontSize: isTabletView ? 20 : 16,
+      fontFamily: 'PixelFont',
+      color: '#4A3525',
+      textAlign: 'center',
+      lineHeight: 24,
+  },
+  voiceConfirmButtonWrapper: {
+      width: 160,
+      height: 50,
+  },
+  voiceConfirmButton: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+  },
+  voiceConfirmText: {
+      color: '#FFFFFF',
+      fontFamily: 'PixelFont',
+      fontSize: 16,
+      includeFontPadding: false,
+      textAlignVertical: 'center'
+  }
 });

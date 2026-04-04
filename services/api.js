@@ -35,12 +35,12 @@ export const connectGroceryListSocket = async (listId, onMessageReceived) => {
           onMessageReceived(message);
         }
       } catch (error) {
-        console.error('[WebSocket] Failed to parse message:', error);
+        console.log('[WebSocket] Failed to parse message:', error);
       }
     };
 
     ws.onerror = (error) => {
-      console.error('[WebSocket] Error:', error.message);
+      console.log('[WebSocket] Error:', error.message);
     };
 
     ws.onclose = (event) => {

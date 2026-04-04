@@ -1,3 +1,4 @@
+import VoiceInputModal from '@/components/VoiceInputModal';
 import {
     addListItems,
     batchAddListItems,
@@ -12,7 +13,6 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { useRouter } from 'expo-router';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -55,10 +55,8 @@ export default function ChatScreen() {
     const [availableRecipes, setAvailableRecipes] = useState([]);
     const [userLists, setUserLists] = useState([]);
 
-    // --- VOICE STATES ---
-    const [isRecording, setIsRecording] = useState(false);
+    // Voice State
     const [showVoiceModal, setShowVoiceModal] = useState(false);
-    const [liveVoiceText, setLiveVoiceText] = useState('');
 
     // Form State
     const [showMealForm, setShowMealForm] = useState(false);
@@ -112,56 +110,14 @@ export default function ChatScreen() {
     }, [messages]);
 
     // ==========================================
-    // VOICE RECORDING LOGIC
+    // VOICE HANDLER
     // ==========================================
-    useSpeechRecognitionEvent("start", () => setIsRecording(true));
-    useSpeechRecognitionEvent("end", () => setIsRecording(false));
-    useSpeechRecognitionEvent("error", (event) => {
-        console.log("Voice Error:", event.error, event.message);
-        setIsRecording(false);
-    });
-
-    // This grabs the live text as you speak!
-    useSpeechRecognitionEvent("result", (event) => {
-        const text = event.results[0]?.transcript || "";
-        setLiveVoiceText(text);
-    });
-
-    const startRecording = async () => {
-        try {
-            const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-            if (!perm.granted) {
-                alert("Microphone permission is required to use voice chat!");
-                return;
-            }
-
-            setLiveVoiceText('');
-            setShowVoiceModal(true);
-            ExpoSpeechRecognitionModule.start({
-                lang: "en-US",
-                interimResults: true,
-            });
-        } catch (e) {
-            console.error("Failed to start voice:", e);
-            setShowVoiceModal(false);
-        }
-    };
-
-    const stopRecordingAndSave = () => {
-        ExpoSpeechRecognitionModule.stop();
-        setIsRecording(false);
+    const handleVoiceComplete = (transcribedText) => {
         setShowVoiceModal(false);
-
-        if (liveVoiceText.trim().length > 0) {
-            setInputText((prev) => (prev + " " + liveVoiceText).trim());
+        if (transcribedText.trim().length > 0) {
+            // Append the voice text to whatever they might have already typed
+            setInputText((prev) => (prev + " " + transcribedText).trim());
         }
-    };
-
-    const cancelRecording = () => {
-        ExpoSpeechRecognitionModule.abort();
-        setIsRecording(false);
-        setShowVoiceModal(false);
-        setLiveVoiceText('');
     };
 
     // ==========================================
@@ -1125,7 +1081,7 @@ export default function ChatScreen() {
                                             {
                                                 width: 'auto',
                                                 minWidth: isTabletView ? 120 : 90,
-                                                height: isTabletView ? 60 : 50, 
+                                                height: isTabletView ? 60 : 50,
                                                 justifyContent: 'center',
                                                 alignItems: 'center'
                                             }
@@ -1140,7 +1096,7 @@ export default function ChatScreen() {
                                             }
                                             style={[
                                                 styles.pillImageBackground,
-                                                { width: 'auto', paddingHorizontal: isTabletView ? 24 : 16 } 
+                                                { width: 'auto', paddingHorizontal: isTabletView ? 24 : 16 }
                                             ]}
                                             resizeMode="stretch"
                                         >
@@ -1149,7 +1105,7 @@ export default function ChatScreen() {
                                                 style={[
                                                     styles.pillText,
                                                     isActive && styles.pillTextActive,
-                                                    { textAlign: 'center', lineHeight: isTabletView ? 16 : 14 } 
+                                                    { textAlign: 'center', lineHeight: isTabletView ? 16 : 14 }
                                                 ]}
                                             >
                                                 {displayListText}
@@ -1182,76 +1138,6 @@ export default function ChatScreen() {
                     </ImageBackground>
 
                 </KeyboardAvoidingView>
-            </Modal>
-        );
-    };
-
-    // --- VOICE RECORDING FULL-SCREEN MODAL ---
-    const renderVoiceModal = () => {
-        return (
-            <Modal visible={showVoiceModal} animationType="slide" transparent={false}>
-                <ImageBackground
-                    source={require('@/assets/images/ai/AI_BG.png')}
-                    style={styles.voiceModalContainer}
-                    resizeMode="cover"
-                >
-                    <SafeAreaView style={styles.voiceModalSafeArea}>
-
-                        {/* Close/Cancel Button */}
-                        <TouchableOpacity style={styles.voiceCloseButton} onPress={cancelRecording}>
-                            <Image
-                                source={require('@/components/images/ExitButton.png')}
-                                style={{ width: 40, height: 40 }}
-                                resizeMode="contain"
-                            />
-                        </TouchableOpacity>
-
-                        <View style={styles.voiceModalContent}>
-                            <Text style={styles.voiceTitleText}>
-                                {isRecording ? "I'm listening..." : "Tap mic to speak"}
-                            </Text>
-
-                            {/* Sound Waves & Mic Container */}
-                            <View style={styles.micAnimationContainer}>
-                                {isRecording && <PulseAnimation />}
-
-                                <TouchableOpacity
-                                    onPress={isRecording ? stopRecordingAndSave : startRecording}
-                                    style={styles.bigMicButton}
-                                >
-                                    <Image
-                                        source={
-                                            isRecording
-                                                ? require('@/components/images/MicOn.png')
-                                                : require('@/components/images/MicOff.png')
-                                        }
-                                        style={styles.bigMicIcon}
-                                        resizeMode="contain"
-                                    />
-                                </TouchableOpacity>
-                            </View>
-
-                            {/* Live Text Display */}
-                            <View style={styles.liveTextContainer}>
-                                <Text style={styles.liveTextPrompt}>
-                                    {liveVoiceText.length > 0 ? `"${liveVoiceText}"` : "..."}
-                                </Text>
-                            </View>
-
-                            {/* Confirm Button */}
-                            <TouchableOpacity onPress={stopRecordingAndSave} style={styles.voiceConfirmButtonWrapper}>
-                                <ImageBackground
-                                    source={require('@/components/images/GeneralBlueButton.png')}
-                                    style={styles.voiceConfirmButton}
-                                    resizeMode="stretch"
-                                >
-                                    <Text style={styles.voiceConfirmText}>Done</Text>
-                                </ImageBackground>
-                            </TouchableOpacity>
-
-                        </View>
-                    </SafeAreaView>
-                </ImageBackground>
             </Modal>
         );
     };
@@ -1442,8 +1328,8 @@ export default function ChatScreen() {
                                         }}
                                     />
 
-                                    {/* Tap this to open the Voice Record Overlay! */}
-                                    <TouchableOpacity onPress={startRecording} style={styles.micIconWrapper}>
+                                    {/* Voice Overlay Button */}
+                                    <TouchableOpacity onPress={() => setShowVoiceModal(true)} style={styles.micIconWrapper}>
                                         <Image
                                             source={require('@/components/images/MicOff.png')}
                                             style={styles.micIcon}
@@ -1475,7 +1361,12 @@ export default function ChatScreen() {
                     {/* Overlays */}
                     {renderMealPlanModal()}
                     {renderFridgeCookModal()}
-                    {renderVoiceModal()}
+                    <VoiceInputModal 
+                        visible={showVoiceModal} 
+                        onClose={() => setShowVoiceModal(false)}
+                        onComplete={handleVoiceComplete}
+                    />
+                    
 
                 </SafeAreaView>
             </ImageBackground>
@@ -1897,108 +1788,6 @@ const styles = StyleSheet.create({
         height: 8,
         backgroundColor: '#623d23',
         borderRadius: 2,
-    },
-
-    // --- NEW VOICE OVERLAY STYLES ---
-    voiceModalContainer: {
-        flex: 1,
-        width: '100%',
-        height: '100%'
-    },
-    voiceModalSafeArea: {
-        flex: 1,
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 20,
-    },
-    voiceCloseButton: {
-        alignSelf: 'flex-end',
-        padding: 20,
-    },
-    voiceModalContent: {
-        flex: 1,
-        width: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingBottom: 50,
-    },
-    voiceTitleText: {
-        fontSize: isTabletView ? 28 : 22,
-        fontFamily: 'PixelFont',
-        color: '#5C4033',
-        marginBottom: 50,
-        textAlign: 'center',
-    },
-    micAnimationContainer: {
-        width: 200,
-        height: 200,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 40,
-    },
-    pulseWrapper: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    pulseCircle: {
-        position: 'absolute',
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#E6D5B3', // Soft matching glow
-    },
-    bigMicButton: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: '#FFF9E6',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 10,
-        shadowColor: '#4A3525',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-        elevation: 8,
-    },
-    bigMicIcon: {
-        width: 60,
-        height: 60,
-    },
-    liveTextContainer: {
-        width: '80%',
-        minHeight: 80,
-        padding: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        borderRadius: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 40,
-    },
-    liveTextPrompt: {
-        fontSize: isTabletView ? 20 : 16,
-        fontFamily: 'PixelFont',
-        color: '#4A3525',
-        textAlign: 'center',
-        lineHeight: 24,
-    },
-    voiceConfirmButtonWrapper: {
-        width: 160,
-        height: 50,
-    },
-    voiceConfirmButton: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    voiceConfirmText: {
-        color: '#FFFFFF',
-        fontFamily: 'PixelFont',
-        fontSize: 16,
-        includeFontPadding: false,
-        textAlignVertical: 'center'
     }
 });
 
