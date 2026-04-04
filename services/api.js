@@ -1,7 +1,60 @@
 import { del, get, post, put } from 'aws-amplify/api';
+import { fetchAuthSession } from 'aws-amplify/auth';
 
 const API_NAME = 'GroceryAPI';
  
+/**
+ * Connects to the AWS API Gateway WebSocket for real-time list updates.
+ * @param {string} listId - The ID of the grocery list.
+ * @param {function} onMessageReceived - Callback function to handle incoming data in the UI.
+ * @returns {WebSocket} The WebSocket instance so the UI can close it later.
+ */
+export const connectGroceryListSocket = async (listId, onMessageReceived) => {
+  try {
+    // Grab the Cognito Auth Token to secure the connection
+    const session = await fetchAuthSession();
+    // Use the access token or ID token depending on how your API Gateway Authorizer is set up
+    const token = session.tokens.accessToken.toString(); 
+    
+    const WS_URL = `${process.env.EXPO_PUBLIC_WEBSOCKET_URL}?listId=${listId}&Authorization=${token}`;
+
+    // Establish Connection
+    const ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      console.log(`[WebSocket] Connected to list: ${listId}`);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('[WebSocket] Message received:', message);
+        
+        // Pass the parsed message back to the React component
+        if (onMessageReceived) {
+          onMessageReceived(message);
+        }
+      } catch (error) {
+        console.error('[WebSocket] Failed to parse message:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('[WebSocket] Error:', error.message);
+    };
+
+    ws.onclose = (event) => {
+      console.log('[WebSocket] Disconnected', event.code, event.reason);
+    };
+
+    // Return the instance so the React screen can close it when unmounting
+    return ws;
+
+  } catch (error) {
+    console.error("Failed to establish WebSocket connection:", error);
+    return null;
+  }
+};
 
 // Fetch the catalog
 export const fetchGroceryCatalog = async () => {

@@ -1,9 +1,9 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
-import { batchToggleGroceryItem, fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
+import { batchToggleGroceryItem, connectGroceryListSocket, fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, ImageBackground, RefreshControl, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -23,6 +23,48 @@ export default function ListingDetailScreen() {
   // Modal States
   const [modalVisible, setModalVisible] = useState(false);
   const [modalData, setModalData] = useState({ collaborators: [], ownerEmail: '', myRole: '' });
+
+  const wsRef = useRef(null);
+
+  useEffect(() => {
+    if (!listId) return;
+
+    // Define what happens when a message arrives
+    const handleIncomingMessage = (message) => {
+      switch (message.action) {
+        case 'ITEM_TOGGLED':
+          setItems(prevItems => prevItems.map(item => 
+            item.itemId === message.itemId 
+              ? { ...item, checked: message.checked } 
+              : item
+          ));
+          break;
+        case 'BATCH_TOGGLED':
+          setItems(prevItems => prevItems.map(item => ({
+            ...item,
+            checked: message.checked
+          })));
+          break;
+        case 'LIST_UPDATED':
+          loadItems(); 
+          break;
+      }
+    };
+
+    // Initialize the connection
+    const setupSocket = async () => {
+      wsRef.current = await connectGroceryListSocket(listId, handleIncomingMessage);
+    };
+
+    setupSocket();
+
+    // Cleanup: Disconnect when the user leaves the screen
+    return () => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close();
+      }
+    };
+  }, [listId]);
 
   const loadItems = async (isPullToRefresh = false) => {
     if (!isPullToRefresh && items.length === 0) setLoading(true);
