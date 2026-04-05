@@ -1,7 +1,7 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
 import VoiceInputModal from '@/components/VoiceInputModal';
-import { batchToggleGroceryItem, connectGroceryListSocket, fetchCollaborators, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
+import { addListItems, batchAddListItems, batchToggleGroceryItem, connectGroceryListSocket, fetchCollaborators, fetchGroceryCatalog, fetchGroceryListDetails, removeCollaborator, shareList, toggleGroceryItem } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -12,6 +12,10 @@ export default function ListingDetailScreen() {
   const router = useRouter();
   const { listId, title, userRole, color } = useLocalSearchParams();
 
+  // --- Backend URL ---
+  const SERVER_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+  // --- States ---
   // Data States
   const [items, setItems] = useState([]);
   const [collaborators, setCollaborators] = useState([]);
@@ -116,16 +120,107 @@ export default function ListingDetailScreen() {
     loadItems(true);
   };
 
-  // Handle for Voice
-  const handleVoiceComplete = (transcribedText) => {
-      setShowVoiceModal(false);
-      if (transcribedText.trim().length > 0) {
-          console.log("User finished speaking/editing:", transcribedText);
-          
-          // Hook up your API logic here to process the text!
-          Alert.alert("Process Items", `Text to send to AI:\n\n"${transcribedText}"`);
+  // ==========================================
+  // AI TOOL EXECUTION & VOICE HANDLER
+  // ==========================================
+
+  const executeLocalTool = async (fnName, args) => {
+      console.log(`[ListingDetail] Executing tool locally: ${fnName}`);
+
+      switch (fnName) {
+        case 'fetch_grocery_catalog': 
+            return { 
+                success: true, 
+                catalog: await fetchGroceryCatalog() 
+            };
+          case 'add_single_list_item':
+              return { 
+                  success: true, 
+                  data: await addListItems(
+                      listId, 
+                      args.item, 
+                      args.quantity || "1", 
+                      args.category || "Uncategorized", 
+                      args.shelfLife || "7"
+                  ) 
+              };
+          case 'add_multiple_list_items':
+              return { 
+                  success: true, 
+                  data: await batchAddListItems(listId, args.items) 
+              };
+          default:
+              return { success: false, error: `Tool ${fnName} not recognized on this page.` };
       }
   };
+
+  const handleVoiceComplete = async (transcribedText) => {
+    setShowVoiceModal(false);
+    if (transcribedText.trim().length === 0) return;
+
+    setLoading(true);
+
+    // Initial engineered prompt
+    const engineeredPrompt = `I am currently viewing my grocery list with ID: "${listId}". Please add the following items to this list: "${transcribedText}". You must use either 'add_single_list_item' or 'add_multiple_list_items'. Do not ask for confirmation.`;
+
+    try {
+        let isConversationDone = false;
+        let currentIntermediateSteps = [];
+
+        // --- START THE LOOP ---
+        while (!isConversationDone) {
+            const requestBody = {
+                message: engineeredPrompt,
+                history: [], 
+                recipes: [], 
+                intermediateSteps: currentIntermediateSteps
+            };
+
+            const response = await fetch(SERVER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await response.json();
+
+            if (data.action === 'tool_call') {
+                const originalPart = data.originalPart;
+                const fn = originalPart.functionCall;
+                
+                // Execute the tool (like fetch_grocery_catalog or add_items)
+                const toolResultData = await executeLocalTool(fn.name, fn.args || {});
+                
+                // Add this result to our history so the AI can see it in the next loop
+                currentIntermediateSteps.push({
+                    originalPart: originalPart,
+                    functionResponse: { name: fn.name, response: toolResultData }
+                });
+
+                // If the tool was an 'add' tool, we should refresh our list UI
+                if (fn.name.includes('add')) {
+                    loadItems(); 
+                }
+
+                // The loop continues... it sends the tool results back to the backend
+            } 
+            else if (data.action === 'reply') {
+                // The AI finished all tool calls and sent a final text confirmation
+                console.log("AI Task Finished:", data.reply);
+                isConversationDone = true;
+            } 
+            else {
+                isConversationDone = true;
+            }
+        }
+
+    } catch (error) {
+        console.error("AI Quick Add Error:", error);
+        Alert.alert("Network Error", "Could not connect to the AI assistant.");
+    } finally {
+        setLoading(false);
+    }
+};
 
 
   // ==========================================

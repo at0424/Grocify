@@ -23,10 +23,14 @@ export default function VoiceInputModal({ visible, onClose, onComplete }) {
     const [isRecording, setIsRecording] = useState(false);
     const [liveVoiceText, setLiveVoiceText] = useState('');
 
+    const manualStopRef = useRef(false);
+    const savedSessionTextRef = useRef('');
+
     // Auto-start recording when the modal opens
     useEffect(() => {
         if (visible) {
             setLiveVoiceText('');
+            savedSessionTextRef.current = '';
             startRecording();
         } else {
             ExpoSpeechRecognitionModule.abort();
@@ -38,15 +42,33 @@ export default function VoiceInputModal({ visible, onClose, onComplete }) {
     // VOICE RECORDING LOGIC
     // ==========================================
     useSpeechRecognitionEvent("start", () => setIsRecording(true));
-    useSpeechRecognitionEvent("end", () => setIsRecording(false));
+
+    useSpeechRecognitionEvent("end", () => {
+        if (!manualStopRef.current && visible) {
+            console.log("OS tried to stop mic. Auto-restarting...");
+            savedSessionTextRef.current = liveVoiceText; 
+            startRecording(); 
+        } else {
+            setIsRecording(false);
+        }
+    });
+
     useSpeechRecognitionEvent("error", (event) => {
         console.log("Voice Error:", event.error, event.message);
-        setIsRecording(false);
+        if (event.error === "no-speech" && !manualStopRef.current && visible) {
+            startRecording();
+        } else {
+            setIsRecording(false);
+        }
     });
 
     useSpeechRecognitionEvent("result", (event) => {
-        const text = event.results[0]?.transcript || "";
-        setLiveVoiceText(text);
+        const newText = event.results[0]?.transcript || "";
+        
+        if (newText.trim().length > 0) {
+            const prefix = savedSessionTextRef.current.length > 0 ? savedSessionTextRef.current + " " : "";
+            setLiveVoiceText(prefix + newText);
+        }
     });
 
     const startRecording = async () => {
@@ -56,9 +78,13 @@ export default function VoiceInputModal({ visible, onClose, onComplete }) {
                 alert("Microphone permission is required to use voice input!");
                 return;
             }
+            
+            manualStopRef.current = false; // Reset the manual stop flag
+            
             ExpoSpeechRecognitionModule.start({
                 lang: "en-US",
                 interimResults: true,
+                continuous: true, 
             });
         } catch (e) {
             console.error("Failed to start voice:", e);
@@ -66,12 +92,14 @@ export default function VoiceInputModal({ visible, onClose, onComplete }) {
     };
 
     const handleDone = () => {
+        manualStopRef.current = true; 
         ExpoSpeechRecognitionModule.stop();
         setIsRecording(false);
         if (onComplete) onComplete(liveVoiceText);
     };
 
     const handleCancel = () => {
+        manualStopRef.current = true;
         ExpoSpeechRecognitionModule.abort();
         setIsRecording(false);
         setLiveVoiceText('');
@@ -146,7 +174,15 @@ export default function VoiceInputModal({ visible, onClose, onComplete }) {
                                 {isRecording && <PulseAnimation />}
 
                                 <TouchableOpacity
-                                    onPress={isRecording ? () => ExpoSpeechRecognitionModule.stop() : startRecording}
+                                    onPress={() => {
+                                        if (isRecording) {
+                                            manualStopRef.current = true; // User intentionally paused
+                                            ExpoSpeechRecognitionModule.stop();
+                                            setIsRecording(false);
+                                        } else {
+                                            startRecording();
+                                        }
+                                    }}
                                     style={styles.bigMicButton}
                                 >
                                     <Image
@@ -166,11 +202,14 @@ export default function VoiceInputModal({ visible, onClose, onComplete }) {
                                 <TextInput
                                     style={styles.liveTextInput}
                                     value={liveVoiceText}
-                                    onChangeText={setLiveVoiceText}
+                                    onChangeText={(text) => {
+                                        setLiveVoiceText(text);
+                                        savedSessionTextRef.current = text;
+                                    }}
                                     placeholder="..."
                                     placeholderTextColor="#A0A0A0"
                                     multiline={true}
-                                    editable={!isRecording} // Prevent editing while actively transcribing
+                                    editable={!isRecording}
                                 />
                             </View>
 

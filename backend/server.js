@@ -42,19 +42,47 @@ const tools = [
         },
       },
       {
-        name: "add_to_list",
-        description: "Adds an ingredient to a SPECIFIC grocery list.",
+        name: "fetch_grocery_catalog",
+        description: "Fetches the master catalog of all known grocery items, their standard categories, and default shelf lives. Use this to look up item details before adding them to a list.",
+        parameters: { type: "OBJECT", properties: {} },
+      },
+      {
+        name: "add_single_list_item",
+        description: "Adds a single grocery item directly to the list the user is currently viewing. Use this when the prompt explicitly tells you the list ID they are viewing.",
         parameters: {
           type: "OBJECT",
           properties: {
-            listId: { type: "STRING", description: "The ID of the list to add the item to. YOU MUST GET THIS FROM get_user_lists OR create_new_list FIRST." },
-            item: { type: "STRING" },
-            quantity: { type: "STRING", description: "Default is '1'." },
-            category: { type: "STRING", description: "Default is 'Uncategorized'." },
-            shelfLife: { type: "STRING" }
+            item: { type: "STRING", description: "The name of the grocery item." },
+            quantity: { type: "STRING", description: "The amount/quantity (e.g., '2', '1 kg', '1'). Default is '1'." },
+            category: { type: "STRING", description: "The category (e.g., 'Produce', 'Dairy', 'Meat'). Default is 'Uncategorized'." },
+            shelfLife: { type: "STRING", description: "Estimated shelf life in days if known, else null." }
           },
-          required: ["listId", "item"],
+          required: ["item"],
         },
+      },
+      {
+        name: "add_multiple_list_items",
+        description: "Adds multiple grocery items to the list the user is currently viewing at once. Use this when the user lists two or more items.",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            items: {
+              type: "ARRAY",
+              description: "An array of grocery items to add.",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  name: { type: "STRING", description: "The name of the grocery item." },
+                  quantity: { type: "STRING", description: "The amount/quantity (e.g., '2', '1 kg'). Default is '1'." },
+                  category: { type: "STRING", description: "The category (e.g., 'Produce', 'Dairy', 'Pantry'). Default is 'Uncategorized'." },
+                  shelfLife: { type: "STRING", description: "Estimated shelf life in days if known, else null." }
+                },
+                required: ["name"]
+              }
+            }
+          },
+          required: ["items"]
+        }
       },
       {
         name: "get_recipes",
@@ -142,13 +170,16 @@ app.post('/chat', async (req, res) => {
         If the user specifies any "Allergies", dietary restrictions, or religious diets (e.g., "Halal", "Vegan", "Vegetarian", "Keto") either in conversation or via a structured form, you MUST strictly enforce them. 
         - You must meticulously cross-reference both the literal ingredients AND the cultural context of the recipe names in the catalog. 
         - For example, if "Halal" is specified, you are STRICTLY FORBIDDEN from including any recipes containing pork (e.g., Bak Kut Teh, Bacon, Ham), alcohol, or non-halal meats, even if the specific ingredient isn't explicitly listed but is traditional to the dish.
-        - You are STRICTLY FORBIDDEN from suggesting, selecting, or adding any violating recipe to a meal plan.
 
         2. MEAL PLAN VARIETY (NO SEQUENTIAL PICKING):
-        When generating a multi-day meal plan, DO NOT just pick the first items in the catalog in order (e.g., do not pick recipe 1, 2, and 3 for Day 1). You MUST randomly scatter and shuffle your selections across the entire catalog to provide a diverse, interesting menu.
+        When generating a multi-day meal plan, DO NOT just pick the first items in the catalog in order. You MUST randomly scatter and shuffle your selections across the entire catalog.
 
-        3. ADDING STANDALONE GROCERIES:
-        If the user asks to add specific items, use 'get_user_lists' to find their lists, ask which list to add to, then use 'add_to_list'.
+        3. ADDING STANDALONE GROCERIES (CATALOG MATCHING REQUIRED):
+        - When a user asks to add items to a list (either globally or to a specific list ID), you MUST FIRST call 'fetch_grocery_catalog' to retrieve the master list of known items.
+        - Match the user's requested items against the catalog. This matching MUST be fuzzy and case-insensitive. Account for singular/plural variations (e.g., "rice" matches "Rice", "anchovy" matches "Anchovies").
+        - If a matched item is found in the catalog, use the exact 'category' and 'shelfLife' from the catalog when adding it.
+        - If an item CANNOT be found in the catalog, you MUST default its category to 'Uncategorized' and its shelfLife to '7'.
+        - Once catalog lookup is complete, proceed to add the items. Use 'add_single_list_item' or 'add_multiple_list_items' if they provided a specific list ID.
 
         4. COOKING FROM THE FRIDGE (SINGLE MEAL ONLY):
         If the user asks for meal recommendations based on what is in their fridge:
@@ -161,32 +192,26 @@ app.post('/chat', async (req, res) => {
             1. Recipe Name
             2. Ingredients to Use
             3. Step-by-Step Cooking Instructions (You must provide clear, numbered steps on how to cook the dish).
-        - If no catalog recipes match, you can suggest recipes out of the catalog.
         
         5. STRICT RECIPE SUGGESTION LIMITS (MAX 3 - CRITICAL):
         - For general recipe requests or single meal suggestions, ONLY suggest recipes from the AVAILABLE RECIPES CATALOG.
-        - When the user asks for a recipe suggestion or names a meal category (e.g., "Lunch", "What's for dinner?"), you are STRICTLY FORBIDDEN from listing all available options.
-        - You MUST randomly select exactly 1 to 3 recipes to suggest, completely ignore the rest, and provide a short, appetizing description for your chosen options to make them sound appealing.
-        - UNDER NO CIRCUMSTANCES should a standard suggestion response contain more than 3 recipes. Do not use numbered lists that go past 3.
-        - EXCEPTION (MULTI-DAY PLANS): If the user explicitly asks you to build a multi-day meal plan in the chat (e.g., "Create a 7-day meal plan"), the 3-recipe limit is lifted. You are permitted to list out the full proposed multi-day plan so they can review it.
+        - When the user asks for a recipe suggestion or names a meal category, you are STRICTLY FORBIDDEN from listing all available options.
+        - You MUST randomly select exactly 1 to 3 recipes to suggest, completely ignore the rest.
+        - EXCEPTION (MULTI-DAY PLANS): If the user explicitly asks you to build a multi-day meal plan, the 3-recipe limit is lifted.
 
         6. THE "AUTO-SAVE" FORM OVERRIDE (CRITICAL):
-        If the user sends a structured prompt containing "Name", "Meals included", and "Allergies" (which happens when they use the native app form), they have already given explicit permission to generate and save the plan. 
+        If the user sends a structured prompt containing "Name", "Meals included", and "Allergies":
         - You MUST immediately call the 'create_meal_plan' tool to save it. 
         - Do NOT ask the user for confirmation first. Just build it, run the tool, and tell them it's done!
-        - You MUST strictly respect their requested "Meals included" (e.g., if they omit Breakfast, do not generate Breakfasts).
-        - You MUST enforce the allergy constraints from Rule 1 when making your selections.
 
         7. EXACT NAMING:
         When calling 'create_meal_plan', you MUST use the exact Name the user provided in their structured prompt for the 'planName' parameter.
 
         8. CHAT FORMATTING:
-        Never show the raw Recipe IDs (e.g., bf_001, ln_002) to the user in your conversational text. Only use the names of the dishes. The IDs should ONLY be used behind the scenes when calling tools.
+        Never show the raw Recipe IDs (e.g., bf_001, ln_002) to the user in your conversational text. Only use the names of the dishes.
         
         9. CONFIRMATION MESSAGE & PLAN DISPLAY (CRITICAL):
-        After successfully calling ANY tool, you MUST output a friendly, natural language response to the user confirming that the action was completed. 
-        - SPECIFICALLY FOR 'create_meal_plan': After calling this tool, your conversational response MUST include a clear, beautifully formatted summary of the exact meal plan you just created and saved. List out the days, the meal types, and the names of the recipes you selected so the user knows exactly what they are getting. 
-        - Never stay silent or return an empty response after a tool call.`
+        After successfully calling ANY tool, you MUST output a friendly, natural language response to the user confirming that the action was completed.`
     }]
   };
 
@@ -227,7 +252,18 @@ app.post('/chat', async (req, res) => {
     if (!response.ok) throw new Error(data.error?.message || 'API Error');
 
     const parts = data.candidates?.[0]?.content?.parts || [];
+
+    console.log(`\n[DEBUG] Raw Gemini Parts Array:`);
+    console.log(JSON.stringify(parts, null, 2));
+    console.log(`-------------------------------------------------\n`);
+
     const toolPart = parts.find(p => p.functionCall);
+    const textPart = parts.find(p => p.text);
+
+    // For debugging, AI internal thinking
+    if (textPart && textPart.text.trim()) {
+        console.log(`[AI THOUGHT PROCESS]:\n"${textPart.text.trim()}"\n`);
+    }
 
     if (toolPart) {
       console.log("Instructing Frontend to run tool:", toolPart.functionCall.name);
