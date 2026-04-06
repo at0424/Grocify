@@ -13,8 +13,8 @@ app.use(express.json({ limit: '50mb' }));
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Model Choosing
-const GEMINI_MODEL = 'gemini-2.5-flash';
-// const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+// const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 // const GEMINI_MODEL = 'gemini-3-flash-preview';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -52,12 +52,13 @@ const tools = [
         parameters: {
           type: "OBJECT",
           properties: {
+            listId: { type: "STRING", description: "The ID of the target list. If you just created a list, use the ID returned from create_new_list." },
             item: { type: "STRING", description: "The name of the grocery item." },
             quantity: { type: "STRING", description: "The amount/quantity (e.g., '2', '1 kg', '1'). Default is '1'." },
             category: { type: "STRING", description: "The category (e.g., 'Produce', 'Dairy', 'Meat'). Default is 'Uncategorized'." },
             shelfLife: { type: "STRING", description: "Estimated shelf life in days if known, else null." }
           },
-          required: ["item"],
+          required: ["listId", "item"],
         },
       },
       {
@@ -66,6 +67,7 @@ const tools = [
         parameters: {
           type: "OBJECT",
           properties: {
+            listId: { type: "STRING", description: "The ID of the target list. If you just created a list, use the ID returned from create_new_list." },
             items: {
               type: "ARRAY",
               description: "An array of grocery items to add.",
@@ -81,7 +83,7 @@ const tools = [
               }
             }
           },
-          required: ["items"]
+          required: ["listId", "items"]
         }
       },
       {
@@ -174,12 +176,11 @@ app.post('/chat', async (req, res) => {
         2. MEAL PLAN VARIETY (NO SEQUENTIAL PICKING):
         When generating a multi-day meal plan, DO NOT just pick the first items in the catalog in order. You MUST randomly scatter and shuffle your selections across the entire catalog.
 
-        3. ADDING STANDALONE GROCERIES (CATALOG MATCHING REQUIRED):
-        - When a user asks to add items to a list (either globally or to a specific list ID), you MUST FIRST call 'fetch_grocery_catalog' to retrieve the master list of known items.
-        - Match the user's requested items against the catalog. This matching MUST be fuzzy and case-insensitive. Account for singular/plural variations (e.g., "rice" matches "Rice", "anchovy" matches "Anchovies").
-        - If a matched item is found in the catalog, use the exact 'category' and 'shelfLife' from the catalog when adding it.
-        - If an item CANNOT be found in the catalog, you MUST default its category to 'Uncategorized' and its shelfLife to '7'.
-        - Once catalog lookup is complete, proceed to add the items. Use 'add_single_list_item' or 'add_multiple_list_items' if they provided a specific list ID.
+        3. ADDING STANDALONE GROCERIES & CREATING LISTS (CATALOG MATCHING REQUIRED):
+        - STEP 1 (PREP): If the user asks to create a new list, call 'create_new_list'. ALWAYS call 'fetch_grocery_catalog' to get item data. (These can be done in parallel).
+        - STEP 2 (EXECUTION - CRITICAL): Once you receive the tool responses from Step 1 (the new listId and the catalog data), you MUST physically call the 'add_multiple_list_items' or 'add_single_list_item' tool in the very next turn to save the items to the database. 
+        - ANTI-HALLUCINATION (CRITICAL): NEVER reply with text saying "I have added the items" unless you have ACTUALLY fired the 'add_multiple_list_items' or 'add_single_list_item' tool. You cannot add items using plain text.
+        - CATEGORIZATION: Use the 'category', 'name', and 'shelfLife' from the fetched catalog. If an item is not found, default to 'Uncategorized' and '7'.
 
         4. COOKING FROM THE FRIDGE (SINGLE MEAL ONLY):
         If the user asks for meal recommendations based on what is in their fridge:
@@ -211,7 +212,17 @@ app.post('/chat', async (req, res) => {
         Never show the raw Recipe IDs (e.g., bf_001, ln_002) to the user in your conversational text. Only use the names of the dishes.
         
         9. CONFIRMATION MESSAGE & PLAN DISPLAY (CRITICAL):
-        After successfully calling ANY tool, you MUST output a friendly, natural language response to the user confirming that the action was completed.`
+        After successfully calling ANY tool, you MUST output a friendly, natural language response to the user confirming that the action was completed.
+        
+        10. TERMINATION PROTOCOL (CRITICAL):
+        - Once you have successfully executed a terminal action, YOU ARE DONE. Do not double-check your work, and do not call any further tools.
+        - "Terminal actions" include:
+            A) Successfully calling 'add_single_list_item' or 'add_multiple_list_items'.
+            B) Successfully calling 'create_meal_plan'.
+            C) Analyzing 'get_fridge_items' and outputting a recipe.
+        - After a terminal action, your very next response MUST be a friendly text summary confirming the success of the action (e.g., listing the items added or summarizing the meal plan).
+        - If you see tool results in your history that show an action was already completed successfully, DO NOT repeat the action.
+        `
     }]
   };
 
@@ -232,8 +243,8 @@ app.post('/chat', async (req, res) => {
 
   if (intermediateSteps && intermediateSteps.length > 0) {
     intermediateSteps.forEach(step => {
-      contentsPayload.push({ role: "model", parts: [step.originalPart] });
-      contentsPayload.push({ role: "function", parts: [{ functionResponse: step.functionResponse }] });
+      contentsPayload.push({ role: "model", parts: step.modelParts });
+      contentsPayload.push({ role: "function", parts: step.functionParts });
     });
   }
 
@@ -257,30 +268,26 @@ app.post('/chat', async (req, res) => {
     console.log(JSON.stringify(parts, null, 2));
     console.log(`-------------------------------------------------\n`);
 
-    const toolPart = parts.find(p => p.functionCall);
-    const textPart = parts.find(p => p.text);
+    // --- Check for ANY tool calls (Parallel Support) ---
+    const hasFunctionCall = parts.some(p => p.functionCall);
+    const textPart = parts.find(p => p.text); 
 
-    // For debugging, AI internal thinking
     if (textPart && textPart.text.trim()) {
         console.log(`[AI THOUGHT PROCESS]:\n"${textPart.text.trim()}"\n`);
     }
 
-    if (toolPart) {
-      console.log("Instructing Frontend to run tool:", toolPart.functionCall.name);
+    if (hasFunctionCall) {
+      console.log(`[ACTION] Instructing Frontend to run ${parts.filter(p => p.functionCall).length} tool(s).`);
 
-      // Send the specific part containing the tool back to the frontend
+      // Return ALL parts as an array so the frontend can loop through them!
       return res.json({
         action: 'tool_call',
-        originalPart: toolPart
+        allParts: parts 
       });
     }
 
     // Otherwise, return the normal text response
-    console.log("Raw Gemini Parts:", JSON.stringify(parts, null, 2));
-    const botResponseText = parts
-      .filter(p => p.text)
-      .map(p => p.text)
-      .join('\n') || "I'm not sure how to handle that.";
+    const botResponseText = textPart ? textPart.text : "I'm not sure how to handle that.";
 
     res.json({
       action: 'reply',

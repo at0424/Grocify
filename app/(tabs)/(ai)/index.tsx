@@ -5,6 +5,7 @@ import {
     createNewList,
     createUserPlan,
     fetchFridgeItems,
+    fetchGroceryCatalog,
     fetchRecipes,
     fetchUserLists,
     fetchUserMealPlan,
@@ -34,9 +35,8 @@ import {
 import Markdown from 'react-native-markdown-display';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const SERVER_URL = 'http://192.168.100.46:3000/chat';
-// const SERVER_URL = 'http://172.20.10.2:3000/chat';
-// const SERVER_URL = 'https://grocify-backend-busk.onrender.com/chat';
+// --- Backend URL ---
+const SERVER_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 console.log(SERVER_URL)
 
@@ -57,8 +57,9 @@ export default function ChatScreen() {
 
     // Voice State
     const [showVoiceModal, setShowVoiceModal] = useState(false);
+    const [activeInputContext, setActiveInputContext] = useState('CHAT');
 
-    // Form State
+    // Meal Plan Form State
     const [showMealForm, setShowMealForm] = useState(false);
     const [formName, setFormName] = useState('');
     const [formDays, setFormDays] = useState(3);
@@ -66,8 +67,16 @@ export default function ChatScreen() {
     const [formAllergies, setFormAllergies] = useState('');
     const [formStartDate, setFormStartDate] = useState(new Date());
     const [formTargetFridge, setFormTargetFridge] = useState('ALL');
+
+    // Fridge Cook Form State
     const [showFridgeForm, setShowFridgeForm] = useState(false);
     const [cookTargetFridge, setCookTargetFridge] = useState('ALL');
+
+    // Add to List Form State
+    const [showAddToListForm, setShowAddToListForm] = useState(false);
+    const [addToListTarget, setAddToListTarget] = useState('CREATE_NEW');
+    const [addToListName, setAddToListName] = useState('');
+    const [addToListItemsText, setAddToListItemsText] = useState('');
 
     const COLORS = ['#FFF9C4', '#E1F5FE', '#FFEBEE', '#E8F5E9', '#F3E5F5'];
     const [formColor, setFormColor] = useState(COLORS[3]);
@@ -95,7 +104,12 @@ export default function ChatScreen() {
 
                 const lists = await fetchUserLists(user.userId);
                 if (lists) {
-                    setUserLists(Array.isArray(lists) ? lists : (lists.data || lists.lists || []));
+                    const parsedLists = Array.isArray(lists) ? lists : (lists.data || lists.lists || []);
+                    setUserLists(parsedLists);
+                    // Default the add to list target to the first available list, or CREATE_NEW if none
+                    if (parsedLists.length > 0) {
+                        setAddToListTarget(parsedLists[0].listId || parsedLists[0].id || parsedLists[0]._id);
+                    }
                 }
             } catch (error) {
                 console.error('User is not signed in', error);
@@ -114,9 +128,17 @@ export default function ChatScreen() {
     // ==========================================
     const handleVoiceComplete = (transcribedText) => {
         setShowVoiceModal(false);
+
+        if (activeInputContext === 'ADD_TO_LIST') {
+            setTimeout(() => setShowAddToListForm(true), 300);
+        }
+
         if (transcribedText.trim().length > 0) {
-            // Append the voice text to whatever they might have already typed
-            setInputText((prev) => (prev + " " + transcribedText).trim());
+            if (activeInputContext === 'CHAT') {
+                setInputText((prev) => (prev + " " + transcribedText).trim());
+            } else if (activeInputContext === 'ADD_TO_LIST') {
+                setAddToListItemsText((prev) => (prev + " " + transcribedText).trim());
+            }
         }
     };
 
@@ -224,6 +246,38 @@ export default function ChatScreen() {
 
         sendMessage(displayText, true, hiddenPrompt);
         setCookTargetFridge('ALL');
+    };
+
+    const submitAddToListForm = () => {
+        setShowAddToListForm(false);
+        if (!addToListItemsText.trim()) return;
+
+        let hiddenPrompt = "";
+        let displayText = "";
+
+        if (addToListTarget === 'CREATE_NEW') {
+            const newName = addToListName.trim() || 'New Grocery List';
+            displayText = `Please create a new list called "${newName}" and add: ${addToListItemsText}`;
+            
+            // --- Explicitly script the 2-Turn workflow for the AI ---
+            hiddenPrompt = `SYSTEM COMMAND: You are executing a mandatory 2-step sequence to add items.
+                            STEP 1: Call 'create_new_list' (listName: "${newName}") and 'fetch_grocery_catalog' right now in parallel. Do not output text.
+                            STEP 2: When I return the tool results (which will contain the new listId), you MUST immediately call 'add_multiple_list_items' or 'add_single_list_item' to add these items: ${addToListItemsText}.
+                            CRITICAL: NEVER reply with text saying you added the items until you have ACTUALLY fired the 'add_multiple_list_items' or 'add_single_list_item' tool.`;
+        } else {
+            const selectedList = userLists.find(list => (list.listId || list.id || list._id) === addToListTarget);
+            const listName = selectedList ? (selectedList.listName || selectedList.name) : "My List";
+
+            displayText = `Add these to "${listName}": ${addToListItemsText}`;
+            
+            // --- Force immediate tool execution ---
+            hiddenPrompt = `SYSTEM COMMAND: I want to add items to my existing list named "${listName}" (ID: ${addToListTarget}). Here are the items: ${addToListItemsText}. You must immediately call 'fetch_grocery_catalog' right now to categorize them. Do not reply with text first.`;
+        }
+
+        sendMessage(displayText, true, hiddenPrompt);
+
+        setAddToListItemsText('');
+        setAddToListName('');
     };
 
     const processMealPlanTool = async (args) => {
@@ -441,9 +495,71 @@ export default function ChatScreen() {
             case 'get_user_lists':
                 return { success: true, lists: await fetchUserLists(currentUserId) };
             case 'create_new_list':
-                return await createNewList(currentUserId, args.listName, args.color || '#007AFF');
-            case 'add_to_list':
-                return { success: true, data: await addListItems(args.listId, args.item, args.quantity || "1", args.category || "Uncategorized", args.shelfLife || null) };
+                try {
+                    const newListResult = await createNewList(currentUserId, args.listName, args.color || '#FFF9C4');
+
+                    let extractedId = null;
+
+                    if (newListResult?.listId) extractedId = newListResult.listId;
+                    else if (newListResult?.data?.listId) extractedId = newListResult.data.listId;
+                    else if (newListResult?.id) extractedId = newListResult.id;
+                    else if (newListResult?.data?.id) extractedId = newListResult.data.id;
+
+                    if (extractedId) {
+                        setAddToListTarget(extractedId);
+                        console.log("Successfully intercepted new list ID:", extractedId);
+
+                        return {
+                            success: true,
+                            listId: extractedId,
+                            message: `List created. The listId is ${extractedId}`
+                        };
+                    } else {
+                        console.warn("Could not find listId in response:", newListResult);
+                        return { success: false, error: "Created list but failed to parse ID." };
+                    }
+                } catch (e) {
+                    console.error("Create list tool error:", e);
+                    return { success: false, error: e.message };
+                }
+            case 'fetch_grocery_catalog':
+                return { success: true, catalog: await fetchGroceryCatalog() };
+            case 'add_single_list_item':
+                const singleTargetId = args.listId || addToListTarget;
+
+                if (!singleTargetId || singleTargetId === 'CREATE_NEW') {
+                    return { success: false, error: "Invalid target list ID." };
+                }
+
+                const singleListObj = userLists.find(l => (l.listId || l.id || l._id) === singleTargetId) || {};
+
+                return { 
+                    success: true, 
+                    targetId: singleTargetId,
+                    title: singleListObj.listName || singleListObj.name || addToListName || "My List",
+                    color: singleListObj.color || formColor || '#FFF9C4',
+                    userRole: singleListObj.role || 'owner',
+                    data: await addListItems(singleTargetId, args.item, args.quantity || "1", args.category || "Uncategorized", args.shelfLife || null),
+                    SYSTEM_DIRECTIVE: "ACTION SUCCESSFUL. YOU MUST STOP CALLING TOOLS NOW. REPLY TO THE USER WITH A TEXT SUMMARY."
+                };
+            case 'add_multiple_list_items':
+                const batchTargetId = args.listId || addToListTarget;
+
+                if (!batchTargetId || batchTargetId === 'CREATE_NEW') {
+                    return { success: false, error: "Invalid target list ID." };
+                }
+
+                const batchListObj = userLists.find(l => (l.listId || l.id || l._id) === batchTargetId) || {};
+
+                return { 
+                    success: true, 
+                    targetId: batchTargetId,
+                    title: batchListObj.listName || batchListObj.name || addToListName || "My List",
+                    color: batchListObj.color || formColor || '#FFF9C4',
+                    userRole: batchListObj.role || 'owner',
+                    data: await batchAddListItems(batchTargetId, args.items),
+                    SYSTEM_DIRECTIVE: "ACTION SUCCESSFUL. YOU MUST STOP CALLING TOOLS NOW. REPLY TO THE USER WITH A TEXT SUMMARY."
+                };
             case 'get_recipes':
                 return { success: true, catalog: await fetchRecipes(args.mealType) };
             case 'get_fridge_items':
@@ -453,7 +569,11 @@ export default function ChatScreen() {
                 console.log(`========================================================\n`);
                 return { success: true, items: fetchedItems };
             case 'create_meal_plan':
-                return await processMealPlanTool(args);
+                const planResult = await processMealPlanTool(args);
+                return {
+                    ...planResult,
+                    SYSTEM_DIRECTIVE: "ACTION SUCCESSFUL. YOU MUST STOP CALLING TOOLS NOW. REPLY TO THE USER WITH A TEXT SUMMARY."
+                };
             default:
                 return { success: false, error: `Tool ${fnName} not recognized.` };
         }
@@ -465,10 +585,14 @@ export default function ChatScreen() {
 
         if (!isSystemPrompt) {
             const lowerText = userMsgText.toLowerCase();
-            const isMealPlanRequest = /(create|make|generate|build|new|plan|want|need).*meal plan/i.test(lowerText) || lowerText.includes('meal plan for');
-
-            if (isMealPlanRequest) {
+            if (/(create|make|generate|build|new|plan|want|need).*meal plan/i.test(lowerText) || lowerText.includes('meal plan for')) {
                 setShowMealForm(true);
+                setInputText('');
+                return;
+            }
+            if (/(add|put|insert|need).*grocery list/i.test(lowerText) || lowerText.includes('add to list')) {
+                setShowAddToListForm(true);
+                setAddToListItemsText(userMsgText);
                 setInputText('');
                 return;
             }
@@ -479,62 +603,100 @@ export default function ChatScreen() {
         setInputText('');
         setIsLoading(true);
 
-        const textToSendToAI = hiddenApiText ? hiddenApiText : userMsgText;
+        let textToSendToAI = hiddenApiText ? hiddenApiText : userMsgText;
 
         try {
             let isConversationDone = false;
             let currentIntermediateSteps = [];
 
+            const impliesCooking = /(meal plan|recipe|cook|make|dinner|lunch|breakfast)/i.test(userMsgText.toLowerCase()) || hiddenApiText !== null;
+            const recipesToSend = impliesCooking ? availableRecipes : [];
+
             while (!isConversationDone) {
-                const requestBody = {
-                    message: textToSendToAI,
-                    history: currentHistory,
-                    recipes: availableRecipes,
-                    intermediateSteps: currentIntermediateSteps
+                const requestBody = { 
+                    message: textToSendToAI, 
+                    history: currentHistory, 
+                    recipes: recipesToSend, 
+                    intermediateSteps: currentIntermediateSteps 
                 };
-
-                console.log("Sending request to ", SERVER_URL);
-                const response = await fetch(SERVER_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-
+                const response = await fetch(SERVER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
                 const data = await response.json();
 
                 if (data.action === 'tool_call') {
-                    const originalPart = data.originalPart;
-                    const fn = originalPart.functionCall;
-                    const toolResultData = await executeLocalTool(fn.name, fn.args || {});
+                    const modelParts = data.allParts || (data.originalPart ? [data.originalPart] : []);
+                    const functionParts = [];
+
+                    let actionTaken = false;
+
+                    for (const part of modelParts) {
+                        if (part.functionCall) {
+                            const fn = part.functionCall;
+                            const result = await executeLocalTool(fn.name, fn.args || {});
+                            
+                            if (['add_single_list_item', 'add_multiple_list_items', 'create_meal_plan'].includes(fn.name)) {
+                                if (result.success) actionTaken = true;
+                            }
+
+                            const sanitizedResult = JSON.parse(JSON.stringify(result || { status: "success" }));
+                            functionParts.push({
+                                functionResponse: { name: fn.name, response: sanitizedResult }
+                            });
+                        }
+                    }
 
                     currentIntermediateSteps.push({
-                        originalPart: originalPart,
-                        functionResponse: { name: fn.name, response: toolResultData }
+                        modelParts: modelParts,
+                        functionParts: functionParts
                     });
 
+                    if (actionTaken) {
+                        textToSendToAI = "Success! The items have been added/plan has been saved. Please stop calling tools and just give me a final confirmation message now.";
+                    }
                 } else if (data.action === 'reply') {
                     const cleanReply = data.reply ? data.reply.replace(/\\/g, '') : "";
-
-                    const createdMealPlan = currentIntermediateSteps.some(step =>
-                        step.functionResponse?.name === 'create_meal_plan' &&
-                        step.functionResponse?.response?.success === true
+                    
+                    const createdMealPlan = currentIntermediateSteps.some(step => 
+                        step.functionParts && step.functionParts.some(fp => 
+                            fp.functionResponse?.name === 'create_meal_plan' && 
+                            fp.functionResponse?.response?.success === true
+                        )
                     );
+                    
+                    let addedToListData = null;
+                    
+                    for (const step of currentIntermediateSteps) {
+                        if (!step.functionParts) continue;
 
-                    setMessages(prev => [...prev, {
-                        id: Date.now().toString(),
-                        text: cleanReply,
-                        sender: 'bot',
-                        showMealPlanButton: createdMealPlan
+                        const addTargetCall = step.functionParts.find(fp => 
+                            ['add_single_list_item', 'add_multiple_list_items'].includes(fp.functionResponse?.name) && 
+                            fp.functionResponse?.response?.success === true
+                        );
+
+                        if (addTargetCall) {
+                            const res = addTargetCall.functionResponse.response;
+                            addedToListData = {
+                                listId: res.targetId,
+                                title: res.title,
+                                color: res.color,
+                                userRole: res.userRole
+                            };
+                            break; 
+                        }
+                    }
+
+                    setMessages(prev => [...prev, { 
+                        id: Date.now().toString(), 
+                        text: cleanReply, 
+                        sender: 'bot', 
+                        showMealPlanButton: createdMealPlan,
+                        addedToListData: addedToListData 
                     }]);
-
+                    
                     isConversationDone = true;
                 } else {
                     isConversationDone = true;
                 }
             }
-
         } catch (error) {
             console.error("Chat Error:", error);
             setMessages(prev => [...prev, { id: Date.now().toString(), text: "Sorry, I ran into an error processing that.", sender: 'bot' }]);
@@ -568,12 +730,8 @@ export default function ChatScreen() {
 
                 {/* Box 2 */}
                 <View style={styles.suggestionWrapper}>
-                    <TouchableOpacity style={styles.suggestionButton} onPress={() => sendMessage("I need to add some items to my grocery list.")}>
-                        <Image
-                            source={require('@/assets/images/ai/GroceryItemBox.png')}
-                            style={styles.suggestionImage}
-                            resizeMode="contain"
-                        />
+                    <TouchableOpacity style={styles.suggestionButton} onPress={() => setShowAddToListForm(true)}>
+                        <Image source={require('@/assets/images/ai/GroceryItemBox.png')} style={styles.suggestionImage} resizeMode="contain" />
                     </TouchableOpacity>
                     <Text style={styles.suggestionText}>Add to grocery list</Text>
                 </View>
@@ -613,6 +771,7 @@ export default function ChatScreen() {
                 <View>
                     <Markdown style={botMarkdownStyles}>{item.text}</Markdown>
 
+                    {/* View Meal Plan Button */}
                     {item.showMealPlanButton && (
                         <TouchableOpacity
                             style={styles.actionButtonWrapper}
@@ -624,6 +783,26 @@ export default function ChatScreen() {
                                 resizeMode="stretch"
                             >
                                 <Text style={styles.actionButtonText}>View Meal Plan</Text>
+                            </ImageBackground>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* View List Button */}
+                    {item.addedToListData && (
+                        <TouchableOpacity
+                            style={styles.actionButtonWrapper}
+                            onPress={() => router.push({
+                                pathname: './detail_list',
+                                params: {
+                                    listId: item.addedToListData.listId,
+                                    title: item.addedToListData.title,
+                                    userRole: item.addedToListData.userRole,
+                                    color: item.addedToListData.color
+                                }
+                            })}
+                        >
+                            <ImageBackground source={require('@/components/images/GeneralBlueButton.png')} style={styles.actionButtonBg} resizeMode="stretch">
+                                <Text style={styles.actionButtonText}>View List</Text>
                             </ImageBackground>
                         </TouchableOpacity>
                     )}
@@ -646,6 +825,29 @@ export default function ChatScreen() {
         );
     };
 
+    // Button Helper Function for Text Wrapping
+    const formatButtonText = (text) => {
+        // If it's short, or a single giant word with no spaces, leave it alone
+        if (text.length <= 12 || !text.includes(' ')) return text;
+
+        const words = text.split(' ');
+        const middle = Math.floor(text.length / 2);
+
+        let line1 = "";
+        let line2 = "";
+
+        for (let word of words) {
+            // Fill line 1 until we hit the middle of the string
+            if (line1.length < middle) {
+                line1 += (line1.length > 0 ? " " : "") + word;
+            } else {
+                line2 += (line2.length > 0 ? " " : "") + word;
+            }
+        }
+        // Return with a physical line break
+        return line2 ? `${line1}\n${line2}` : line1;
+    };
+
     const generateDateOptions = () => {
         const options = [];
         for (let i = 0; i < 7; i++) {
@@ -658,6 +860,86 @@ export default function ChatScreen() {
             options.push({ date: d, label });
         }
         return options;
+    };
+
+    const renderAddToListModal = () => {
+        return (
+            <Modal visible={showAddToListForm} transparent animationType="fade">
+                <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                    <ImageBackground source={require('@/assets/images/listing/icons/ItemBorder.png')} style={[styles.modalCard]} resizeMode='stretch'>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Add to List</Text>
+                            <TouchableOpacity onPress={() => setShowAddToListForm(false)} style={styles.headerIcon}>
+                                <Image source={require('@/components/images/ExitButton.png')} style={{ height: '80%', aspectRatio: 1 }} resizeMode='contain' />
+                            </TouchableOpacity>
+                        </View>
+                        <Image source={require('@/components/images/Separator.png')} style={{ width: '100%' }} resizeMode='stretch' />
+
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                            <Text style={styles.inputLabel}>Which List?</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ height: isTabletView ? 120 : 100, flexGrow: 0 }} contentContainerStyle={{ gap: 10, paddingVertical: 5, alignItems: 'center' }}>
+                                <TouchableOpacity style={[styles.pillWrapper, { width: 'auto', minWidth: isTabletView ? 120 : 90, height: isTabletView ? 60 : 50, justifyContent: 'center', alignItems: 'center' }]} onPress={() => setAddToListTarget('CREATE_NEW')}>
+                                    <ImageBackground source={addToListTarget === 'CREATE_NEW' ? require('@/components/images/GeneralBlueButton.png') : require('@/components/images/GeneralWoodenButton.png')} style={[styles.pillImageBackground, { width: 'auto', paddingHorizontal: isTabletView ? 24 : 16 }]} resizeMode="stretch">
+                                        <Text style={[styles.pillText, addToListTarget === 'CREATE_NEW' && styles.pillTextActive]}>Create New List</Text>
+                                    </ImageBackground>
+                                </TouchableOpacity>
+
+                                {userLists.map(list => {
+                                    const listId = list.listId || list.id || list._id;
+                                    const isActive = addToListTarget === listId;
+                                    const displayListText = formatButtonText(list.listName || list.name || "Unnamed List");
+                                    return (
+                                        <TouchableOpacity key={listId} style={[styles.pillWrapper, { width: 'auto', minWidth: isTabletView ? 120 : 90, height: isTabletView ? 60 : 50, justifyContent: 'center', alignItems: 'center' }]} onPress={() => setAddToListTarget(listId)}>
+                                            <ImageBackground source={isActive ? require('@/components/images/GeneralBlueButton.png') : require('@/components/images/GeneralWoodenButton.png')} style={[styles.pillImageBackground, { width: 'auto', paddingHorizontal: isTabletView ? 24 : 16 }]} resizeMode="stretch">
+                                                <Text numberOfLines={2} style={[styles.pillText, isActive && styles.pillTextActive, { textAlign: 'center', lineHeight: isTabletView ? 16 : 14 }]}>{displayListText}</Text>
+                                            </ImageBackground>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+
+                            {addToListTarget === 'CREATE_NEW' && (
+                                <>
+                                    <Text style={styles.inputLabel}>New List Name (Optional)</Text>
+                                    <ImageBackground source={require('@/assets/images/listing/DescriptionBG.png')} style={styles.modalInputContainer} resizeMode="stretch">
+                                        <TextInput style={styles.modalInput} placeholder="e.g., Weekend BBQ" value={addToListName} onChangeText={setAddToListName} placeholderTextColor="#A0A0A0" />
+                                    </ImageBackground>
+                                </>
+                            )}
+
+                            <Text style={styles.inputLabel}>Items (Type or use voice)</Text>
+                            <ImageBackground source={require('@/assets/images/listing/DescriptionBG.png')} style={[styles.modalInputContainer, { flexDirection: 'row', alignItems: 'center', paddingRight: 10, minHeight: 80 }]} resizeMode="stretch">
+                                <TextInput
+                                    style={[styles.modalInput, { flex: 1 }]}
+                                    value={addToListItemsText}
+                                    onChangeText={setAddToListItemsText}
+                                    placeholder="e.g., Bread, Milk"
+                                    placeholderTextColor="#A0A0A0"
+                                    multiline={true}
+                                />
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setActiveInputContext('ADD_TO_LIST');
+                                        setShowAddToListForm(false);
+                                        setTimeout(() => setShowVoiceModal(true), 300);
+                                    }}
+                                    style={styles.micIconWrapper}
+                                >
+                                    <Image source={require('@/components/images/MicOff.png')} style={styles.micIcon} resizeMode="contain" />
+                                </TouchableOpacity>
+                            </ImageBackground>
+
+                            <TouchableOpacity style={styles.submitFormButtonWrapper} onPress={submitAddToListForm}>
+                                <ImageBackground source={require("@/assets/images/listing/TitlePanel.png")} style={styles.submitFormButton} resizeMode='stretch'>
+                                    <Text style={styles.submitFormText}>Add Items</Text>
+                                </ImageBackground>
+                            </TouchableOpacity>
+
+                        </ScrollView>
+                    </ImageBackground>
+                </KeyboardAvoidingView>
+            </Modal>
+        );
     };
 
     const renderMealPlanModal = () => {
@@ -1361,12 +1643,18 @@ export default function ChatScreen() {
                     {/* Overlays */}
                     {renderMealPlanModal()}
                     {renderFridgeCookModal()}
-                    <VoiceInputModal 
-                        visible={showVoiceModal} 
-                        onClose={() => setShowVoiceModal(false)}
+                    {renderAddToListModal()}
+                    <VoiceInputModal
+                        visible={showVoiceModal}
+                        onClose={() => {
+                            setShowVoiceModal(false);
+                            if (activeInputContext === 'ADD_TO_LIST') {
+                                setTimeout(() => setShowAddToListForm(true), 300);
+                            }
+                        }}
                         onComplete={handleVoiceComplete}
                     />
-                    
+
 
                 </SafeAreaView>
             </ImageBackground>
@@ -1693,7 +1981,7 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         marginTop: 28,
         width: '60%',
-        height: '10%',
+        height: '15%',
     },
     submitFormButton: {
         width: '100%',
@@ -1707,6 +1995,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingHorizontal: '10%',
         fontSize: isTabletView ? 18 : 12,
+        includeFontPadding: false
     },
     colorContainer: {
         flexDirection: 'row',
