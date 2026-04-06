@@ -14,8 +14,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Model Choosing
 // const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_MODEL = 'gemini-2.5-flash-lite';
-// const GEMINI_MODEL = 'gemini-3-flash-preview';
+// const GEMINI_MODEL = 'gemini-2.5-flash-lite';
+const GEMINI_MODEL = 'gemini-3-flash-preview';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // ====================================
@@ -178,10 +178,11 @@ app.post('/chat', async (req, res) => {
 
         3. ADDING STANDALONE GROCERIES & CREATING LISTS (CATALOG MATCHING REQUIRED):
         - STEP 1 (PREP): If the user asks to create a new list, call 'create_new_list'. ALWAYS call 'fetch_grocery_catalog' to get item data. (These can be done in parallel).
-        - STEP 2 (EXECUTION - CRITICAL): Once you receive the tool responses from Step 1 (the new listId and the catalog data), you MUST physically call the 'add_multiple_list_items' or 'add_single_list_item' tool in the very next turn to save the items to the database. 
+        - MATCHING (CRITICAL): Before adding the items, match the user's requested items against the fetched catalog. This matching MUST be fuzzy and case-insensitive. Account for singular/plural variations (e.g., "rice" matches "Rice", "anchovies" matches "Anchovy", "eggs" matches "Egg").
+        - CATEGORIZATION: If a matched item is found in the catalog, strictly use the exact 'category', 'name', and 'shelfLife' from the catalog. If an item CANNOT be found, default its category to 'Uncategorized' and its shelfLife to '7'.
+        - STEP 2 (EXECUTION - CRITICAL): Once the catalog matching is complete and you have the target listId, you MUST physically call the 'add_multiple_list_items' or 'add_single_list_item' tool in the very next turn to save the items to the database. 
         - ANTI-HALLUCINATION (CRITICAL): NEVER reply with text saying "I have added the items" unless you have ACTUALLY fired the 'add_multiple_list_items' or 'add_single_list_item' tool. You cannot add items using plain text.
-        - CATEGORIZATION: Use the 'category', 'name', and 'shelfLife' from the fetched catalog. If an item is not found, default to 'Uncategorized' and '7'.
-
+        
         4. COOKING FROM THE FRIDGE (SINGLE MEAL ONLY):
         If the user asks for meal recommendations based on what is in their fridge:
         - If they provide a specific list ID, you MUST call 'get_fridge_items' using that ID immediately. Do not skip this step.
