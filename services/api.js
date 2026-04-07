@@ -310,6 +310,34 @@ export const deleteGroceryItem = async (listId, itemId, currentUserId) => {
   }
 };
 
+// Update a specific item in a Grocery List
+export const updateGroceryItem = async (listId, itemId, updates, currentUserId) => {
+  try {
+    const operation = post({ 
+      apiName: API_NAME,
+      path: '/updateItem', 
+      options: {
+        body: { 
+          listId: listId, 
+          itemId: itemId,
+          updates: updates,
+          userId: currentUserId 
+        }
+      }
+    });
+    
+    const response = await operation.response;
+    return await response.body.json();
+    
+  } catch (error) {
+    console.error("Error updating item:", error);
+    return { 
+      success: false, 
+      message: error.message || String(error) 
+    };
+  }
+};
+
 // Toggle item to check or uncheck
 export const toggleGroceryItem = async (listId, itemId, currentUserId) => {
   try {

@@ -7,12 +7,12 @@ import {
   deleteGroceryItem,
   fetchCollaborators, fetchGroceryCatalog,
   fetchGroceryListDetails, removeCollaborator, shareList,
-  toggleGroceryItem
+  toggleGroceryItem, updateGroceryItem
 } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, ImageBackground, RefreshControl, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, ImageBackground, Modal, RefreshControl, SectionList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView, Swipeable, TouchableOpacity as SwipeableTouchable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -32,6 +32,9 @@ export default function ListingDetailScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalData, setModalData] = useState({ collaborators: [], ownerEmail: '', myRole: '' });
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [itemToEdit, setItemToEdit] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', quantity: '' });
 
   // ==========================================
   // WEBSOCKET SETUP & DATA LOADING
@@ -44,9 +47,9 @@ export default function ListingDetailScreen() {
     const handleIncomingMessage = (message) => {
       switch (message.action) {
         case 'ITEM_TOGGLED':
-          setItems(prevItems => prevItems.map(item => 
-            item.itemId === message.itemId 
-              ? { ...item, checked: message.checked } 
+          setItems(prevItems => prevItems.map(item =>
+            item.itemId === message.itemId
+              ? { ...item, checked: message.checked }
               : item
           ));
           break;
@@ -57,7 +60,7 @@ export default function ListingDetailScreen() {
           })));
           break;
         case 'LIST_UPDATED':
-          loadItems(); 
+          loadItems();
           break;
       }
     };
@@ -125,18 +128,18 @@ export default function ListingDetailScreen() {
   // AI TOOL EXECUTION & VOICE HANDLER
   // ==========================================
   const executeLocalTool = async (fnName, args) => {
-      console.log(`[ListingDetail] Executing tool locally: ${fnName}`);
+    console.log(`[ListingDetail] Executing tool locally: ${fnName}`);
 
-      switch (fnName) {
-        case 'fetch_grocery_catalog': 
-            return { success: true, catalog: await fetchGroceryCatalog() };
-          case 'add_single_list_item':
-              return { success: true, data: await addListItems(listId, args.item, args.quantity || "1", args.category || "Uncategorized", args.shelfLife || "7") };
-          case 'add_multiple_list_items':
-              return { success: true, data: await batchAddListItems(listId, args.items) };
-          default:
-              return { success: false, error: `Tool ${fnName} not recognized on this page.` };
-      }
+    switch (fnName) {
+      case 'fetch_grocery_catalog':
+        return { success: true, catalog: await fetchGroceryCatalog() };
+      case 'add_single_list_item':
+        return { success: true, data: await addListItems(listId, args.item, args.quantity || "1", args.category || "Uncategorized", args.shelfLife || "7") };
+      case 'add_multiple_list_items':
+        return { success: true, data: await batchAddListItems(listId, args.items) };
+      default:
+        return { success: false, error: `Tool ${fnName} not recognized on this page.` };
+    }
   };
 
   const handleVoiceComplete = async (transcribedText) => {
@@ -147,52 +150,52 @@ export default function ListingDetailScreen() {
     const engineeredPrompt = `I am currently viewing my grocery list with ID: "${listId}". Please add the following items to this list: "${transcribedText}". You must use either 'add_single_list_item' or 'add_multiple_list_items'. Do not ask for confirmation.`;
 
     try {
-        let isConversationDone = false;
-        let currentIntermediateSteps = [];
+      let isConversationDone = false;
+      let currentIntermediateSteps = [];
 
-        while (!isConversationDone) {
-            const requestBody = {
-                message: engineeredPrompt,
-                history: [], 
-                recipes: [], 
-                intermediateSteps: currentIntermediateSteps
-            };
+      while (!isConversationDone) {
+        const requestBody = {
+          message: engineeredPrompt,
+          history: [],
+          recipes: [],
+          intermediateSteps: currentIntermediateSteps
+        };
 
-            const response = await fetch(SERVER_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
+        const response = await fetch(SERVER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
 
-            const data = await response.json();
+        const data = await response.json();
 
-            if (data.action === 'tool_call') {
-                const originalPart = data.originalPart;
-                const fn = originalPart.functionCall;
-                
-                const toolResultData = await executeLocalTool(fn.name, fn.args || {});
-                
-                currentIntermediateSteps.push({
-                    originalPart: originalPart,
-                    functionResponse: { name: fn.name, response: toolResultData }
-                });
+        if (data.action === 'tool_call') {
+          const originalPart = data.originalPart;
+          const fn = originalPart.functionCall;
 
-                if (fn.name.includes('add')) {
-                    loadItems(); 
-                }
-            } 
-            else if (data.action === 'reply') {
-                isConversationDone = true;
-            } 
-            else {
-                isConversationDone = true;
-            }
+          const toolResultData = await executeLocalTool(fn.name, fn.args || {});
+
+          currentIntermediateSteps.push({
+            originalPart: originalPart,
+            functionResponse: { name: fn.name, response: toolResultData }
+          });
+
+          if (fn.name.includes('add')) {
+            loadItems();
+          }
         }
+        else if (data.action === 'reply') {
+          isConversationDone = true;
+        }
+        else {
+          isConversationDone = true;
+        }
+      }
     } catch (error) {
-        console.error("AI Quick Add Error:", error);
-        Alert.alert("Network Error", "Could not connect to the AI assistant.");
+      console.error("AI Quick Add Error:", error);
+      Alert.alert("Network Error", "Could not connect to the AI assistant.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -213,19 +216,19 @@ export default function ListingDetailScreen() {
   const handleMarkAll = async () => {
     if (items.length === 0) return;
     const allAreChecked = items.every(item => item.checked);
-    const targetStatus = !allAreChecked; 
-    const oldItems = [...items]; 
-    
+    const targetStatus = !allAreChecked;
+    const oldItems = [...items];
+
     const updatedItems = items.map(item => ({ ...item, checked: targetStatus }));
-    setItems(updatedItems); 
+    setItems(updatedItems);
 
     try {
-        const result = await batchToggleGroceryItem(listId, targetStatus, currentUserId);
-        if (!result || !result.success) throw new Error("Batch update failed on server");
-        if (result.items) setItems(result.items); 
+      const result = await batchToggleGroceryItem(listId, targetStatus, currentUserId);
+      if (!result || !result.success) throw new Error("Batch update failed on server");
+      if (result.items) setItems(result.items);
     } catch (error) {
-        Alert.alert("Sync Error", "Could not update list. Reverting changes.");
-        setItems(oldItems); 
+      Alert.alert("Sync Error", "Could not update list. Reverting changes.");
+      setItems(oldItems);
     }
   };
 
@@ -241,25 +244,75 @@ export default function ListingDetailScreen() {
         onPress: async () => {
           // Optimistic UI update
           setItems(prevItems => prevItems.filter(i => i.itemId !== itemToDelete.itemId));
-          
+
           try {
             // Backend delete call
             const result = await deleteGroceryItem(listId, itemToDelete.itemId, currentUserId);
             if (!result.success) throw new Error("Delete failed");
           } catch (error) {
             Alert.alert("Error", "Could not delete item. Reverting changes.");
-            loadItems(); 
+            loadItems();
           }
         }
       }
     ]);
   };
 
+  // ==========================================
+  // EDIT HANDLERS
+  // ==========================================
+  const handleEditItem = (itemToEdit) => {
+    setItemToEdit(itemToEdit);
+    setEditForm({ name: itemToEdit.name, quantity: String(itemToEdit.quantity || '1') });
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editForm.quantity.trim()) {
+      Alert.alert("Invalid Input", "Quantity cannot be empty.");
+      return;
+    }
+
+    const updatedItems = items.map(i => 
+      i.itemId === itemToEdit.itemId 
+        ? { ...i, name: itemToEdit.name, quantity: editForm.quantity } 
+        : i
+    );
+    setItems(updatedItems);
+    setEditModalVisible(false);
+
+    try {
+      const result = await updateGroceryItem(listId, itemToEdit.itemId, { quantity: editForm.quantity }, currentUserId);
+      
+      if (!result || !result.success) {
+         throw new Error("Backend update failed");
+      }
+      
+    } catch (error) {
+      Alert.alert("Error", "Could not save changes. Reverting.");
+      loadItems(); // Revert UI to match the database on failure
+    }
+  };
+
   const renderRightActions = (item) => {
     return (
-      <TouchableOpacity style={styles.deleteSwipeAction} onPress={() => handleDeleteItem(item)}>
-        <Ionicons name="trash" size={24} color="#FFF8DC" />
-      </TouchableOpacity>
+      <View style={styles.swipeActionsContainer}>
+        {/* EDIT BUTTON */}
+        <TouchableOpacity 
+          style={[styles.swipeActionBtn, styles.editSwipeBtn]} 
+          onPress={() => handleEditItem(item)}
+        >
+          <Ionicons name="pencil" size={24} color="#FFF8DC" />
+        </TouchableOpacity>
+
+        {/* DELETE BUTTON */}
+        <TouchableOpacity 
+          style={[styles.swipeActionBtn, styles.deleteSwipeBtn]} 
+          onPress={() => handleDeleteItem(item)}
+        >
+          <Ionicons name="trash" size={24} color="#FFF8DC" />
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -391,11 +444,11 @@ export default function ListingDetailScreen() {
 
             <TouchableOpacity onPress={handleOpenModal} activeOpacity={0.8} style={styles.titleWrapper}>
               <Image source={require('@/assets/images/listing/TitlePanel.png')} style={styles.titlePlaque} resizeMode="stretch" />
-                <Text style={styles.plaqueTitle} numberOfLines={2}>{title || "Unnamed List"}</Text>
+              <Text style={styles.plaqueTitle} numberOfLines={2}>{title || "Unnamed List"}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.markAllWrapper} onPress={handleMarkAll} activeOpacity={0.8}>
-              <Image source={allItemsChecked ? require('@/components/images/Checkedbox.png') : require('@/components/images/Checkbox.png') } style={styles.titlePlaque} resizeMode="contain" />
+              <Image source={allItemsChecked ? require('@/components/images/Checkedbox.png') : require('@/components/images/Checkbox.png')} style={styles.titlePlaque} resizeMode="contain" />
             </TouchableOpacity>
           </View>
 
@@ -434,7 +487,7 @@ export default function ListingDetailScreen() {
             <TouchableOpacity style={styles.voiceFab} onPress={() => setShowVoiceModal(true)} activeOpacity={0.8}>
               <Image source={require('@/components/images/MicButton.png')} style={[StyleSheet.absoluteFillObject, { width: '100%', height: '100%' }]} resizeMode="contain" />
             </TouchableOpacity>
-            
+
             <VoiceInputModal visible={showVoiceModal} onClose={() => setShowVoiceModal(false)} onComplete={handleVoiceComplete} />
 
           </View>
@@ -443,6 +496,40 @@ export default function ListingDetailScreen() {
 
       <CollaboratorModal visible={modalVisible} onClose={() => setModalVisible(false)} data={modalData} currentUserId={currentUserId} onInvite={handleInvite} onRemove={handleRemove} />
 
+      {/* ================= EDIT MODAL ================= */}
+      <Modal visible={editModalVisible} animationType="fade" transparent={true}>
+        <View style={styles.editModalOverlay}>
+          <View style={[styles.editModalContent, { backgroundColor: color || '#FFF9C4' }]}>
+            <Text style={styles.editModalTitle}>Modify Quantity</Text>
+
+            {/* Now displaying the name as static text instead of an input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Editing Item:</Text>
+              <Text style={styles.itemNameDisplay}>{itemToEdit?.name}</Text>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Quantity/Details:</Text>
+              <TextInput
+                style={styles.pixelInput}
+                value={editForm.quantity}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, quantity: text }))}
+                autoFocus={true} 
+              />
+            </View>
+
+            <View style={styles.editActionRow}>
+              <TouchableOpacity style={[styles.editBtn, styles.cancelBtn]} onPress={() => setEditModalVisible(false)}>
+                <Text style={styles.editBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.editBtn, styles.saveBtn]} onPress={handleSaveEdit}>
+                <Text style={styles.editBtnText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </GestureHandlerRootView>
   );
 }
@@ -489,18 +576,109 @@ const styles = StyleSheet.create({
   voiceFabBackground: { width: '100%', height: '100%', backgroundColor: '#DEB887', borderWidth: 3, borderColor: '#3E2723', borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
 
   // =================================================
-  // SWIPE TO DELETE STYLES 
+  // SWIPE ACTION STYLES 
   // =================================================
-  deleteSwipeAction: {
-    backgroundColor: '#D32F2F', 
+  swipeActionsContainer: {
+    flexDirection: 'row',
+    marginBottom: 15,
+    marginRight: 10,
+  },
+  swipeActionBtn: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: 70,
-    marginBottom: 15, 
+    width: 60, 
     borderWidth: 2,
     borderColor: '#3E2723',
+  },
+  editSwipeBtn: {
+    backgroundColor: '#4A90E2', 
+    borderRightWidth: 0, 
+  },
+  deleteSwipeBtn: {
+    backgroundColor: '#D32F2F', 
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
-    marginRight: 10,
+  },
+
+  // =================================================
+  // EDIT MODAL STYLES
+  // =================================================
+  editModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editModalContent: {
+    width: '85%',
+    padding: 20,
+    borderRadius: 8,
+    borderWidth: 4,
+    borderColor: '#3E2723',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 10,
+  },
+  editModalTitle: {
+    fontSize: isTabletView ? 24 : 18,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  inputLabel: {
+    fontSize: isTabletView ? 16 : 12,
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    marginBottom: 5,
+  },
+  pixelInput: {
+    backgroundColor: '#FFF8DC',
+    borderWidth: 2,
+    borderColor: '#3E2723',
+    fontFamily: 'PixelFont',
+    fontSize: isTabletView ? 16 : 14,
+    color: '#3E2723',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 4,
+  },
+  itemNameDisplay: {
+    fontSize: isTabletView ? 20 : 16,
+    fontFamily: 'PixelFont',
+    color: '#8B5A2B', 
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  editActionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  editBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#3E2723',
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  cancelBtn: {
+    backgroundColor: '#E0E0E0',
+  },
+  saveBtn: {
+    backgroundColor: '#81C784', 
+  },
+  editBtnText: {
+    fontFamily: 'PixelFont',
+    color: '#3E2723',
+    fontSize: isTabletView ? 14 : 10,
   },
 });
