@@ -173,19 +173,33 @@ export default function ListingDetailScreen() {
         const data = await response.json();
 
         if (data.action === 'tool_call') {
-          const originalPart = data.originalPart;
-          const fn = originalPart.functionCall;
+          const modelParts = data.allParts || (data.originalPart ? [data.originalPart] : []);
+          const functionParts = [];
 
-          const toolResultData = await executeLocalTool(fn.name, fn.args || {});
+          for (const part of modelParts) {
+            if (part.functionCall) {
+              const fn = part.functionCall;
+              
+              // Execute the tool locally
+              const toolResultData = await executeLocalTool(fn.name, fn.args || {});
+              
+              // Push the formatted result to our array
+              functionParts.push({ 
+                functionResponse: { name: fn.name, response: toolResultData } 
+              });
 
-          currentIntermediateSteps.push({
-            originalPart: originalPart,
-            functionResponse: { name: fn.name, response: toolResultData }
-          });
-
-          if (fn.name.includes('add')) {
-            loadItems();
+              // If it added an item, refresh the UI list
+              if (fn.name.includes('add')) {
+                loadItems();
+              }
+            }
           }
+
+          // Push the entire step back into our intermediate history 
+          currentIntermediateSteps.push({
+            modelParts: modelParts,
+            functionParts: functionParts
+          });
         }
         else if (data.action === 'reply') {
           isConversationDone = true;

@@ -607,111 +607,76 @@ export default function ChatScreen() {
 
         const textToSendToAI = hiddenApiText ? hiddenApiText : userMsgText;
 
-        // --- Auto-Retry ---
-        const attemptApiCall = async (retryCount = 0) => {
-            try {
-                let isConversationDone = false;
-                let currentIntermediateSteps = [];
-                let loopCounter = 0;
+        try {
+            let isConversationDone = false;
+            let currentIntermediateSteps = [];
+            let loopCounter = 0;
 
-                const impliesCooking = /(meal plan|recipe|cook|make|dinner|lunch|breakfast)/i.test(userMsgText.toLowerCase()) || hiddenApiText !== null;
-                const recipesToSend = impliesCooking ? availableRecipes : [];
+            const impliesCooking = /(meal plan|recipe|cook|make|dinner|lunch|breakfast)/i.test(userMsgText.toLowerCase()) || hiddenApiText !== null;
+            const recipesToSend = impliesCooking ? availableRecipes : [];
 
-                while (!isConversationDone) {
-                    loopCounter++;
+            while (!isConversationDone) {
+                loopCounter++;
+                
+                const requestBody = { message: textToSendToAI, history: currentHistory, recipes: recipesToSend, intermediateSteps: currentIntermediateSteps };
+                const response = await fetch(SERVER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
+                const data = await response.json();
+
+                if (data.action === 'tool_call') {
+                    const modelParts = data.allParts || (data.originalPart ? [data.originalPart] : []);
+                    const functionParts = [];
+
+                    if (loopCounter >= 4) {
+                        console.warn("AI Loop Limit Reached! Forcing stop.");
+                        const lastAddStep = currentIntermediateSteps.find(step => step.functionParts && step.functionParts.some(fp => ['add_to_list', 'add_single_list_item', 'add_multiple_list_items'].includes(fp.functionResponse?.name)));
+                        
+                        let safeAddData = null;
+                        if (lastAddStep) {
+                            const res = lastAddStep.functionParts.find(fp => ['add_to_list', 'add_single_list_item', 'add_multiple_list_items'].includes(fp.functionResponse?.name)).functionResponse.response;
+                            safeAddData = { listId: res.targetId, title: res.title, color: res.color, userRole: res.userRole };
+                        }
+
+                        setMessages(prev => [...prev, { id: Date.now().toString(), text: "I've successfully updated your lists!", sender: 'bot', addedToListData: safeAddData }]);
+                        break; 
+                    }
+
+                    for (const part of modelParts) {
+                        if (part.functionCall) {
+                            const fn = part.functionCall;
+                            const result = await executeLocalTool(fn.name, fn.args || {});
+                            const sanitizedResult = JSON.parse(JSON.stringify(result || { status: "success" }));
+                            functionParts.push({ functionResponse: { name: fn.name, response: sanitizedResult } });
+                        }
+                    }
+
+                    currentIntermediateSteps.push({ modelParts: modelParts, functionParts: functionParts });
+
+                } else if (data.action === 'reply') {
+                    const cleanReply = data.reply ? data.reply.replace(/\\/g, '') : "";
                     
-                    const requestBody = { message: textToSendToAI, history: currentHistory, recipes: recipesToSend, intermediateSteps: currentIntermediateSteps };
-                    const response = await fetch(SERVER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) });
-                    const data = await response.json();
-
-                    if (data.action === 'tool_call') {
-                        const modelParts = data.allParts || (data.originalPart ? [data.originalPart] : []);
-                        const functionParts = [];
-
-                        if (loopCounter >= 4) {
-                            console.warn("AI Loop Limit Reached! Forcing stop.");
-                            const lastAddStep = currentIntermediateSteps.find(step => step.functionParts && step.functionParts.some(fp => ['add_to_list', 'add_single_list_item', 'add_multiple_list_items'].includes(fp.functionResponse?.name)));
-                            
-                            let safeAddData = null;
-                            if (lastAddStep) {
-                                const res = lastAddStep.functionParts.find(fp => ['add_to_list', 'add_single_list_item', 'add_multiple_list_items'].includes(fp.functionResponse?.name)).functionResponse.response;
-                                safeAddData = { listId: res.targetId, title: res.title, color: res.color, userRole: res.userRole };
-                            }
-
-                            setMessages(prev => [...prev, { id: Date.now().toString(), text: "I've successfully updated your lists!", sender: 'bot', addedToListData: safeAddData }]);
+                    const createdMealPlan = currentIntermediateSteps.some(step => step.functionParts && step.functionParts.some(fp => fp.functionResponse?.name === 'create_meal_plan' && fp.functionResponse?.response?.success === true));
+                    
+                    let addedToListData = null;
+                    for (const step of currentIntermediateSteps) {
+                        if (!step.functionParts) continue;
+                        const addTargetCall = step.functionParts.find(fp => ['add_to_list', 'add_single_list_item', 'add_multiple_list_items'].includes(fp.functionResponse?.name) && fp.functionResponse?.response?.success === true);
+                        if (addTargetCall) {
+                            const res = addTargetCall.functionResponse.response;
+                            addedToListData = { listId: res.targetId, title: res.title, color: res.color, userRole: res.userRole };
                             break; 
                         }
-
-                        for (const part of modelParts) {
-                            if (part.functionCall) {
-                                const fn = part.functionCall;
-                                const result = await executeLocalTool(fn.name, fn.args || {});
-                                const sanitizedResult = JSON.parse(JSON.stringify(result || { status: "success" }));
-                                functionParts.push({ functionResponse: { name: fn.name, response: sanitizedResult } });
-                            }
-                        }
-
-                        currentIntermediateSteps.push({ modelParts: modelParts, functionParts: functionParts });
-
-                    } else if (data.action === 'reply') {
-                        const cleanReply = data.reply ? data.reply.replace(/\\/g, '') : "";
-                        
-                        // ==========================================
-                        // THE AUTO-RETRY TRIGGER
-                        // ==========================================
-                        if (cleanReply === "I'm not sure how to handle that.") {
-                            if (retryCount < 2) { // Allow up to 2 automatic retries
-                                console.log(`[RETRY] AI failed. Attempting silent retry ${retryCount + 1}/2...`);
-                                // Wait 1 second before retrying to let the API breathe
-                                await new Promise(resolve => setTimeout(resolve, 1000));
-                                return attemptApiCall(retryCount + 1); // Run the whole function again!
-                            } else {
-                                // If it fails 3 times in a row, finally give up and show an error message
-                                setMessages(prev => [...prev, { id: Date.now().toString(), text: "Sorry, I'm having trouble processing that right now. Please try again in a moment.", sender: 'bot' }]);
-                                isConversationDone = true;
-                                break;
-                            }
-                        }
-                        // ==========================================
-
-                        const createdMealPlan = currentIntermediateSteps.some(step => step.functionParts && step.functionParts.some(fp => fp.functionResponse?.name === 'create_meal_plan' && fp.functionResponse?.response?.success === true));
-                        
-                        let addedToListData = null;
-                        for (const step of currentIntermediateSteps) {
-                            if (!step.functionParts) continue;
-                            const addTargetCall = step.functionParts.find(fp => ['add_to_list', 'add_single_list_item', 'add_multiple_list_items'].includes(fp.functionResponse?.name) && fp.functionResponse?.response?.success === true);
-                            if (addTargetCall) {
-                                const res = addTargetCall.functionResponse.response;
-                                addedToListData = { listId: res.targetId, title: res.title, color: res.color, userRole: res.userRole };
-                                break; 
-                            }
-                        }
-
-                        setMessages(prev => [...prev, { id: Date.now().toString(), text: cleanReply, sender: 'bot', showMealPlanButton: createdMealPlan, addedToListData: addedToListData }]);
-                        isConversationDone = true;
                     }
-                }
-            } catch (error) {
-                console.error("Chat Error:", error);
-                
-                // Also auto-retry on hard network/server errors!
-                if (retryCount < 2) {
-                    console.log(`[RETRY] Network Error. Attempting silent retry ${retryCount + 1}/2...`);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    return attemptApiCall(retryCount + 1);
-                }
 
-                setMessages(prev => [...prev, { id: Date.now().toString(), text: "Sorry, I ran into a network error processing that.", sender: 'bot' }]);
-            } finally {
-                // Only turn off the loading spinner if this is the final attempt (no more retries pending)
-                if (retryCount === 0 || retryCount >= 2) {
-                     setIsLoading(false);
+                    setMessages(prev => [...prev, { id: Date.now().toString(), text: cleanReply, sender: 'bot', showMealPlanButton: createdMealPlan, addedToListData: addedToListData }]);
+                    isConversationDone = true;
                 }
             }
-        };
-
-        // Fire the initial attempt
-        await attemptApiCall(0);
+        } catch (error) {
+            console.error("Chat Error:", error);
+            setMessages(prev => [...prev, { id: Date.now().toString(), text: "Sorry, I ran into a network error processing that.", sender: 'bot' }]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     // ==========================================

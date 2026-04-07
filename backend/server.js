@@ -12,11 +12,65 @@ app.use(express.json({ limit: '50mb' }));
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// Model Choosing
-// const GEMINI_MODEL = 'gemini-2.5-flash';
-// const GEMINI_MODEL = 'gemini-2.5-flash-lite';
-const GEMINI_MODEL = 'gemini-3-flash-preview';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+// ====================================
+// MODEL ROUTING (FALLBACK WATERFALL)
+// ====================================
+const FALLBACK_MODELS = [
+  'gemini-2.5-flash',       
+  'gemini-2.5-flash-lite',
+  'gemini-3-flash-preview', 
+];
+
+// ====================================
+// AI FALLBACK EXECUTION LOOP
+// ====================================
+async function callGeminiWithFallback(requestBody, apiKey) {
+  let lastError = null;
+
+  for (const model of FALLBACK_MODELS) {
+    console.log(`\n[AI Routing] Attempting request with model: ${model}...`);
+    
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      // Check for standard HTTP/API errors (e.g., 500, 429)
+      if (!response.ok) {
+        throw new Error(data.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // THE GLITCH CATCHER: Check for silent empty array failures
+      const candidates = data.candidates;
+      if (!candidates || candidates.length === 0) {
+         throw new Error("Model returned no candidates.");
+      }
+      
+      const parts = candidates[0].content?.parts;
+      if (!parts || parts.length === 0) {
+         throw new Error("Model silent failure: Returned empty parts array [].");
+      }
+
+      // Success! Return the data and exit the loop.
+      console.log(`[AI Routing] Success with ${model}!`);
+      return data; 
+
+    } catch (error) {
+      console.warn(`[AI Routing] ${model} failed:`, error.message);
+      lastError = error;
+    }
+  }
+
+  // If the loop finishes, all models have failed.
+  console.error("[AI Routing] FATAL: All fallback models exhausted.");
+  throw new Error(`All models failed. Last error: ${lastError?.message}`);
+}
 
 // ====================================
 // DEFINE THE TOOLS FOR GEMINI
@@ -250,20 +304,18 @@ app.post('/chat', async (req, res) => {
   }
 
   try {
-    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: systemInstruction,
-        contents: contentsPayload,
-        tools: tools,
-      })
-    });
+    // Prepare the full request body
+    const requestBody = {
+      systemInstruction: systemInstruction,
+      contents: contentsPayload,
+      tools: tools,
+    };
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'API Error');
+    // Call the fallback waterfall instead of a direct fetch!
+    const data = await callGeminiWithFallback(requestBody, GEMINI_API_KEY);
 
-    const parts = data.candidates?.[0]?.content?.parts || [];
+    // Process the successful result
+    const parts = data.candidates[0].content.parts;
 
     console.log(`\n[DEBUG] Raw Gemini Parts Array:`);
     console.log(JSON.stringify(parts, null, 2));
@@ -280,7 +332,6 @@ app.post('/chat', async (req, res) => {
     if (hasFunctionCall) {
       console.log(`[ACTION] Instructing Frontend to run ${parts.filter(p => p.functionCall).length} tool(s).`);
 
-      // Return ALL parts as an array so the frontend can loop through them!
       return res.json({
         action: 'tool_call',
         allParts: parts 
@@ -296,13 +347,13 @@ app.post('/chat', async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Server Error:", error);
-    res.status(500).json({ error: 'Something went wrong on the server' });
+    console.error("\nServer Error:", error);
+    res.status(500).json({ error: 'Something went wrong on the server', details: error.message });
   }
 });
 
 
 app.listen(PORT, () => {
   console.log(`\nServer running on http://localhost:${PORT}`);
-  console.log(`Active Gemini Model: ${GEMINI_MODEL}\n`);
+  console.log(`Active AI Routing: ${FALLBACK_MODELS.join(' -> ')}\n`);
 });
