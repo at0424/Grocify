@@ -283,6 +283,33 @@ export const batchAddListItems = async (listId, itemsArray) => {
   }
 };
 
+// Delete a specific item from a Grocery List
+export const deleteGroceryItem = async (listId, itemId, currentUserId) => {
+  try {
+    const operation = del({ 
+      apiName: API_NAME,
+      path: '/deleteItem', 
+      options: {
+        body: { 
+          listId: listId, 
+          itemId: itemId,
+          userId: currentUserId 
+        }
+      }
+    });
+    
+    const response = await operation.response;
+    return await response.body.json();
+    
+  } catch (error) {
+    console.error("Error deleting item:", error);
+    return { 
+      success: false, 
+      message: error.message || String(error) 
+    };
+  }
+};
+
 // Toggle item to check or uncheck
 export const toggleGroceryItem = async (listId, itemId, currentUserId) => {
   try {
