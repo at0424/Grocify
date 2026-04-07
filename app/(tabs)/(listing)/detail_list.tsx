@@ -1,5 +1,6 @@
 import { getUserId } from '@/amplify/auth/authService';
 import CollaboratorModal from '@/components/CollaboratorModal';
+import { PixelAlert } from '@/components/PixelAlert';
 import VoiceInputModal from '@/components/VoiceInputModal';
 import {
   addListItems, batchAddListItems, batchToggleGroceryItem,
@@ -35,6 +36,8 @@ export default function ListingDetailScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [itemToEdit, setItemToEdit] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', quantity: '' });
+  const [deleteAlertVisible, setDeleteAlertVisible] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   // ==========================================
   // WEBSOCKET SETUP & DATA LOADING
@@ -233,29 +236,36 @@ export default function ListingDetailScreen() {
   };
 
   // ==========================================
-  // DELETE HANDLER 
+  // DELETE HANDLERS
   // ==========================================
-  const handleDeleteItem = (itemToDelete) => {
-    Alert.alert("Delete Item", `Are you sure you want to remove ${itemToDelete.name}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: 'destructive',
-        onPress: async () => {
-          // Optimistic UI update
-          setItems(prevItems => prevItems.filter(i => i.itemId !== itemToDelete.itemId));
+  const handleDeleteItemPrompt = (item) => {
+    setItemToDelete(item);
+    setDeleteAlertVisible(true);
+  };
 
-          try {
-            // Backend delete call
-            const result = await deleteGroceryItem(listId, itemToDelete.itemId, currentUserId);
-            if (!result.success) throw new Error("Delete failed");
-          } catch (error) {
-            Alert.alert("Error", "Could not delete item. Reverting changes.");
-            loadItems();
-          }
-        }
-      }
-    ]);
+  const confirmDeleteItem = async () => {
+    if (!itemToDelete) return;
+    const targetItem = itemToDelete; 
+
+    // Optimistic UI update & hide modal
+    setItems(prevItems => prevItems.filter(i => i.itemId !== targetItem.itemId));
+    setDeleteAlertVisible(false);
+    setItemToDelete(null);
+
+    try {
+      // Backend delete call
+      const result = await deleteGroceryItem(listId, targetItem.itemId, currentUserId);
+      if (!result.success) throw new Error("Delete failed");
+    } catch (error) {
+      // If the backend fails, use standard alert for error and refresh
+      Alert.alert("Error", "Could not delete item. Reverting changes.");
+      loadItems(); 
+    }
+  };
+
+  const cancelDeleteItem = () => {
+    setDeleteAlertVisible(false);
+    setItemToDelete(null);
   };
 
   // ==========================================
@@ -308,7 +318,7 @@ export default function ListingDetailScreen() {
         {/* DELETE BUTTON */}
         <TouchableOpacity 
           style={[styles.swipeActionBtn, styles.deleteSwipeBtn]} 
-          onPress={() => handleDeleteItem(item)}
+          onPress={() => handleDeleteItemPrompt(item)}
         >
           <Ionicons name="trash" size={24} color="#FFF8DC" />
         </TouchableOpacity>
@@ -493,7 +503,18 @@ export default function ListingDetailScreen() {
           </View>
         </View>
       </SafeAreaView>
-
+      
+      {/* ================= DELETE CONFIRMATION ALERT ================= */}
+      <PixelAlert
+        visible={deleteAlertVisible}
+        title="Delete Item"
+        message={`Are you sure you want to remove ${itemToDelete?.name}?`}
+        showCancel={true}
+        confirmText="Delete"
+        onConfirm={confirmDeleteItem}
+        onClose={cancelDeleteItem}
+      />
+      
       <CollaboratorModal visible={modalVisible} onClose={() => setModalVisible(false)} data={modalData} currentUserId={currentUserId} onInvite={handleInvite} onRemove={handleRemove} />
 
       {/* ================= EDIT MODAL ================= */}
